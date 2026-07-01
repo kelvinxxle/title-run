@@ -30,6 +30,12 @@ export function createRng(seed: string | number): Rng {
 }
 
 export function randInt(rng: Rng, min: number, max: number): number {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    throw new Error('randInt: min and max must be finite numbers');
+  }
+  if (max < min) {
+    throw new Error('randInt: max must be >= min');
+  }
   return min + Math.floor(rng() * (max - min + 1));
 }
 
