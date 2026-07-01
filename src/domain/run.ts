@@ -1,5 +1,5 @@
 import type { StatLine } from './stats';
-import type { FightState } from './fight';
+import { startFight, carryOutDamage, type FightState } from './fight';
 
 export type RunPhase = 'drafting' | 'pre-fight' | 'fighting' | 'reward' | 'run-over';
 
@@ -46,5 +46,40 @@ export function applyDraft(
     ...run,
     phase: 'pre-fight',
     fighter: { name: fighter.name, statLine: fighter.statLine },
+  };
+}
+
+export function startNextFight(run: RunState): RunState {
+  if (!run.fighter) {
+    throw new Error('startNextFight requires a drafted fighter');
+  }
+  const fight = startFight({
+    seed: run.seed,
+    fightNumber: run.fightNumber,
+    playerStatLine: run.fighter.statLine,
+    carryInDamage: run.carriedDamage,
+  });
+  return { ...run, phase: 'fighting', fight };
+}
+
+export function settleFight(run: RunState, fightState: FightState): RunState {
+  const outcome = fightState.outcome;
+  if (!outcome || outcome.winner !== 'player') {
+    return {
+      ...run,
+      phase: 'run-over',
+      record: { ...run.record, losses: 1 },
+      fight: fightState,
+    };
+  }
+  const wasChampion = run.isChampion;
+  return {
+    ...run,
+    phase: 'reward',
+    record: { ...run.record, wins: run.record.wins + 1 },
+    isChampion: wasChampion || run.fightNumber === TITLE_FIGHT,
+    defenses: wasChampion ? run.defenses + 1 : run.defenses,
+    carriedDamage: carryOutDamage(fightState),
+    fight: fightState,
   };
 }
