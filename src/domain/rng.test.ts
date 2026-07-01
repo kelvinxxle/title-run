@@ -46,3 +46,24 @@ describe('seeded rng', () => {
     expect(items).toEqual([1, 2, 3, 4, 5]);
   });
 });
+
+describe('randInt validation', () => {
+  it('throws when max < min', () => {
+    const rng = createRng('x');
+    expect(() => randInt(rng, 5, 1)).toThrow(/max must be >= min/);
+  });
+  it('throws when a bound is not finite', () => {
+    const rng = createRng('x');
+    expect(() => randInt(rng, 0, Infinity)).toThrow(/finite/);
+    expect(() => randInt(rng, NaN, 3)).toThrow(/finite/);
+  });
+  it('still returns an in-range integer for valid bounds', () => {
+    const rng = createRng('seed');
+    for (let i = 0; i < 50; i++) {
+      const v = randInt(rng, 2, 6);
+      expect(Number.isInteger(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(2);
+      expect(v).toBeLessThanOrEqual(6);
+    }
+  });
+});

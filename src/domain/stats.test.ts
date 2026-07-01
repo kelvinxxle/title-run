@@ -21,3 +21,14 @@ describe('stat model', () => {
     expect(isStatId('wingspan')).toBe(false);
   });
 });
+
+describe('isStatId accepts unknown', () => {
+  it('returns true for a valid stat id', () => { expect(isStatId('boxing')).toBe(true); });
+  it('returns false for a non-matching string', () => { expect(isStatId('nope')).toBe(false); });
+  it('returns false for non-string values', () => {
+    expect(isStatId(123 as unknown)).toBe(false);
+    expect(isStatId(null as unknown)).toBe(false);
+    expect(isStatId(undefined as unknown)).toBe(false);
+    expect(isStatId({} as unknown)).toBe(false);
+  });
+});

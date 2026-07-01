@@ -15,6 +15,6 @@ export function clampStat(value: number): number {
   return Math.max(STAT_MIN, Math.min(STAT_MAX, Math.round(value)));
 }
 
-export function isStatId(value: string): value is StatId {
-  return (STAT_IDS as readonly string[]).includes(value);
+export function isStatId(value: unknown): value is StatId {
+  return typeof value === 'string' && (STAT_IDS as readonly string[]).includes(value);
 }
