@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { colors, fonts } from './src/theme/tokens';
+import { colors, fonts, spacing } from './src/theme/tokens';
 
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       colors,
+      spacing,
       fontFamily: {
         display: [fonts.display, 'sans-serif'],
         body: [fonts.body, 'sans-serif'],

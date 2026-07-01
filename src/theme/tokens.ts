@@ -31,3 +31,14 @@ export const fonts = {
   body: 'Archivo Narrow',
   mono: 'Space Mono',
 } as const;
+
+export const spacing = {
+  base: '4px',
+  xs: '8px',
+  sm: '16px',
+  md: '24px',
+  lg: '40px',
+  gutter: '12px',
+  'margin-mobile': '16px',
+  'margin-desktop': '64px',
+} as const;
