@@ -27,7 +27,7 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight }:
       <section data-testid="screen-championship-hub">
         {run.fight?.outcome && <OutcomeBanner outcome={run.fight.outcome} heading="Run Ended" />}
         <p>Record {run.record.wins}–{run.record.losses}</p>
-        {run.isChampion && <p>Reign {run.defenses}</p>}
+        <p>Reign {run.defenses}</p>
         <button data-testid="start-run" onClick={onStartRun}>Start New Run</button>
       </section>
     );
