@@ -12,6 +12,7 @@ describe('FightScreen', () => {
   it('shows the seeded opponent and round header on load', () => {
     render(<FightScreen seed="run-42" />);
     expect(screen.getByText('Hideo "Granite" Stone')).toBeInTheDocument();
+    expect(screen.getByText(/grappler · challenger/i)).toBeInTheDocument();
     expect(screen.getByText(/round 1 of 3/i)).toBeInTheDocument();
     expect(screen.getByTestId('intent-panel')).toBeInTheDocument();
   });
@@ -27,6 +28,7 @@ describe('FightScreen', () => {
     const result = screen.getByTestId('fight-result');
     expect(result).toHaveTextContent(/you win/i);
     expect(result).toHaveTextContent(/decision/i);
+    expect(result).toHaveTextContent(/round 3/i);
     expect(screen.queryByTestId('intent-panel')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /new fight/i }));
