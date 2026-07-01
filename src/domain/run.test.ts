@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { startRun, applyDraft, startNextFight, settleFight, rewardDelta, rerollValue, applyReward, TITLE_FIGHT, type RunState } from './run';
-import { durability } from './fight';
+import { durability, resolveRound } from './fight';
 import type { FightState, FightOutcome } from './fight';
 
 const PLAYER = { boxing:82, kicks:92, clinch:80, takedowns:98, submissions:97, topControl:88, cardio:90, chin:88, fightIQ:78 };
@@ -175,5 +175,38 @@ describe('applyReward', () => {
     applyReward(run, { type: 'bump', stat: 'boxing' });
     expect(run.fighter?.statLine.boxing).toBe(82);
     expect(run.fightNumber).toBe(1);
+  });
+});
+
+describe('full deterministic run', () => {
+  function playFight(run: RunState): RunState {
+    let started = startNextFight(run);
+    let fs = started.fight!;
+    while (fs.status === 'in-progress') {
+      fs = resolveRound(fs, 'strike');
+    }
+    return settleFight(started, fs);
+  }
+
+  it('plays a full deterministic run: champion at fight 5, loss at fight 6', () => {
+    let run = applyDraft(startRun('run-42'), { name: 'Kelvin', statLine: PLAYER });
+
+    // fights 1..5 — all wins, reward = recover (no-op at 0 damage)
+    for (let i = 0; i < 5; i++) {
+      run = playFight(run);
+      expect(run.phase).toBe('reward');
+      run = applyReward(run, { type: 'recover' });
+      expect(run.phase).toBe('pre-fight');
+    }
+    expect(run.isChampion).toBe(true);
+    expect(run.defenses).toBe(0);
+    expect(run.record).toEqual({ wins: 5, losses: 0 });
+    expect(run.fightNumber).toBe(6);
+
+    // fight 6 — loss ends the run
+    run = playFight(run);
+    expect(run.phase).toBe('run-over');
+    expect(run.record).toEqual({ wins: 5, losses: 1 });
+    expect(run.fight?.outcome?.winner).toBe('opponent');
   });
 });
