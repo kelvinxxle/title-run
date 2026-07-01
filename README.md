@@ -18,6 +18,7 @@ real fighters**, then fight an endless, escalating run to win the belt and chase
 ## Documentation
 
 - [Product Requirements (PRD)](docs/prd.md)
+- [Design references](docs/design/README.md) — "Octagon Elite" design system + screen mockups
 
 ## Status
 

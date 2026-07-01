@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITLE RUN - Champion's Reign</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Mono:wght@400;700&amp;family=Archivo+Narrow:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        .gold-glow {
+            text-shadow: 0 0 15px rgba(242, 202, 80, 0.4);
+        }
+        .spotlight {
+            background: radial-gradient(circle at 50% 30%, #1a1a1a 0%, #0d0d0d 100%);
+        }
+        .segmented-bar div {
+            height: 8px;
+            background: #262626;
+            border-right: 2px solid #0d0d0d;
+        }
+        .segmented-bar div.active {
+            background: #f2ca50;
+        }
+        @keyframes pulse-gold {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-gold {
+            animation: pulse-gold 3s infinite ease-in-out;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#131313",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-bright": "#3a3939",
+                        "surface-container-highest": "#353534",
+                        "surface-dim": "#131313",
+                        "inverse-on-surface": "#313030",
+                        "surface-container": "#201f1f",
+                        "on-secondary": "#690007",
+                        "secondary": "#ffb4ac",
+                        "surface-tint": "#e9c349",
+                        "on-tertiary": "#2f3131",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffdad6",
+                        "outline-variant": "#4d4635",
+                        "on-primary-container": "#554300",
+                        "on-primary-fixed-variant": "#574500",
+                        "secondary-fixed-dim": "#ffb4ac",
+                        "tertiary-fixed-dim": "#c6c6c6",
+                        "on-secondary-container": "#ff9f95",
+                        "tertiary": "#cecece",
+                        "tertiary-container": "#b2b3b3",
+                        "on-surface-variant": "#d0c5af",
+                        "inverse-primary": "#735c00",
+                        "outline": "#99907c",
+                        "on-surface": "#e5e2e1",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-container": "#d4af37",
+                        "primary-fixed": "#ffe088",
+                        "on-primary-fixed": "#241a00",
+                        "surface-variant": "#353534",
+                        "on-tertiary-container": "#444546",
+                        "on-background": "#e5e2e1",
+                        "primary-fixed-dim": "#e9c349",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary-fixed": "#410003",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "secondary-container": "#960711",
+                        "on-secondary-fixed-variant": "#92030f",
+                        "error": "#ffb4ac",
+                        "primary": "#f2ca50",
+                        "on-primary": "#3c2f00",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "sm": "16px",
+                        "base": "4px",
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "gutter": "12px",
+                        "md": "24px",
+                        "xs": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Anton"],
+                        "display-lg-mobile": ["Anton"],
+                        "label-caps": ["Space Mono"],
+                        "body-lg": ["Archivo Narrow"],
+                        "stats-xl": ["Space Mono"],
+                        "headline-md": ["Anton"],
+                        "body-sm": ["Archivo Narrow"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                        "display-lg-mobile": ["36px", {"lineHeight": "1.1", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "stats-xl": ["32px", {"lineHeight": "1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "0.04em", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.4", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background spotlight min-h-screen font-body-lg overflow-x-hidden pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-dim border-b-2 border-outline-variant shadow-md flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A gritty, high-contrast portrait of a professional MMA fighter with focused eyes and sweat on their brow. The lighting is dramatic and cinematic, emphasizing muscular definition and battle scars. The color palette is dominated by deep blacks and warm gold accents, matching a premium sports broadcast aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCM2-w3nhOfaRKVJVMHqMKQFIACJyT_cVpMHNOzfkWmvZJkKqvdiYSQ0cIt78tq5QWa2La2hWdiJa3dmzLxDejp6itGm_eTx_bZEvU3pPXNO57Uzrgj3cbHopp_3WnJFWo8OsPQXV5e_-dkpQgxVWS7S6Cr1m8K53sVp_VIqzGcFWk83gzE6eZQ8JWyYlbgaiUsKl7JGdFMFSjvED3wbNQiVC4T68we18xie6KHeWefZsp9DGmTOf3E"/>
+</div>
+</div>
+<h1 class="font-display-lg-mobile text-display-lg-mobile uppercase text-primary tracking-wider">TITLE RUN</h1>
+<button class="text-primary hover:opacity-80 transition-opacity active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="pt-20 px-margin-mobile max-w-4xl mx-auto">
+<!-- Hero Section -->
+<section class="relative mt-md mb-lg">
+<div class="relative w-full aspect-[4/5] md:aspect-[16/9] rounded-xl overflow-hidden shadow-2xl inner-glow border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="A full-length cinematic shot of a legendary MMA champion known as The GOAT standing in the center of an octagon under a single bright spotlight. He is wearing a massive, ornate championship belt with heavy gold plating and intricate engravings. The background is a dark, atmospheric arena filled with a faint haze and the silhouettes of a cheering crowd. High-contrast lighting highlights the textures of the leather and gold belt." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXV3TIsplH6gTRb6l-G9-EuMOe15Fs6u9fkTcwMqE9zD8u6ba2RtlYghIA79VIaVWMIVsFJfsp7NRY_QANy67pUj5g0DXBhCnOslxKRT_zFevYmbPoREXe03cgADjY2r4rMbgsAE8CnGLmAUqPBCJhx6nnLklCJ0kRCfn_C7qF1zL5z7WVZuQ8RAh08lyMRnm9XckZg616rhNUrwDamMdHuNgbCQmLxipFyOdNP0EakxUkQA8m7skJ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+<div class="absolute bottom-0 left-0 p-md w-full">
+<span class="inline-block bg-primary text-on-primary font-label-caps text-label-caps px-xs py-base border-2 border-primary mb-xs">CHAMPION</span>
+<h2 class="font-display-lg text-display-lg text-on-surface uppercase mb-0 gold-glow">THE G.O.A.T.</h2>
+<p class="font-label-caps text-on-surface-variant tracking-widest">ACTIVE REIGN</p>
+</div>
+</div>
+</section>
+<!-- Bento Grid Stats -->
+<div class="grid grid-cols-2 gap-gutter mb-lg">
+<div class="bg-surface-container p-md rounded-xl border border-outline-variant/20 shadow-lg flex flex-col justify-center items-center text-center">
+<span class="font-label-caps text-on-surface-variant text-[10px] uppercase mb-base">Reign</span>
+<div class="font-stats-xl text-stats-xl text-primary">4</div>
+<span class="font-label-caps text-on-surface-variant text-[10px] uppercase">Defenses</span>
+</div>
+<div class="bg-surface-container p-md rounded-xl border border-outline-variant/20 shadow-lg flex flex-col justify-center items-center text-center">
+<span class="font-label-caps text-on-surface-variant text-[10px] uppercase mb-base">Total</span>
+<div class="font-stats-xl text-stats-xl text-on-surface">9</div>
+<span class="font-label-caps text-on-surface-variant text-[10px] uppercase">Wins</span>
+</div>
+</div>
+<!-- Hall of Fame -->
+<section class="mb-lg">
+<div class="flex items-center gap-xs mb-md">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+<h3 class="font-headline-md text-headline-md text-primary uppercase">Hall of Fame</h3>
+</div>
+<div class="space-y-gutter">
+<!-- Record 1 -->
+<div class="bg-surface-container-low border-l-4 border-primary p-md flex justify-between items-center group hover:bg-surface-container transition-colors shadow-inner shadow-black/40">
+<div>
+<h4 class="font-body-lg font-bold text-on-surface uppercase group-hover:text-primary transition-colors">Spider</h4>
+<p class="font-label-caps text-body-sm text-on-surface-variant">ALL-TIME BEST</p>
+</div>
+<div class="text-right">
+<div class="font-stats-xl text-headline-md text-primary">12</div>
+<p class="font-label-caps text-[10px] text-on-surface-variant">DEFENSES</p>
+</div>
+</div>
+<!-- Record 2 -->
+<div class="bg-surface-container-low border-l-4 border-on-surface-variant/30 p-md flex justify-between items-center group hover:bg-surface-container transition-colors shadow-inner shadow-black/40">
+<div>
+<h4 class="font-body-lg font-bold text-on-surface uppercase group-hover:text-on-surface-variant transition-colors">The Eagle</h4>
+<p class="font-label-caps text-body-sm text-on-surface-variant">PREVIOUS BEST</p>
+</div>
+<div class="text-right">
+<div class="font-stats-xl text-headline-md text-on-surface">8</div>
+<p class="font-label-caps text-[10px] text-on-surface-variant">DEFENSES</p>
+</div>
+</div>
+</div>
+</section>
+<!-- CTAs -->
+<div class="flex flex-col gap-sm mt-lg">
+<button class="bg-primary text-on-primary font-display-lg text-headline-md py-md px-lg rounded-sm shadow-2xl border-t border-white/20 active:scale-95 transition-transform uppercase tracking-wider inner-glow flex items-center justify-center gap-sm group">
+<span class="material-symbols-outlined group-hover:animate-pulse" data-icon="rocket_launch">rocket_launch</span>
+                START NEW RUN
+            </button>
+<button class="bg-surface-container-highest text-on-surface font-display-lg text-headline-md py-md px-lg rounded-sm border-2 border-outline-variant active:scale-95 transition-transform uppercase tracking-wider flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined" data-icon="play_arrow">play_arrow</span>
+                RESUME RUN
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container border-t-2 border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.8)] flex justify-around items-center w-full px-4">
+<a class="flex flex-col items-center justify-center text-primary bg-surface-container-highest rounded-xl px-4 py-1 border-t-2 border-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-caps text-label-caps mt-1">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-caps text-label-caps mt-1">STATS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
+<span class="font-label-caps text-label-caps mt-1">REIGNS</span>
+</a>
+</nav>
+<!-- Interactive Layer for atmospheric effect -->
+<div class="fixed pointer-events-none w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] -z-10 translate-x-[-50%] translate-y-[-50%] opacity-0 transition-opacity duration-500" id="glow-cursor"></div>
+<script>
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.getElementById('glow-cursor');
+            glow.style.opacity = '1';
+            glow.style.left = e.clientX + 'px';
+            glow.style.top = e.clientY + 'px';
+        });
+
+        document.addEventListener('mouseleave', () => {
+            const glow = document.getElementById('glow-cursor');
+            glow.style.opacity = '0';
+        });
+
+        // Simple button haptics simulation
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('touchstart', () => {
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            });
+        });
+    </script>
+</body></html>
