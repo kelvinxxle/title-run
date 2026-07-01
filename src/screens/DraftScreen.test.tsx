@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DraftScreen from './DraftScreen';
 
@@ -30,5 +30,18 @@ describe('DraftScreen', () => {
     expect(screen.getByText('97')).toBeInTheDocument();
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0][0].name).toBe('The Chosen One');
+  });
+
+  it('calls onComplete once with the drafted fighter after naming', () => {
+    const onComplete = vi.fn();
+    render(<DraftScreen seed="run-42" onComplete={onComplete} />);
+    // keep the suggested stat 9 times
+    for (let i = 0; i < 9; i++) {
+      fireEvent.click(screen.getByTestId('suggested-stat'));
+    }
+    fireEvent.change(screen.getByLabelText(/fighter name/i), { target: { value: 'Kelvin' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirm fighter/i }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete.mock.calls[0][0]).toMatchObject({ name: 'Kelvin' });
   });
 });
