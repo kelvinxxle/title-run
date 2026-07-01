@@ -1,15 +1,17 @@
 interface StatBarProps {
   value: number;
   highlighted?: boolean;
+  label?: string;
 }
 
 const SEGMENTS = 10;
 
-export default function StatBar({ value, highlighted = false }: StatBarProps) {
+export default function StatBar({ value, highlighted = false, label }: StatBarProps) {
   const filled = Math.max(1, Math.round((value / 99) * SEGMENTS));
   return (
     <div
       role="meter"
+      aria-label={label}
       aria-valuenow={value}
       aria-valuemin={1}
       aria-valuemax={99}
