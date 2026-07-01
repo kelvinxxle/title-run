@@ -6,7 +6,7 @@ import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
 import FightScreen from './screens/FightScreen';
 import RewardScreen from './screens/RewardScreen';
-import type { StatLine } from './domain';
+import { startRun, applyDraft, type StatLine } from './domain';
 
 const DEMO_FIGHTER: StatLine = {
   boxing: 82, kicks: 92, clinch: 80, takedowns: 98, submissions: 97,
@@ -26,7 +26,14 @@ const SCREEN_COMPONENTS: Record<ScreenId, () => JSX.Element> = {
       onSettled={() => {}}
     />
   ),
-  reward: RewardScreen,
+  reward: () => {
+    const demoRun = {
+      ...applyDraft(startRun('demo-reward'), { name: DEMO_NAME, statLine: DEMO_FIGHTER }),
+      phase: 'reward' as const,
+      fight: { outcome: { winner: 'player' as const, method: 'decision' as const, round: 3 } } as any,
+    };
+    return <RewardScreen run={demoRun} onReward={() => {}} />;
+  },
 };
 
 export default function App() {
