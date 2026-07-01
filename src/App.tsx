@@ -16,7 +16,7 @@ const DEMO_NAME = 'Ace "Bijon" Carter';
 const DEMO_SEED = 'demo';
 
 const SCREEN_COMPONENTS: Record<ScreenId, () => JSX.Element> = {
-  'championship-hub': ChampionshipHubScreen,
+  'championship-hub': () => <ChampionshipHubScreen run={null} onStartRun={() => {}} onEnterFight={() => {}} />,
   draft: DraftScreen,
   fight: () => (
     <FightScreen
