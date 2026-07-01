@@ -51,6 +51,15 @@ describe('startFight', () => {
     const s = startFight({ seed: 'run-42', fightNumber: 5, playerStatLine: PLAYER });
     expect(s.rounds).toBe(5);
   });
+  it('does not alias the caller stat line into fight state', () => {
+    const sl: StatLine = {
+      boxing: 82, kicks: 92, clinch: 80, takedowns: 98, submissions: 97,
+      topControl: 88, cardio: 90, chin: 88, fightIQ: 78,
+    };
+    const s = startFight({ seed: 'run-42', fightNumber: 1, playerStatLine: sl });
+    sl.boxing = 0;
+    expect(s.player.statLine.boxing).toBe(82);
+  });
 });
 
 describe('resolveRound', () => {

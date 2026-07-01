@@ -82,7 +82,7 @@ export function startFight({ seed, fightNumber, playerStatLine, carryInDamage = 
     fightNumber,
     rounds: roundsForFight(fightNumber),
     round: 1,
-    player: { statLine: playerStatLine, damage: carryInDamage },
+    player: { statLine: { ...playerStatLine }, damage: carryInDamage },
     opponent: { ...opponent, damage: 0 },
     history: [],
     status: 'in-progress',
