@@ -26,13 +26,17 @@ function health(damage: number, statLine: StatLine): number {
   return 1 - damage / durability(statLine);
 }
 
+export function advanceFight(state: FightState, intent: Intent): FightState {
+  return state.status === 'in-progress' ? resolveRound(state, intent) : state;
+}
+
 export default function FightScreen({ seed: seedProp }: FightScreenProps = {}) {
   const [seed] = useState(() => seedProp ?? String(Date.now()));
   const [state, setState] = useState<FightState>(() =>
     startFight({ seed, fightNumber: 1, playerStatLine: DEMO_FIGHTER }),
   );
 
-  const handleIntent = (intent: Intent) => setState((s) => resolveRound(s, intent));
+  const handleIntent = (intent: Intent) => setState((s) => advanceFight(s, intent));
   const handleNewFight = () =>
     setState((s) => startFight({ seed, fightNumber: s.fightNumber + 1, playerStatLine: DEMO_FIGHTER }));
 
