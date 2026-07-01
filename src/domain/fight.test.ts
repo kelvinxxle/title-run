@@ -66,11 +66,11 @@ describe('resolveRound', () => {
   it('produces the exact strike vectors and a decision win vs seed "run-42" fight 1', () => {
     let s = startFight({ seed: 'run-42', fightNumber: 1, playerStatLine: PLAYER });
     s = resolveRound(s, 'strike');
-    expect(s.history[0]).toMatchObject({ round: 1, dominance: 30, roundWinner: 'player', opponentDamage: 18 });
+    expect(s.history[0]).toMatchObject({ round: 1, dominance: 32, roundWinner: 'player', opponentDamage: 19 });
     s = resolveRound(s, 'strike');
-    expect(s.history[1]).toMatchObject({ round: 2, dominance: 40, roundWinner: 'player', opponentDamage: 42 });
+    expect(s.history[1]).toMatchObject({ round: 2, dominance: 36, roundWinner: 'player', opponentDamage: 41 });
     s = resolveRound(s, 'strike');
-    expect(s.history[2]).toMatchObject({ round: 3, dominance: 25, roundWinner: 'player', opponentDamage: 57 });
+    expect(s.history[2]).toMatchObject({ round: 3, dominance: 32, roundWinner: 'player', opponentDamage: 60 });
     expect(s.status).toBe('won');
     expect(s.outcome).toEqual({ method: 'decision', round: 3, winner: 'player' });
   });
@@ -128,16 +128,32 @@ describe('resolveRound', () => {
     expect(s.opponent.name).toBe('Lars "The Surgeon" Rivas');
     // Lock the exact cumulative player damage per round so a damage-math or
     // name regression can't slip through behind the same final KO outcome.
-    const cumulative = [23, 40, 66, 80];
+    const cumulative = [28, 54, 79];
     let i = 0;
     while (s.status === 'in-progress') {
       s = resolveRound(s, 'outpoint');
       expect(s.player.damage).toBe(cumulative[i]);
       i += 1;
     }
-    expect(i).toBe(4);
+    expect(i).toBe(3);
     expect(s.status).toBe('lost');
-    expect(s.outcome).toEqual({ method: 'KO', round: 4, winner: 'opponent' });
+    expect(s.outcome).toEqual({ method: 'KO', round: 3, winner: 'opponent' });
+  });
+
+  it('resolves the same round differently across fight numbers (fight isolation)', () => {
+    const base = startFight({
+      seed: 'iso',
+      fightNumber: 1,
+      playerStatLine: PLAYER,
+      carryInDamage: 0,
+    });
+    const other = { ...base, fightNumber: 2 };
+
+    const a = resolveRound(base, 'strike');
+    const b = resolveRound(other, 'strike');
+
+    // Same seed/round/opponent/player, different fightNumber -> different dominance.
+    expect(a.history[0].dominance).not.toBe(b.history[0].dominance);
   });
 
   it('throws when resolving a settled fight', () => {
