@@ -43,7 +43,13 @@ export default function IntentPanel({ statLine, onIntent, disabled = false }: In
         className="w-full h-20 bg-primary text-on-primary flex flex-col items-center justify-center gap-base disabled:opacity-50"
       >
         <span className="font-display text-2xl uppercase tracking-wide">
-          {INTENT_LABELS.strike} {canFinish('strike') && <span>★</span>}
+          {INTENT_LABELS.strike}{' '}
+          {canFinish('strike') && (
+            <>
+              <span aria-hidden="true">★</span>
+              <span className="sr-only">Can finish</span>
+            </>
+          )}
         </span>
         <OffenseStats intent="strike" statLine={statLine} />
       </button>
@@ -59,7 +65,13 @@ export default function IntentPanel({ statLine, onIntent, disabled = false }: In
             className="bg-surface-container border border-outline p-sm flex flex-col items-start gap-base disabled:opacity-50"
           >
             <span className="font-display text-lg uppercase tracking-wide text-on-surface">
-              {INTENT_LABELS[intent]} {canFinish(intent) && <span className="text-primary">★</span>}
+              {INTENT_LABELS[intent]}{' '}
+              {canFinish(intent) && (
+                <>
+                  <span aria-hidden="true" className="text-primary">★</span>
+                  <span className="sr-only">Can finish</span>
+                </>
+              )}
             </span>
             <OffenseStats intent={intent} statLine={statLine} />
           </button>

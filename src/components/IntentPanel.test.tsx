@@ -34,6 +34,16 @@ describe('IntentPanel', () => {
     }
   });
 
+  it('exposes a screen-reader alternative for the finish marker', () => {
+    render(<IntentPanel statLine={STATS} onIntent={() => {}} />);
+    for (const intent of ['strike', 'clinch', 'submit']) {
+      expect(within(screen.getByTestId(`intent-${intent}`)).getByText('Can finish')).toBeInTheDocument();
+    }
+    for (const intent of ['takedown', 'outpoint']) {
+      expect(within(screen.getByTestId(`intent-${intent}`)).queryByText('Can finish')).not.toBeInTheDocument();
+    }
+  });
+
   it('calls onIntent with the clicked intent', async () => {
     const user = userEvent.setup();
     const onIntent = vi.fn();
