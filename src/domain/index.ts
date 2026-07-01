@@ -4,3 +4,4 @@ export * from './rng';
 export * from './roster';
 export * from './opponent';
 export * from './fight';
+export * from './run';

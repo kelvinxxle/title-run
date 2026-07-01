@@ -108,7 +108,7 @@ export function resolveRound(state: FightState, intent: Intent): FightState {
   const yourOff = pairAvg(p, cfg.offense);
   const theirDef = pairAvg(o, cfg.defense);
   const iqTilt = (p.fightIQ - o.fightIQ) * IQ_FACTOR;
-  const roll = createRng(`${state.seed}#r${state.round}`)();
+  const roll = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}`)();
   const rollSwing = (roll - 0.5) * ROLL_RANGE;
   const dominance = Math.round(yourOff - theirDef + iqTilt + rollSwing);
   const dmg = Math.min(MAX_ROUND_DAMAGE, Math.max(0, Math.round(Math.abs(dominance) * DMG_FACTOR)));
