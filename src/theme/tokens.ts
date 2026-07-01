@@ -1,0 +1,33 @@
+export const colors = {
+  surface: '#131313',
+  'surface-bright': '#3a3939',
+  'surface-container-lowest': '#0e0e0e',
+  'surface-container-low': '#1c1b1b',
+  'surface-container': '#201f1f',
+  'surface-container-high': '#2a2a2a',
+  'surface-container-highest': '#353534',
+  'on-surface': '#e5e2e1',
+  'on-surface-variant': '#d0c5af',
+  outline: '#99907c',
+  'outline-variant': '#4d4635',
+  primary: '#f2ca50',
+  'on-primary': '#3c2f00',
+  'primary-container': '#d4af37',
+  'on-primary-container': '#554300',
+  secondary: '#ffb4ac',
+  'on-secondary': '#690007',
+  'secondary-container': '#960711',
+  'on-secondary-container': '#ff9f95',
+  tertiary: '#cecece',
+  'on-tertiary': '#2f3131',
+  error: '#ffb4ab',
+  'on-error': '#690005',
+  background: '#0e0e0e',
+  'on-background': '#e5e2e1',
+} as const;
+
+export const fonts = {
+  display: 'Anton',
+  body: 'Archivo Narrow',
+  mono: 'Space Mono',
+} as const;
