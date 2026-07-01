@@ -10,4 +10,9 @@ describe('StatBar', () => {
     expect(meter).toHaveAttribute('aria-valuemin', '1');
     expect(meter).toHaveAttribute('aria-valuemax', '99');
   });
+
+  it('applies an accessible name when label is provided', () => {
+    render(<StatBar value={82} label="Boxing rating" />);
+    expect(screen.getByRole('meter', { name: 'Boxing rating' })).toBeInTheDocument();
+  });
 });
