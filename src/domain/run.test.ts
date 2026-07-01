@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { startRun, applyDraft, startNextFight, settleFight, TITLE_FIGHT, type RunState } from './run';
+import { startRun, applyDraft, startNextFight, settleFight, rewardDelta, rerollValue, applyReward, TITLE_FIGHT, type RunState } from './run';
+import { durability } from './fight';
 import type { FightState, FightOutcome } from './fight';
 
 const PLAYER = { boxing:82, kicks:92, clinch:80, takedowns:98, submissions:97, topControl:88, cardio:90, chin:88, fightIQ:78 };
@@ -105,5 +106,74 @@ describe('settleFight', () => {
     expect(out.phase).toBe('run-over');
     expect(out.record).toEqual({ wins: 0, losses: 1 });
     expect(out.fight).not.toBeNull();
+  });
+});
+
+function rewardReadyRun(over: Partial<RunState> = {}): RunState {
+  return {
+    ...applyDraft(startRun('run-42'), { name: 'Kelvin', statLine: PLAYER }),
+    phase: 'reward',
+    ...over,
+  };
+}
+
+describe('rerollValue', () => {
+  it('draws a fresh fighter from the reward stream and returns the chosen slot', () => {
+    expect(rerollValue('run-42', 1, 'boxing')).toBe(60);
+    expect(rerollValue('run-42', 1, 'fightIQ')).toBe(86);
+  });
+});
+
+describe('rewardDelta', () => {
+  it('previews a stat bump (+8, clamped at 99)', () => {
+    expect(rewardDelta(rewardReadyRun(), { type: 'bump', stat: 'boxing' }))
+      .toEqual({ reward: { type: 'bump', stat: 'boxing' }, stat: 'boxing', from: 82, to: 90 });
+    expect(rewardDelta(rewardReadyRun(), { type: 'bump', stat: 'submissions' }).to).toBe(99);
+  });
+
+  it('previews a gamble re-roll (may go down)', () => {
+    expect(rewardDelta(rewardReadyRun(), { type: 'reroll', stat: 'boxing' }))
+      .toEqual({ reward: { type: 'reroll', stat: 'boxing' }, stat: 'boxing', from: 82, to: 60 });
+  });
+
+  it('previews recover as healing half max durability', () => {
+    expect(rewardDelta(rewardReadyRun({ carriedDamage: 40 }), { type: 'recover' }))
+      .toEqual({ reward: { type: 'recover' }, stat: null, from: 40, to: 0 });
+    expect(rewardDelta(rewardReadyRun({ carriedDamage: 80 }), { type: 'recover' }).to).toBe(33);
+  });
+});
+
+describe('applyReward', () => {
+  it('applies a bump, advances the fight number and returns to pre-fight', () => {
+    const out = applyReward(rewardReadyRun(), { type: 'bump', stat: 'boxing' });
+    expect(out.fighter?.statLine.boxing).toBe(90);
+    expect(out.fightNumber).toBe(2);
+    expect(out.phase).toBe('pre-fight');
+    expect(out.fight).toBeNull();
+  });
+
+  it('applies a re-roll (writes the drawn value)', () => {
+    const out = applyReward(rewardReadyRun(), { type: 'reroll', stat: 'boxing' });
+    expect(out.fighter?.statLine.boxing).toBe(60);
+  });
+
+  it('applies recover to carried damage only', () => {
+    const out = applyReward(rewardReadyRun({ carriedDamage: 80 }), { type: 'recover' });
+    expect(out.carriedDamage).toBe(33);
+    expect(out.fighter?.statLine).toEqual(PLAYER);
+  });
+
+  it('bumping Chin raises max durability (emergent, via the engine)', () => {
+    const before = rewardReadyRun();
+    const after = applyReward(before, { type: 'bump', stat: 'chin' });
+    // chin 88 -> 96 => durability round(50+96*0.5)=98 > round(50+88*0.5)=94
+    expect(durability(after.fighter!.statLine)).toBeGreaterThan(durability(before.fighter!.statLine));
+  });
+
+  it('does not mutate the input run', () => {
+    const run = rewardReadyRun();
+    applyReward(run, { type: 'bump', stat: 'boxing' });
+    expect(run.fighter?.statLine.boxing).toBe(82);
+    expect(run.fightNumber).toBe(1);
   });
 });

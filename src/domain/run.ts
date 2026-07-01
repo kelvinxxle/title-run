@@ -1,5 +1,8 @@
 import type { StatLine } from './stats';
-import { startFight, carryOutDamage, type FightState } from './fight';
+import { clampStat, type StatId } from './stats';
+import { startFight, carryOutDamage, durability, type FightState } from './fight';
+import { createRng } from './rng';
+import { rollFighter, buildStatLine } from './roster';
 
 export type RunPhase = 'drafting' | 'pre-fight' | 'fighting' | 'reward' | 'run-over';
 
@@ -81,5 +84,63 @@ export function settleFight(run: RunState, fightState: FightState): RunState {
     defenses: wasChampion ? run.defenses + 1 : run.defenses,
     carriedDamage: carryOutDamage(fightState),
     fight: fightState,
+  };
+}
+
+export type Reward =
+  | { type: 'bump'; stat: StatId }
+  | { type: 'reroll'; stat: StatId }
+  | { type: 'recover' };
+
+export interface RewardDelta {
+  reward: Reward;
+  stat: StatId | null;
+  from: number;
+  to: number;
+}
+
+export function rerollValue(seed: string, fightNumber: number, stat: StatId): number {
+  const rng = createRng(`${seed}#reward${fightNumber}`);
+  const fighter = rollFighter(rng, []);
+  return buildStatLine(fighter)[stat];
+}
+
+export function rewardDelta(run: RunState, reward: Reward): RewardDelta {
+  if (!run.fighter) {
+    throw new Error('rewardDelta requires a drafted fighter');
+  }
+  const statLine = run.fighter.statLine;
+  if (reward.type === 'bump') {
+    const from = statLine[reward.stat];
+    return { reward, stat: reward.stat, from, to: clampStat(from + BUMP_AMOUNT) };
+  }
+  if (reward.type === 'reroll') {
+    const from = statLine[reward.stat];
+    return { reward, stat: reward.stat, from, to: rerollValue(run.seed, run.fightNumber, reward.stat) };
+  }
+  const from = run.carriedDamage;
+  const heal = Math.round(durability(statLine) * RECOVER_FRACTION);
+  return { reward, stat: null, from, to: Math.max(0, from - heal) };
+}
+
+export function applyReward(run: RunState, reward: Reward): RunState {
+  if (!run.fighter) {
+    throw new Error('applyReward requires a drafted fighter');
+  }
+  const delta = rewardDelta(run, reward);
+  let fighter = run.fighter;
+  let carriedDamage = run.carriedDamage;
+  if (delta.stat !== null) {
+    fighter = { ...fighter, statLine: { ...fighter.statLine, [delta.stat]: delta.to } };
+  } else {
+    carriedDamage = delta.to;
+  }
+  return {
+    ...run,
+    fighter,
+    carriedDamage,
+    fightNumber: run.fightNumber + 1,
+    phase: 'pre-fight',
+    fight: null,
   };
 }
