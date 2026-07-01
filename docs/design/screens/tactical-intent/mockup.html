@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITLE RUN - Tactical Fight Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Space+Mono:wght@400;700&amp;family=Archivo+Narrow:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Design System Tokens & Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#131313",
+                    "surface-container-low": "#1c1b1b",
+                    "surface-bright": "#3a3939",
+                    "surface-container-highest": "#353534",
+                    "surface-dim": "#131313",
+                    "inverse-on-surface": "#313030",
+                    "surface-container": "#201f1f",
+                    "on-secondary": "#690007",
+                    "secondary": "#ffb4ac",
+                    "surface-tint": "#e9c349",
+                    "on-tertiary": "#2f3131",
+                    "error-container": "#93000a",
+                    "secondary-fixed": "#ffdad6",
+                    "outline-variant": "#4d4635",
+                    "on-primary-container": "#554300",
+                    "on-primary-fixed-variant": "#574500",
+                    "secondary-fixed-dim": "#ffb4ac",
+                    "tertiary-fixed-dim": "#c6c6c6",
+                    "on-secondary-container": "#ff9f95",
+                    "tertiary": "#cecece",
+                    "tertiary-container": "#b2b3b3",
+                    "on-surface-variant": "#d0c5af",
+                    "inverse-primary": "#735c00",
+                    "outline": "#99907c",
+                    "on-surface": "#e5e2e1",
+                    "inverse-surface": "#e5e2e1",
+                    "primary-container": "#d4af37",
+                    "primary-fixed": "#ffe088",
+                    "on-primary-fixed": "#241a00",
+                    "surface-variant": "#353534",
+                    "on-tertiary-container": "#444546",
+                    "on-background": "#e5e2e1",
+                    "primary-fixed-dim": "#e9c349",
+                    "on-tertiary-fixed-variant": "#454747",
+                    "surface-container-high": "#2a2a2a",
+                    "on-error": "#690005",
+                    "tertiary-fixed": "#e2e2e2",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary-fixed": "#410003",
+                    "on-tertiary-fixed": "#1a1c1c",
+                    "secondary-container": "#960711",
+                    "on-secondary-fixed-variant": "#92030f",
+                    "error": "#ffb4ab",
+                    "primary": "#f2ca50",
+                    "on-primary": "#3c2f00",
+                    "on-error-container": "#ffdad6",
+                    "background": "#131313"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-desktop": "64px",
+                    "sm": "16px",
+                    "base": "4px",
+                    "lg": "40px",
+                    "margin-mobile": "16px",
+                    "gutter": "12px",
+                    "md": "24px",
+                    "xs": "8px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Anton"],
+                    "display-lg-mobile": ["Anton"],
+                    "label-caps": ["Space Mono"],
+                    "body-lg": ["Archivo Narrow"],
+                    "stats-xl": ["Space Mono"],
+                    "headline-md": ["Anton"],
+                    "body-sm": ["Archivo Narrow"]
+            },
+            "fontSize": {
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                    "display-lg-mobile": ["36px", {"lineHeight": "1.1", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "stats-xl": ["32px", {"lineHeight": "1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "0.04em", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "1.4", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: #0D0D0D;
+            color: #E5E2E1;
+            overflow-x: hidden;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .chiaroscuro-card {
+            background: #1A1A1A;
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 12px 24px rgba(0, 0, 0, 0.8);
+        }
+
+        .segmented-bar-segment {
+            height: 100%;
+            border-right: 1px solid #0D0D0D;
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 15px rgba(242, 202, 80, 0.4);
+        }
+
+        .octagon-bg {
+            clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+            opacity: 0.03;
+            border: 2px solid #f2ca50;
+        }
+
+        .action-button-hover {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .action-button-hover:active {
+            transform: scale(0.96);
+            filter: brightness(0.9);
+        }
+
+        .spotlight {
+            background: radial-gradient(circle at center, rgba(242, 202, 80, 0.08) 0%, transparent 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-lg text-body-lg bg-surface">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 w-full bg-surface-dim border-b-2 border-outline-variant shadow-md">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary">
+<img class="w-full h-full object-cover" data-alt="A rugged, scarred MMA fighter profile photo, intense gaze, cinematic lighting with high contrast shadows. The fighter has a short buzz cut and tribal tattoos visible on the neck. Dark background with subtle gold dust particles, professional sports aesthetic, aggressive and authoritative mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCI_9s5Iki0i8minyN8t2zBno99z8r863i_jMXxeI_5XFpyt8P4RHz5wm11c20RSe6hwh53lEcnejtMqdcwDdFMctCYsvQhmUsCtwp1r99o4keGnMkOvnIDOaHoW45vlcJB0lqmv82DBMx3UxS5_c9qYIm0o4GRniQuuTRo4yzNQHbrvSqCEV5wDEwCaECmpTGHgKYBiFjOM7XOVHojeJ0_Nv8q1Bx8xUqofgypmIEbOaQF20_M_4Ja"/>
+</div>
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary tracking-wider uppercase">TITLE RUN</span>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex flex-col items-end">
+<span class="font-label-caps text-[10px] text-primary">STATUS</span>
+<span class="font-display-lg-mobile text-xl text-primary leading-none">ACTIVE FIGHT</span>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-100">settings</button>
+</div>
+</header>
+<main class="pt-20 pb-24 min-h-screen relative spotlight flex flex-col items-center">
+<!-- Octagon Silhouette Background -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[600px] max-h-[600px] octagon-bg pointer-events-none"></div>
+<!-- Fight Header Section -->
+<section class="w-full px-margin-mobile mb-md text-center">
+<h2 class="font-display-lg-mobile text-display-lg-mobile text-primary gold-glow uppercase">FIGHT 5: VACANT TITLE</h2>
+<div class="flex justify-center items-center gap-xs mt-base">
+<span class="font-label-caps text-on-surface-variant">LAS VEGAS, NV</span>
+<span class="w-1 h-1 rounded-full bg-primary"></span>
+<span class="font-label-caps text-primary">ROUND 2 OF 5</span>
+</div>
+</section>
+<!-- Fighter Stats Comparison -->
+<section class="w-full max-w-4xl px-margin-mobile grid grid-cols-1 md:grid-cols-2 gap-md mb-lg">
+<!-- Opponent Card -->
+<div class="chiaroscuro-card p-md rounded-xl border-r-4 border-secondary">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h3 class="font-headline-md text-headline-md text-secondary uppercase">ISRAEL ADESANYA</h3>
+<span class="font-label-caps text-on-surface-variant tracking-widest text-[10px]">CHALLENGER</span>
+</div>
+<div class="bg-secondary-container text-on-secondary px-xs py-0.5 rounded-sm font-label-caps">DANGER</div>
+</div>
+<div class="space-y-xs">
+<div class="flex justify-between font-label-caps text-[10px]">
+<span>HEALTH</span>
+<span class="text-secondary">68%</span>
+</div>
+<div class="h-4 w-full bg-surface-container-lowest border border-outline-variant flex">
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-secondary opacity-40" style="width: 8%"></div>
+<div class="segmented-bar-segment bg-transparent" style="width: 32%"></div>
+</div>
+</div>
+</div>
+<!-- Player Card -->
+<div class="chiaroscuro-card p-md rounded-xl border-l-4 border-primary">
+<div class="flex justify-between items-start mb-sm">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary uppercase">PLAYER ONE</h3>
+<span class="font-label-caps text-on-surface-variant tracking-widest text-[10px]">THE ROOKIE</span>
+</div>
+<div class="bg-primary text-on-primary px-xs py-0.5 rounded-sm font-label-caps">YOU</div>
+</div>
+<div class="space-y-xs">
+<div class="flex justify-between font-label-caps text-[10px]">
+<span>HEALTH</span>
+<span class="text-primary">84%</span>
+</div>
+<div class="h-4 w-full bg-surface-container-lowest border border-outline-variant flex">
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary" style="width: 10%"></div>
+<div class="segmented-bar-segment bg-primary opacity-40" style="width: 4%"></div>
+<div class="segmented-bar-segment bg-transparent" style="width: 16%"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Tactical Selection Section -->
+<section class="w-full max-w-2xl px-margin-mobile pb-lg">
+<div class="text-center mb-md">
+<span class="font-label-caps text-on-surface-variant uppercase tracking-[0.2em] text-[11px]">Choose Your Tactical Intent</span>
+</div>
+<div class="grid grid-cols-1 gap-sm">
+<!-- Primary Action Button: Strike -->
+<button class="action-button-hover relative overflow-hidden h-20 bg-primary text-on-primary flex items-center justify-between px-md rounded-sm border-t border-white/20">
+<div class="flex flex-col items-start z-10">
+<span class="font-display-lg text-display-lg leading-none uppercase">STRIKE</span>
+</div>
+<div class="flex gap-md z-10">
+<div class="flex flex-col items-end">
+<span class="font-label-caps text-[9px] opacity-70">BOXING</span>
+<span class="font-stats-xl text-xl leading-none">88</span>
+</div>
+<div class="flex flex-col items-end border-l border-on-primary/20 pl-md">
+<span class="font-label-caps text-[9px] opacity-70">KICKS</span>
+<span class="font-stats-xl text-xl leading-none">72</span>
+</div>
+</div>
+</button>
+<!-- Tactical Grid -->
+<div class="grid grid-cols-2 gap-sm">
+<!-- CLINCH -->
+<button class="action-button-hover chiaroscuro-card h-24 p-sm rounded-sm flex flex-col justify-between border-b-2 border-outline hover:border-primary transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-headline-md text-xl uppercase">CLINCH</span>
+<span class="material-symbols-outlined text-primary">groups</span>
+</div>
+<div class="flex justify-between font-label-caps text-[10px]">
+<span class="text-on-surface-variant">CONTROL</span>
+<span class="text-primary">LVL 4</span>
+</div>
+</button>
+<!-- TAKEDOWN -->
+<button class="action-button-hover chiaroscuro-card h-24 p-sm rounded-sm flex flex-col justify-between border-b-2 border-outline hover:border-primary transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-headline-md text-xl uppercase">TAKEDOWN</span>
+<span class="material-symbols-outlined text-primary">downhill_skiing</span>
+</div>
+<div class="flex justify-between font-label-caps text-[10px]">
+<span class="text-on-surface-variant">POWER</span>
+<span class="text-primary">91%</span>
+</div>
+</button>
+<!-- SUBMISSION -->
+<button class="action-button-hover chiaroscuro-card h-24 p-sm rounded-sm flex flex-col justify-between border-b-2 border-outline hover:border-primary transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-headline-md text-xl uppercase">SUBMISSION</span>
+<span class="material-symbols-outlined text-primary">lock</span>
+</div>
+<div class="flex justify-between font-label-caps text-[10px]">
+<span class="text-on-surface-variant">GRAPPLE</span>
+<span class="text-primary">HIGH</span>
+</div>
+</button>
+<!-- OUT-POINT -->
+<button class="action-button-hover chiaroscuro-card h-24 p-sm rounded-sm flex flex-col justify-between border-b-2 border-outline hover:border-primary transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-headline-md text-xl uppercase text-on-surface-variant">OUT-POINT</span>
+<span class="material-symbols-outlined text-on-surface-variant">timer</span>
+</div>
+<div class="flex justify-between font-label-caps text-[10px]">
+<span class="text-on-surface-variant">STAMINA</span>
+<span class="text-primary">CONSERVE</span>
+</div>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container border-t-2 border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.8)] flex justify-around items-center px-4">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps mt-1">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-surface-container-highest rounded-xl px-4 py-1 border-t-2 border-primary active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+<span class="font-label-caps text-label-caps mt-1">REIGNS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-caps text-label-caps mt-1">STATS</span>
+</a>
+</nav>
+<script>
+        // Subtle micro-interaction for tactical buttons
+        document.querySelectorAll('.action-button-hover').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                const audio = new Audio();
+                // Placeholder for tactical click sound
+            });
+        });
+
+        // Pulsing danger indicator logic
+        const dangerBadge = document.querySelector('.bg-secondary-container');
+        setInterval(() => {
+            dangerBadge.classList.toggle('opacity-50');
+        }, 800);
+    </script>
+</body></html>

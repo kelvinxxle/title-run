@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Archivo+Narrow:wght@400;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .chiaroscuro-bg {
+            background: radial-gradient(circle at center, #1a1a1a 0%, #0d0d0d 100%);
+        }
+        .gold-glow {
+            box-shadow: 0 0 20px rgba(242, 202, 80, 0.2);
+        }
+        .card-inner-glow {
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+        .segmented-bar div {
+            height: 100%;
+            flex: 1;
+            margin: 0 1px;
+        }
+        @keyframes subtle-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.9; }
+        }
+        .animate-victory {
+            animation: subtle-pulse 3s infinite ease-in-out;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#131313",
+                      "surface-container-low": "#1c1b1b",
+                      "surface-bright": "#3a3939",
+                      "surface-container-highest": "#353534",
+                      "surface-dim": "#131313",
+                      "inverse-on-surface": "#313030",
+                      "surface-container": "#201f1f",
+                      "on-secondary": "#690007",
+                      "secondary": "#ffb4ac",
+                      "surface-tint": "#e9c349",
+                      "on-tertiary": "#2f3131",
+                      "error-container": "#93000a",
+                      "secondary-fixed": "#ffdad6",
+                      "outline-variant": "#4d4635",
+                      "on-primary-container": "#554300",
+                      "on-primary-fixed-variant": "#574500",
+                      "secondary-fixed-dim": "#ffb4ac",
+                      "tertiary-fixed-dim": "#c6c6c6",
+                      "on-secondary-container": "#ff9f95",
+                      "tertiary": "#cecece",
+                      "tertiary-container": "#b2b3b3",
+                      "on-surface-variant": "#d0c5af",
+                      "inverse-primary": "#735c00",
+                      "outline": "#99907c",
+                      "on-surface": "#e5e2e1",
+                      "inverse-surface": "#e5e2e1",
+                      "primary-container": "#d4af37",
+                      "primary-fixed": "#ffe088",
+                      "on-primary-fixed": "#241a00",
+                      "surface-variant": "#353534",
+                      "on-tertiary-container": "#444546",
+                      "on-background": "#e5e2e1",
+                      "primary-fixed-dim": "#e9c349",
+                      "on-tertiary-fixed-variant": "#454747",
+                      "surface-container-high": "#2a2a2a",
+                      "on-error": "#690005",
+                      "tertiary-fixed": "#e2e2e2",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-secondary-fixed": "#410003",
+                      "on-tertiary-fixed": "#1a1c1c",
+                      "secondary-container": "#960711",
+                      "on-secondary-fixed-variant": "#92030f",
+                      "error": "#ffb4ac",
+                      "primary": "#f2ca50",
+                      "on-primary": "#3c2f00",
+                      "on-error-container": "#ffdad6",
+                      "background": "#131313"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "64px",
+                      "sm": "16px",
+                      "base": "4px",
+                      "lg": "40px",
+                      "margin-mobile": "16px",
+                      "gutter": "12px",
+                      "md": "24px",
+                      "xs": "8px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Anton"],
+                      "display-lg-mobile": ["Anton"],
+                      "label-caps": ["Space Mono"],
+                      "body-lg": ["Archivo Narrow"],
+                      "stats-xl": ["Space Mono"],
+                      "headline-md": ["Anton"],
+                      "body-sm": ["Archivo Narrow"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                      "display-lg-mobile": ["36px", {"lineHeight": "1.1", "fontWeight": "400"}],
+                      "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "stats-xl": ["32px", {"lineHeight": "1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "0.04em", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "1.4", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background chiaroscuro-bg min-h-screen flex flex-col overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-dim border-b-2 border-outline-variant shadow-md flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A gritty, high-contrast close-up portrait of a professional MMA fighter in a dark training environment. The lighting is dramatic and cinematic, emphasizing the fighter's intense expression and sweat-glistening skin. The style is authoritative and technical, using deep blacks and sharp highlights that align with a premium sports broadcast aesthetic. Background remains dark and atmospheric." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoLbC_5ETMLeNCXArhi57wB8TmHNqCFxAjq5Cj9weI9_0dEfOHj1bSOhimgZTjRSV7yA2zWwZAACewbgN-FhgwGZElOPrIdFyMLtaUGeQ1W6-ViomohXaTlvVeAV59W6aiSBqdl5E8NdC-Uc5ry_DL06-XE3dZnLTa9CVU1G-zW_a4NlPmASAh9By0JUw2Tqxej_hQ-Vn7Ujk6ZUSagJTFbdS2E1eASTIVJNzgkbL1WAU8TL1VfvdI"/>
+</div>
+<span class="font-display-lg-mobile text-display-lg-mobile uppercase text-primary tracking-wider">TITLE RUN</span>
+</div>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 duration-100">settings</button>
+</header>
+<main class="flex-grow pt-24 pb-32 px-margin-mobile max-w-5xl mx-auto w-full">
+<!-- Victory Section -->
+<section class="text-center mb-md">
+<h1 class="font-display-lg-mobile text-display-lg-mobile uppercase text-primary animate-victory mb-xs">VICTORY: FIGHT 3 COMPLETE</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md mx-auto">
+                You won by <span class="text-primary font-bold">2nd round KO</span>. Your Chin took <span class="text-secondary font-bold">15% damage</span>.
+            </p>
+</section>
+<!-- Rewards Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-md mt-lg">
+<!-- Card 1: Bump Boxing -->
+<button class="group relative flex flex-col items-center bg-surface-container border-2 border-outline-variant p-md rounded-xl card-inner-glow transition-all duration-300 hover:border-primary hover:-translate-y-2 active:scale-95">
+<div class="mb-md">
+<span class="material-symbols-outlined text-5xl text-on-surface-variant group-hover:text-primary transition-colors">fitness_center</span>
+</div>
+<h3 class="font-headline-md text-headline-md uppercase mb-xs">BUMP BOXING</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-md">+10 TO BOXING STAT</p>
+<div class="w-full h-2 bg-surface-bright rounded-full flex gap-[2px] p-[1px]">
+<div class="bg-primary flex-[6]"></div>
+<div class="bg-primary-container flex-[1] opacity-50"></div>
+<div class="bg-surface flex-[3]"></div>
+</div>
+<div class="mt-md px-4 py-2 border-2 border-outline-variant font-label-caps text-label-caps group-hover:bg-primary group-hover:text-on-primary group-hover:border-primary transition-all">SELECT REWARD</div>
+</button>
+<!-- Card 2: Re-Roll Chin (Championship Gold) -->
+<button class="group relative flex flex-col items-center bg-surface-container-high border-2 border-primary p-md rounded-xl card-inner-glow gold-glow transition-all duration-300 hover:-translate-y-2 active:scale-95 overflow-hidden">
+<div class="absolute top-0 right-0 bg-primary text-on-primary font-label-caps text-[10px] px-3 py-1 uppercase font-bold tracking-tighter">ELITE PICK</div>
+<div class="mb-md">
+<span class="material-symbols-outlined text-5xl text-primary" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+<h3 class="font-headline-md text-headline-md uppercase mb-xs text-primary">RE-ROLL CHIN</h3>
+<p class="font-label-caps text-label-caps text-on-surface mb-md">RANDOM NEW STAT VALUE</p>
+<div class="flex gap-2 items-center text-primary mb-md">
+<span class="material-symbols-outlined text-sm">casino</span>
+<span class="font-label-caps text-label-caps">HIGH RISK / HIGH REWARD</span>
+</div>
+<div class="mt-auto w-full px-4 py-3 bg-primary text-on-primary font-display-lg text-lg uppercase tracking-tight active:scale-95 transition-all">TAKE REWARD</div>
+</button>
+<!-- Card 3: Recover -->
+<button class="group relative flex flex-col items-center bg-surface-container border-2 border-outline-variant p-md rounded-xl card-inner-glow transition-all duration-300 hover:border-secondary hover:-translate-y-2 active:scale-95">
+<div class="mb-md">
+<span class="material-symbols-outlined text-5xl text-on-surface-variant group-hover:text-secondary transition-colors">medical_services</span>
+</div>
+<h3 class="font-headline-md text-headline-md uppercase mb-xs">RECOVER</h3>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-md">HEAL 40% DAMAGE</p>
+<div class="w-full flex items-end gap-1 h-8">
+<div class="w-2 h-2 bg-secondary opacity-20"></div>
+<div class="w-2 h-4 bg-secondary opacity-40"></div>
+<div class="w-2 h-6 bg-secondary opacity-70"></div>
+<div class="w-2 h-8 bg-secondary"></div>
+</div>
+<div class="mt-md px-4 py-2 border-2 border-outline-variant font-label-caps text-label-caps group-hover:bg-secondary group-hover:text-on-secondary group-hover:border-secondary transition-all">SELECT REWARD</div>
+</button>
+</section>
+</main>
+<!-- Footer Summary Card (Mini Version) -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-xl z-40 bg-surface-container-high border-2 border-outline-variant rounded-lg p-sm shadow-2xl flex items-center gap-md">
+<div class="w-12 h-12 bg-surface-bright rounded border border-outline overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A small fighter profile picture focused on the eyes and brow, showing intense focus. Dark, cinematic lighting with a gold rim-light. Grit and sweat texture visible. This mini-portrait is part of a high-end athletic management UI, using a dark and authoritative color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7QAAMLeffJdf8t0H1Nkx7PaqjWFN961PQdONrQ4TC2LGcgEwGdJEIvTBp_9woCzPgmysr0UxoGNlKeKYjfYltVaifiUlT_6WHmOYeNgX1kRxKzfZG9p6MlFR8kUrVI3n4zb4m76wGyS88Fn-dclPDmUdA1w0eJMM6f6ns86-msUaEyIMp-FWM056piB_EMmVojBEROu8E2v6yUfuKX2dyNt__KOK6xvuzqBUOuTAyn0bZdFq7v51t"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-caps text-[10px] text-on-surface-variant">CHAMPION | 12-0-0</span>
+<span class="font-label-caps text-[10px] text-primary">XP 85%</span>
+</div>
+<div class="w-full h-1.5 bg-surface rounded-full overflow-hidden flex">
+<div class="bg-primary h-full" style="width: 85%"></div>
+</div>
+</div>
+<div class="text-right flex-shrink-0 border-l border-outline-variant pl-md">
+<p class="font-label-caps text-[10px] text-on-surface-variant">CURRENT CHIN</p>
+<p class="font-stats-xl text-xl text-on-surface">74</p>
+</div>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container border-t-2 border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.8)] flex justify-around items-center px-4">
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-label-caps">HOME</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary bg-surface-container-highest rounded-xl px-4 py-1 border-t-2 border-primary active:scale-90 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="font-label-caps text-label-caps">STATS</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-label-caps text-label-caps">REIGNS</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction: reward card selection haptic feel
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(10);
+                }
+            });
+        });
+
+        // Atmospheric effect: Subtle grain/noise over background
+        const createNoise = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 100;
+            canvas.height = 100;
+            const idata = ctx.createImageData(100, 100);
+            const buffer32 = new Uint32Array(idata.data.buffer);
+            for (let i = 0; i < buffer32.length; i++) {
+                if (Math.random() < 0.05) buffer32[i] = 0x08000000;
+            }
+            ctx.putImageData(idata, 0, 0);
+            document.body.style.backgroundImage += `, url(${canvas.toDataURL()})`;
+        };
+        createNoise();
+    </script>
+</body></html>

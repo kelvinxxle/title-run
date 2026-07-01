@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITLE RUN - Build Your Fighter</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Archivo+Narrow:wght@400;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        .stat-segment {
+            clip-path: polygon(0 0, 90% 0, 100% 100%, 10% 100%);
+        }
+        .spotlight-bg {
+            background: radial-gradient(circle at center, #1A1A1A 0%, #0D0D0D 100%);
+        }
+        .gold-glow {
+            text-shadow: 0 0 15px rgba(242, 202, 80, 0.4);
+        }
+        @keyframes pulse-gold {
+            0%, 100% { border-color: #f2ca50; box-shadow: 0 0 5px #f2ca50; }
+            50% { border-color: #ffffff; box-shadow: 0 0 20px #f2ca50; }
+        }
+        .suggested-stat {
+            animation: pulse-gold 2s infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#131313",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-bright": "#3a3939",
+                        "surface-container-highest": "#353534",
+                        "surface-dim": "#131313",
+                        "inverse-on-surface": "#313030",
+                        "surface-container": "#201f1f",
+                        "on-secondary": "#690007",
+                        "secondary": "#ffb4ac",
+                        "surface-tint": "#e9c349",
+                        "on-tertiary": "#2f3131",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#ffdad6",
+                        "outline-variant": "#4d4635",
+                        "on-primary-container": "#554300",
+                        "on-primary-fixed-variant": "#574500",
+                        "secondary-fixed-dim": "#ffb4ac",
+                        "tertiary-fixed-dim": "#c6c6c6",
+                        "on-secondary-container": "#ff9f95",
+                        "tertiary": "#cecece",
+                        "tertiary-container": "#b2b3b3",
+                        "on-surface-variant": "#d0c5af",
+                        "inverse-primary": "#735c00",
+                        "outline": "#99907c",
+                        "on-surface": "#e5e2e1",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-container": "#d4af37",
+                        "primary-fixed": "#ffe088",
+                        "on-primary-fixed": "#241a00",
+                        "surface-variant": "#353534",
+                        "on-tertiary-container": "#444546",
+                        "on-background": "#e5e2e1",
+                        "primary-fixed-dim": "#e9c349",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary-fixed": "#410003",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "secondary-container": "#960711",
+                        "on-secondary-fixed-variant": "#92030f",
+                        "error": "#ffb4ac",
+                        "primary": "#f2ca50",
+                        "on-primary": "#3c2f00",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "sm": "16px",
+                        "base": "4px",
+                        "lg": "40px",
+                        "margin-mobile": "16px",
+                        "gutter": "12px",
+                        "md": "24px",
+                        "xs": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Anton"],
+                        "display-lg-mobile": ["Anton"],
+                        "label-caps": ["Space Mono"],
+                        "body-lg": ["Archivo Narrow"],
+                        "stats-xl": ["Space Mono"],
+                        "headline-md": ["Anton"],
+                        "body-sm": ["Archivo Narrow"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "0.02em", "fontWeight": "400" }],
+                        "display-lg-mobile": ["36px", { "lineHeight": "1.1", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "stats-xl": ["32px", { "lineHeight": "1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "0.04em", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.4", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface spotlight-bg min-h-screen flex flex-col font-body-lg overflow-x-hidden">
+<!-- Top AppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-dim border-b-2 border-outline-variant shadow-md flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-xs active:scale-95 duration-100 cursor-pointer">
+<img class="w-10 h-10 rounded-full border-2 border-primary object-cover" data-alt="A portrait of a legendary MMA fighter in a sharp, cinematic profile shot. The fighter is lit with high-contrast chiaroscuro lighting, emphasizing the grit and muscle definition. The background is a dark, atmospheric training facility. Deep blacks and gold highlights define the color palette, evoking a premium sports broadcast feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlIfJ0KgRuKANEhZY_po2fkzeskFlFkW60Ro3deKwTBFZzFX2kS8vvMGSaWd6C92mi6aSaKyBa4QbEkoI21Qa78-ds55se48xDmhVR5X6trXEh2W-84UyFEiKJJAGIDfucguAeRA74368k1HkLziElflNMi4A3QUCrhVC2aHWF-iudQXOJm_knWu2H_IJfS4lswWUDpLtKWAuaKWx9rIWI8ofrsI1KzmhC5LJKldCUGjUUUrjYUXo6"/>
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary tracking-wider uppercase">TITLE RUN</span>
+</div>
+<button class="text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-100">
+<span class="material-symbols-outlined text-3xl">settings</span>
+</button>
+</header>
+<main class="flex-grow pt-24 pb-32 px-margin-mobile md:px-margin-desktop flex flex-col items-center">
+<!-- Progress Indicator -->
+<div class="w-full max-w-md mb-md">
+<div class="flex justify-between items-end mb-xs">
+<h2 class="font-display-lg-mobile text-display-lg-mobile text-on-surface uppercase leading-none">BUILD YOUR FIGHTER</h2>
+<span class="font-label-caps text-label-caps text-primary">Stat 4/9 Filled</span>
+</div>
+<div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[44%] shadow-[0_0_10px_rgba(242,202,80,0.5)]"></div>
+</div>
+</div>
+<!-- Central Roll Result Card -->
+<div class="relative w-full max-w-lg aspect-[3/4] bg-surface-container rounded-xl overflow-hidden border-2 border-outline shadow-2xl inner-glow group">
+<!-- Background Image with Fade -->
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="A dynamic, full-body action shot of Jon Jones in a fighting stance. The scene is saturated with atmospheric smoke and dramatic spotlighting from above. The aesthetic is gritty and high-contrast, with deep shadows and sharp, metallic highlights. Cinematic film grain and a dark, charcoal color palette create a sense of raw intensity and prestige." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD63fD2n9PSqXNeZkj-DWaKYgGsb98v8CgespG-ZAC3kUMGyEXHRlBQuJL3B_wEWOPoe-fhzINk0i0ic-ZzjTAu760uvomRbUVAaVr5LZbKjUb4CUwPlkLC9xDcOn0Ia14GVW52jJLfjs3GQ5p3aix60dAo_wQuW0sQ09A9rwCuuODpddzw1c5VxyzaSnE9O-_HJeKCfF8-BZZ6KXUWNY4QHZowlhhHxeTn4WVsT7V4-vI5i5de70IJ')">
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/40 to-transparent"></div>
+<!-- Card Content Overlay -->
+<div class="absolute inset-0 flex flex-col justify-end p-md">
+<div class="mb-sm">
+<h3 class="font-display-lg text-display-lg text-white uppercase leading-tight gold-glow">JON JONES</h3>
+<p class="font-label-caps text-label-caps text-primary -mt-2">HEAVYWEIGHT LEGEND</p>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 gap-y-2">
+<!-- Stat Row Template -->
+<div class="stat-row flex items-center justify-between p-2 rounded border border-transparent hover:bg-surface-bright/50 cursor-pointer transition-colors active:scale-95">
+<span class="font-label-caps text-label-caps text-on-surface uppercase w-32">Boxing</span>
+<div class="flex-grow flex gap-1 justify-end px-2">
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment opacity-30"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment opacity-30"></div>
+</div>
+<span class="font-stats-xl text-stats-xl text-on-surface w-12 text-right">82</span>
+</div>
+<div class="stat-row flex items-center justify-between p-2 rounded border border-transparent hover:bg-surface-bright/50 cursor-pointer transition-colors active:scale-95">
+<span class="font-label-caps text-label-caps text-on-surface uppercase w-32">Kicks</span>
+<div class="flex-grow flex gap-1 justify-end px-2">
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment opacity-30"></div>
+</div>
+<span class="font-stats-xl text-stats-xl text-on-surface w-12 text-right">89</span>
+</div>
+<!-- Suggested/Hovered Stat -->
+<div class="stat-row flex items-center justify-between p-2 rounded border-2 border-primary bg-primary/10 suggested-stat cursor-pointer transition-all active:scale-95">
+<span class="font-label-caps text-label-caps text-primary uppercase w-32">Fight IQ</span>
+<div class="flex-grow flex gap-1 justify-end px-2">
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+<div class="h-4 w-4 bg-primary stat-segment"></div>
+</div>
+<span class="font-stats-xl text-stats-xl text-primary w-12 text-right">99</span>
+</div>
+<div class="stat-row flex items-center justify-between p-2 rounded border border-transparent hover:bg-surface-bright/50 cursor-pointer transition-colors active:scale-95">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase w-32">Top Control</span>
+<div class="flex-grow flex gap-1 justify-end px-2">
+<div class="h-4 w-4 bg-tertiary stat-segment"></div>
+<div class="h-4 w-4 bg-tertiary stat-segment"></div>
+<div class="h-4 w-4 bg-tertiary stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment opacity-30"></div>
+<div class="h-4 w-4 bg-surface-container-highest stat-segment opacity-30"></div>
+</div>
+<span class="font-stats-xl text-stats-xl text-on-surface-variant w-12 text-right">76</span>
+</div>
+</div>
+<p class="font-label-caps text-[10px] text-center text-on-surface-variant mt-sm opacity-60 tracking-[0.2em]">SELECT ONE STAT TO PERMANENTLY ASSIGN</p>
+</div>
+</div>
+<!-- Roll Again Button -->
+<div class="mt-lg w-full max-w-md">
+<button class="w-full bg-primary text-on-primary font-display-lg-mobile text-display-lg-mobile py-base rounded-sm shadow-[0_4px_12px_rgba(0,0,0,0.8)] border-t-2 border-white/20 active:scale-95 transition-all uppercase flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined">casino</span>
+                ROLL AGAIN
+            </button>
+</div>
+<!-- Already Filled Slots -->
+<div class="mt-lg w-full max-w-md">
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-xs text-center">FIGHTER PROFILE STATUS</h4>
+<div class="flex flex-wrap justify-center gap-xs">
+<div class="bg-surface-container-high px-3 py-1 border border-outline rounded-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] text-on-surface">CLINCH</span>
+</div>
+<div class="bg-surface-container-high px-3 py-1 border border-outline rounded-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] text-on-surface">TAKEDOWNS</span>
+</div>
+<div class="bg-surface-container-high px-3 py-1 border border-outline rounded-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] text-on-surface">SUBMISSIONS</span>
+</div>
+<div class="bg-surface-container-high px-3 py-1 border border-outline rounded-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] text-on-surface">CHIN</span>
+</div>
+<div class="bg-surface-container-lowest px-3 py-1 border-2 border-dashed border-outline-variant rounded-sm flex items-center gap-2 opacity-40">
+<span class="font-label-caps text-[10px] text-on-surface-variant">EMPTY</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 h-20 bg-surface-container border-t-2 border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.8)] flex justify-around items-center w-full px-4">
+<a class="flex flex-col items-center justify-center text-primary bg-surface-container-highest rounded-xl px-4 py-1 border-t-2 border-primary active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-caps text-label-caps">HOME</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-caps text-label-caps">STATS</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:text-primary transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-label-caps text-label-caps">REIGNS</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for stat rows
+        document.querySelectorAll('.stat-row').forEach(row => {
+            row.addEventListener('click', function() {
+                // Remove suggested state from all
+                document.querySelectorAll('.stat-row').forEach(r => {
+                    r.classList.remove('suggested-stat', 'border-primary', 'bg-primary/10');
+                    r.querySelector('span:first-child').classList.remove('text-primary');
+                    r.querySelector('span:first-child').classList.add('text-on-surface');
+                });
+                
+                // Add select state
+                this.classList.add('suggested-stat', 'border-primary', 'bg-primary/10');
+                this.querySelector('span:first-child').classList.add('text-primary');
+                this.querySelector('span:first-child').classList.remove('text-on-surface');
+            });
+        });
+
+        // "Roll Again" micro-animation
+        const rollBtn = document.querySelector('button.bg-primary');
+        rollBtn.addEventListener('click', () => {
+            rollBtn.querySelector('.material-symbols-outlined').style.transform = 'rotate(360deg)';
+            rollBtn.querySelector('.material-symbols-outlined').style.transition = 'transform 0.5s ease-out';
+            setTimeout(() => {
+                rollBtn.querySelector('.material-symbols-outlined').style.transform = 'rotate(0deg)';
+                rollBtn.querySelector('.material-symbols-outlined').style.transition = 'none';
+            }, 500);
+        });
+    </script>
+</body></html>
