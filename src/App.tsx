@@ -6,11 +6,26 @@ import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
 import FightScreen from './screens/FightScreen';
 import RewardScreen from './screens/RewardScreen';
+import type { StatLine } from './domain';
+
+const DEMO_FIGHTER: StatLine = {
+  boxing: 82, kicks: 92, clinch: 80, takedowns: 98, submissions: 97,
+  topControl: 88, cardio: 90, chin: 88, fightIQ: 78,
+};
+const DEMO_NAME = 'Ace "Bijon" Carter';
+const DEMO_SEED = 'demo';
 
 const SCREEN_COMPONENTS: Record<ScreenId, () => JSX.Element> = {
   'championship-hub': ChampionshipHubScreen,
   draft: DraftScreen,
-  fight: FightScreen,
+  fight: () => (
+    <FightScreen
+      seed={DEMO_SEED}
+      fightNumber={1}
+      fighter={{ name: DEMO_NAME, statLine: DEMO_FIGHTER }}
+      onSettled={() => {}}
+    />
+  ),
   reward: RewardScreen,
 };
 

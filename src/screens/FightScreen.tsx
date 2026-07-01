@@ -9,17 +9,14 @@ import {
 } from '../domain';
 import FighterHealthCard from '../components/FighterHealthCard';
 import IntentPanel from '../components/IntentPanel';
-import FightResultPanel from '../components/FightResultPanel';
 import { opponentRead } from './fightCopy';
 
-const DEMO_FIGHTER: StatLine = {
-  boxing: 82, kicks: 92, clinch: 80, takedowns: 98, submissions: 97,
-  topControl: 88, cardio: 90, chin: 88, fightIQ: 78,
-};
-const DEMO_NAME = 'Ace "Bijon" Carter';
-
-interface FightScreenProps {
-  seed?: string;
+export interface FightScreenProps {
+  seed: string;
+  fightNumber: number;
+  fighter: { name: string; statLine: StatLine };
+  carriedDamage?: number;
+  onSettled: (fight: FightState) => void;
 }
 
 function health(damage: number, statLine: StatLine): number {
@@ -30,15 +27,18 @@ export function advanceFight(state: FightState, intent: Intent): FightState {
   return state.status === 'in-progress' ? resolveRound(state, intent) : state;
 }
 
-export default function FightScreen({ seed: seedProp }: FightScreenProps = {}) {
-  const [seed] = useState(() => seedProp ?? String(Date.now()));
+export default function FightScreen({ seed, fightNumber, fighter, carriedDamage = 0, onSettled }: FightScreenProps) {
   const [state, setState] = useState<FightState>(() =>
-    startFight({ seed, fightNumber: 1, playerStatLine: DEMO_FIGHTER }),
+    startFight({ seed, fightNumber, playerStatLine: fighter.statLine, carryInDamage: carriedDamage }),
   );
 
-  const handleIntent = (intent: Intent) => setState((s) => advanceFight(s, intent));
-  const handleNewFight = () =>
-    setState((s) => startFight({ seed, fightNumber: s.fightNumber + 1, playerStatLine: DEMO_FIGHTER }));
+  function handleIntent(intent: Intent) {
+    const next = advanceFight(state, intent);
+    setState(next);
+    if (state.status === 'in-progress' && next.status !== 'in-progress') {
+      onSettled(next);
+    }
+  }
 
   const inProgress = state.status === 'in-progress';
 
@@ -66,7 +66,7 @@ export default function FightScreen({ seed: seedProp }: FightScreenProps = {}) {
         />
         <FighterHealthCard
           side="player"
-          name={DEMO_NAME}
+          name={fighter.name}
           subtitle="YOUR FIGHTER"
           badge="YOU"
           healthPct={health(state.player.damage, state.player.statLine)}
@@ -74,11 +74,7 @@ export default function FightScreen({ seed: seedProp }: FightScreenProps = {}) {
       </div>
 
       <div className="w-full max-w-3xl">
-        {inProgress ? (
-          <IntentPanel statLine={state.player.statLine} onIntent={handleIntent} />
-        ) : (
-          state.outcome && <FightResultPanel outcome={state.outcome} onNewFight={handleNewFight} />
-        )}
+        {inProgress && <IntentPanel statLine={state.player.statLine} onIntent={handleIntent} />}
       </div>
     </section>
   );
