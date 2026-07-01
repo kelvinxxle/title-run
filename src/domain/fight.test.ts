@@ -116,7 +116,17 @@ describe('resolveRound', () => {
     const WEAK: StatLine = { boxing: 40, kicks: 40, clinch: 40, takedowns: 40, submissions: 40, topControl: 40, cardio: 40, chin: 40, fightIQ: 40 };
     let s = startFight({ seed: 'run-42', fightNumber: 6, playerStatLine: WEAK });
     expect(s.opponent.style).toBe('brawler');
-    while (s.status === 'in-progress') s = resolveRound(s, 'outpoint');
+    expect(s.opponent.name).toBe('Lars "The Surgeon" Rivas');
+    // Lock the exact cumulative player damage per round so a damage-math or
+    // name regression can't slip through behind the same final KO outcome.
+    const cumulative = [23, 40, 66, 80];
+    let i = 0;
+    while (s.status === 'in-progress') {
+      s = resolveRound(s, 'outpoint');
+      expect(s.player.damage).toBe(cumulative[i]);
+      i += 1;
+    }
+    expect(i).toBe(4);
     expect(s.status).toBe('lost');
     expect(s.outcome).toEqual({ method: 'KO', round: 4, winner: 'opponent' });
   });
