@@ -1,52 +1,63 @@
 import { useState } from 'react';
-import { DEFAULT_SCREEN, type ScreenId } from './navigation/screens';
+import {
+  startRun, applyDraft, startNextFight, settleFight, applyReward,
+  type RunState, type Reward, type FightState,
+} from './domain';
+import type { DraftedFighter } from './domain/draft';
 import TopAppBar from './components/TopAppBar';
-import BottomNavBar from './components/BottomNavBar';
 import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
 import FightScreen from './screens/FightScreen';
 import RewardScreen from './screens/RewardScreen';
-import { startRun, applyDraft, type StatLine } from './domain';
 
-const DEMO_FIGHTER: StatLine = {
-  boxing: 82, kicks: 92, clinch: 80, takedowns: 98, submissions: 97,
-  topControl: 88, cardio: 90, chin: 88, fightIQ: 78,
-};
-const DEMO_NAME = 'Ace "Bijon" Carter';
-const DEMO_SEED = 'demo';
+export interface AppProps {
+  makeSeed?: () => string;
+}
 
-const SCREEN_COMPONENTS: Record<ScreenId, () => JSX.Element> = {
-  'championship-hub': () => <ChampionshipHubScreen run={null} onStartRun={() => {}} onEnterFight={() => {}} />,
-  draft: DraftScreen,
-  fight: () => (
-    <FightScreen
-      seed={DEMO_SEED}
-      fightNumber={1}
-      fighter={{ name: DEMO_NAME, statLine: DEMO_FIGHTER }}
-      onSettled={() => {}}
-    />
-  ),
-  reward: () => {
-    const demoRun = {
-      ...applyDraft(startRun('demo-reward'), { name: DEMO_NAME, statLine: DEMO_FIGHTER }),
-      phase: 'reward' as const,
-      fight: { outcome: { winner: 'player' as const, method: 'decision' as const, round: 3 } } as any,
-    };
-    return <RewardScreen run={demoRun} onReward={() => {}} />;
-  },
-};
+export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
+  const [run, setRun] = useState<RunState | null>(null);
 
-export default function App() {
-  const [current, setCurrent] = useState<ScreenId>(DEFAULT_SCREEN);
-  const Screen = SCREEN_COMPONENTS[current];
+  const handleStartRun = () => setRun(startRun(makeSeed()));
+  const handleDraftComplete = (d: DraftedFighter) =>
+    setRun((r) => (r ? applyDraft(r, d) : r));
+  const handleEnterFight = () => setRun((r) => (r ? startNextFight(r) : r));
+  const handleSettled = (fight: FightState) =>
+    setRun((r) => (r ? settleFight(r, fight) : r));
+  const handleReward = (reward: Reward) =>
+    setRun((r) => (r ? applyReward(r, reward) : r));
+
+  function screen() {
+    if (run === null || run.phase === 'pre-fight' || run.phase === 'run-over') {
+      return (
+        <ChampionshipHubScreen
+          run={run}
+          onStartRun={handleStartRun}
+          onEnterFight={handleEnterFight}
+        />
+      );
+    }
+    if (run.phase === 'drafting') {
+      return <DraftScreen seed={run.seed} onComplete={handleDraftComplete} />;
+    }
+    if (run.phase === 'fighting') {
+      if (!run.fighter) return null;
+      return (
+        <FightScreen
+          seed={run.seed}
+          fightNumber={run.fightNumber}
+          fighter={run.fighter}
+          carriedDamage={run.carriedDamage}
+          onSettled={handleSettled}
+        />
+      );
+    }
+    return <RewardScreen run={run} onReward={handleReward} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <TopAppBar />
-      <main className="flex-1">
-        <Screen />
-      </main>
-      <BottomNavBar current={current} onNavigate={setCurrent} />
+      <TopAppBar run={run} />
+      <main className="flex-1">{screen()}</main>
     </div>
   );
 }
