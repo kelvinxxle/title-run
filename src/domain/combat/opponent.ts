@@ -16,8 +16,8 @@ const NICK = ['The Hammer', 'Ironjaw', 'Nightmare', 'The Surgeon', 'Cyclone', 'G
 const LAST = ['Stone', 'Vega', 'Kruger', 'Mercer', 'Okafor', 'Novak', 'Rivas', 'Falk', 'Draco', 'Voss', 'Ito', 'Bane'] as const;
 
 export function targetRating(fightNumber: number): number {
-  const raw = fightNumber <= 4 ? 52 + fightNumber * 4 : 68 + (fightNumber - 4) * 4;
-  return Math.min(90, raw);
+  const raw = 50 + fightNumber * 3;
+  return Math.min(73, raw);
 }
 
 export function generateOpponent(seed: string, fightNumber: number): Opponent {

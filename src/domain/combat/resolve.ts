@@ -10,7 +10,7 @@ import { detectWindow } from './finish';
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 const IQ_FACTOR      = 0.1;
 const SWING_RANGE    = 24;
-const DMG_FACTOR     = 0.30;
+const DMG_FACTOR     = 0.45;
 const COUNTER_BONUS  = 10;
 const BODY_TO_STAMINA = 0.5;
 
@@ -27,23 +27,34 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
   const seededSwing = (rng() - 0.5) * SWING_RANGE;
 
-  // Effective offense: attacker's stat × effort × approach attack multiplier
-  const playerOffense =
-    state.player.statLine[PHASE_OFFENSE[playerIntent.where]] *
-    effortMultiplier(state.player.stamina) *
-    APPROACH_ATK[playerIntent.approach];
+  const playerEffort = effortMultiplier(state.player.stamina);
+  const oppEffort = effortMultiplier(state.opponent.stamina);
 
-  // Effective defense: defender's stat × effort × approach defense multiplier + counter bonus
-  const counterBonus =
+  // Two-sided exchange: each side mounts an attack in the phase it CHOSE, met by
+  // the other side's defense in that same phase. Both fighters' offense AND defense
+  // stats, both stamina levels, and both `where` choices feed the result.
+  //
+  //   attackScore = attacker.offense[where]·effort·ATK[approach]
+  //               − defender.defense[where]·effort·DEF[approach]  (+ counter bonus)
+
+  // Player attacks at playerIntent.where; opponent defends there with oppIntent.approach.
+  const playerCounterBonus =
+    playerIntent.approach === 'counter' && oppIntent.approach === 'pressure' ? COUNTER_BONUS : 0;
+  const playerAttackScore =
+    state.player.statLine[PHASE_OFFENSE[playerIntent.where]] * playerEffort * APPROACH_ATK[playerIntent.approach] -
+    state.opponent.statLine[PHASE_DEFENSE[playerIntent.where]] * oppEffort * APPROACH_DEF[oppIntent.approach] +
+    playerCounterBonus;
+
+  // Opponent attacks at oppIntent.where; player defends there with playerIntent.approach.
+  const oppCounterBonus =
     oppIntent.approach === 'counter' && playerIntent.approach === 'pressure' ? COUNTER_BONUS : 0;
-  const oppDefense =
-    state.opponent.statLine[PHASE_DEFENSE[playerIntent.where]] *
-    effortMultiplier(state.opponent.stamina) *
-    APPROACH_DEF[oppIntent.approach] +
-    counterBonus;
+  const oppAttackScore =
+    state.opponent.statLine[PHASE_OFFENSE[oppIntent.where]] * oppEffort * APPROACH_ATK[oppIntent.approach] -
+    state.player.statLine[PHASE_DEFENSE[oppIntent.where]] * playerEffort * APPROACH_DEF[playerIntent.approach] +
+    oppCounterBonus;
 
   const dominance =
-    playerOffense - oppDefense +
+    playerAttackScore - oppAttackScore +
     (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR +
     seededSwing;
 
