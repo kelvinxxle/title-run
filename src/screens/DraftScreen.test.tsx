@@ -33,6 +33,12 @@ describe('DraftScreen', () => {
     expect(onComplete.mock.calls[0][0].name).toBe('The Chosen One');
   });
 
+  // Rendered under <StrictMode> to exercise render/initializer double-invocation
+  // (render purity) and stay forward-compatible. NOTE: React 18.3.1 does NOT
+  // double-invoke event-triggered setState updaters, so this test cannot go RED
+  // on a call count if the onComplete side-effect is moved back INTO the setState
+  // updater. The regression guard is structural: DraftScreen keeps that side-effect
+  // OUT of the updater (in the handler body), which is the correct React pattern.
   it('calls onComplete once with the drafted fighter after naming', () => {
     const onComplete = vi.fn();
     render(<StrictMode><DraftScreen seed="run-42" onComplete={onComplete} /></StrictMode>);
