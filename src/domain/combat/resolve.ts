@@ -4,6 +4,7 @@ import type { RoundIntent, Approach } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
 import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
+import { detectWindow } from './finish';
 
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 const IQ_FACTOR      = 0.1;
@@ -101,6 +102,43 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     winner,
     dominance,
   };
+
+  // Finish detection: open a window instead of advancing when triggered
+  const finishWindow = detectWindow({
+    playerHeadDamage: playerHead,
+    opponentHeadDamage: oppHead,
+    playerStamina,
+    opponentStamina: oppStamina,
+    playerStatLine: state.player.statLine,
+    opponentStatLine: state.opponent.statLine,
+    dominance,
+    playerIntent,
+    opponentIntent: oppIntent,
+  });
+
+  if (finishWindow) {
+    return {
+      ...state,
+      // round is NOT advanced — the finish sequence resolves this moment
+      phase: 'finish-window',
+      window: finishWindow,
+      player: {
+        ...state.player,
+        headDamage: playerHead,
+        bodyDamage: playerBody,
+        stamina: playerStamina,
+        roundScore: playerScore,
+      },
+      opponent: {
+        ...state.opponent,
+        headDamage: oppHead,
+        bodyDamage: oppBody,
+        stamina: oppStamina,
+        roundScore: oppScore,
+      },
+      log: [...state.log, logEntry],
+    };
+  }
 
   const isLastRound = state.round >= state.rounds;
   // TEMP: replaced by judges in Task 10
