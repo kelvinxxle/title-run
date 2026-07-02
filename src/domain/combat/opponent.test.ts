@@ -15,4 +15,19 @@ describe('opponent scaling', () => {
     expect(a).toEqual(b);
     expect(Math.abs(avg(a.statLine) - targetRating(3))).toBeLessThanOrEqual(2);
   });
+  it('statLine average is within ±2 of targetRating for all archetypes across fightNumbers 1..10', () => {
+    // 20 seeds × 10 fightNumbers covers all 5 archetypes many times including brawler at n=8..10
+    const seeds = Array.from({ length: 20 }, (_, i) => `seed-${i}`);
+    for (const seed of seeds) {
+      for (let n = 1; n <= 10; n++) {
+        const opp = generateOpponent(seed, n);
+        const actual = avg(opp.statLine);
+        const target = targetRating(n);
+        expect(
+          Math.abs(actual - target),
+          `seed=${seed} n=${n} archetype=${opp.archetype}: avg=${actual.toFixed(2)}, target=${target}`,
+        ).toBeLessThanOrEqual(2);
+      }
+    }
+  });
 });

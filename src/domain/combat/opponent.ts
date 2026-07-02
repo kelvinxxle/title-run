@@ -36,5 +36,22 @@ export function generateOpponent(seed: string, fightNumber: number): Opponent {
     statLine[k] = clampStat(base[k] + delta);
   }
 
+  // Re-centering pass: redistribute points lost to 1/99 clamping so the
+  // realized average stays within ±1 of targetRating.
+  const target = targetRating(fightNumber);
+  const n = STAT_IDS.length;
+  for (let iter = 0; iter < 20; iter++) {
+    const currentSum = STAT_IDS.reduce((s, k) => s + statLine[k], 0);
+    const deficit = target * n - currentSum;
+    if (Math.abs(deficit) < n) break; // average within ±1 — done
+    const direction = deficit > 0 ? 1 : -1;
+    const available = STAT_IDS.filter(k => direction > 0 ? statLine[k] < 99 : statLine[k] > 1);
+    if (available.length === 0) break;
+    const perStat = deficit / available.length;
+    for (const k of available) {
+      statLine[k] = clampStat(statLine[k] + perStat);
+    }
+  }
+
   return { id: `opp-${fightNumber}`, name: `${first} "${nick}" ${last}`, archetype, statLine };
 }
