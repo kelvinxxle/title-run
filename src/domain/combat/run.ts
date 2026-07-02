@@ -44,6 +44,9 @@ export function applyDraft(
 }
 
 export function startNextFight(run: RunState): RunState {
+  if (run.phase !== 'pre-fight') {
+    throw new Error(`startNextFight requires phase 'pre-fight' (got '${run.phase}')`);
+  }
   if (!run.fighter) {
     throw new Error('startNextFight requires a drafted fighter');
   }

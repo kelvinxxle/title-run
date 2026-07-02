@@ -31,4 +31,10 @@ describe('run flow (no rewards, fresh each fight)', () => {
     const r = startNextFight(draftInto());
     expect(() => settleFight(r, r.fight!)).toThrow();
   });
+  it('startNextFight throws once the run is over (permadeath cannot be bypassed)', () => {
+    let r = startNextFight(draftInto());
+    r = settleFight(r, { ...r.fight!, phase: 'finished', outcome: { winner: 'opponent', method: 'KO', round: 1 } });
+    expect(r.phase).toBe('run-over');
+    expect(() => startNextFight(r)).toThrow();
+  });
 });
