@@ -94,4 +94,22 @@ describe('finish — last-round decision handoff', () => {
     expect(result.outcome).not.toBeNull();
     expect(result.outcome!.method).toBe('decision');
   });
+
+  it('a failed final-round finish keeps round within bounds and consistent with outcome.round', () => {
+    // commit path on the last round
+    const commitRes = finishStep(makeWindowState({ round: 1, rounds: 1 }), 'commit');
+    expect(commitRes.round).toBe(1);                       // NOT rounds+1
+    expect(commitRes.round).toBeLessThanOrEqual(commitRes.rounds);
+    expect(commitRes.outcome!.round).toBe(commitRes.round);
+
+    // measure/hold exhaustion path on the last round: stepsLeft=1 so one hold empties it.
+    const holdRes = finishStep(
+      makeWindowState({ round: 1, rounds: 1, window: { side: 'player', method: 'KO', stepsLeft: 1 } }),
+      'hold',
+    );
+    expect(holdRes.phase).toBe('finished');
+    expect(holdRes.round).toBe(1);
+    expect(holdRes.round).toBeLessThanOrEqual(holdRes.rounds);
+    expect(holdRes.outcome!.round).toBe(holdRes.round);
+  });
 });

@@ -132,7 +132,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
       ...state,
       phase: isOver ? 'finished' : 'in-round',
       window: null,
-      round: newRound,
+      round: isOver ? state.round : newRound,
       player: {
         ...state.player,
         stamina: win.side === 'player'
@@ -147,7 +147,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
       },
     };
     if (isOver) {
-      return { ...updatedState, outcome: scoreFight({ ...updatedState, round: state.round }) };
+      return { ...updatedState, outcome: scoreFight(updatedState) };
     }
     return updatedState;
   }
@@ -158,8 +158,8 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     const newRound = state.round + 1;
     const isOver = newRound > state.rounds;
     if (isOver) {
-      const base: FightState = { ...state, phase: 'finished', window: null, round: newRound };
-      return { ...base, outcome: scoreFight({ ...base, round: state.round }) };
+      const base: FightState = { ...state, phase: 'finished', window: null, round: state.round };
+      return { ...base, outcome: scoreFight(base) };
     }
     return {
       ...state,
