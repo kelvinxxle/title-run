@@ -67,7 +67,10 @@ export function startNextFight(run: RunState): RunState {
 
 export function settleFight(run: RunState, fightState: FightState): RunState {
   const outcome = fightState.outcome;
-  if (!outcome || outcome.winner !== 'player') {
+  if (!outcome) {
+    throw new Error('settleFight requires a settled fight');
+  }
+  if (outcome.winner !== 'player') {
     return {
       ...run,
       phase: 'run-over',

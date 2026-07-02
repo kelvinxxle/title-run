@@ -8,6 +8,10 @@ function preFight(over: Partial<RunState> = {}): RunState {
   return { ...applyDraft(startRun('run-42'), { name: 'Kelvin', statLine: PLAYER }), ...over };
 }
 
+function runOver(partial: Partial<RunState>): RunState {
+  return { ...startRun('x'), phase: 'run-over', ...partial };
+}
+
 describe('ChampionshipHubScreen', () => {
   it('landing: shows Start New Run when there is no run', () => {
     const onStartRun = vi.fn();
@@ -55,5 +59,25 @@ describe('ChampionshipHubScreen', () => {
     expect(screen.getByText(/reign 0/i)).toBeInTheDocument();
     expect(screen.getByText('Record 2\u20131')).toBeInTheDocument();
     expect(screen.getByText(/KO · Round 2/i)).toBeInTheDocument();
+  });
+
+  it('run-over shows the new-record flourish when isNewRecord', () => {
+    render(<ChampionshipHubScreen run={runOver({ isChampion: true, defenses: 2 })} bestReign={1} isNewRecord onStartRun={() => {}} onEnterFight={() => {}} />);
+    expect(screen.getByTestId('new-record')).toBeInTheDocument();
+  });
+
+  it('run-over hides the flourish when not a record', () => {
+    render(<ChampionshipHubScreen run={runOver({ isChampion: false, defenses: 0 })} bestReign={2} isNewRecord={false} onStartRun={() => {}} onEnterFight={() => {}} />);
+    expect(screen.queryByTestId('new-record')).toBeNull();
+  });
+
+  it('shows the best-reign number to beat on the landing', () => {
+    render(<ChampionshipHubScreen run={null} bestReign={3} onStartRun={() => {}} onEnterFight={() => {}} />);
+    expect(screen.getByTestId('best-reign')).toHaveTextContent(/best reign: 3/i);
+  });
+
+  it('shows "No title yet" on the landing when best is null', () => {
+    render(<ChampionshipHubScreen run={null} bestReign={null} onStartRun={() => {}} onEnterFight={() => {}} />);
+    expect(screen.getByTestId('best-reign')).toHaveTextContent(/no title yet/i);
   });
 });

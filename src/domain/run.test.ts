@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { startRun, applyDraft, startNextFight, settleFight, rewardDelta, rerollValue, applyReward, TITLE_FIGHT, type RunState } from './run';
-import { durability, resolveRound } from './fight';
+import { durability, resolveRound, startFight } from './fight';
 import type { FightState, FightOutcome } from './fight';
 
 const PLAYER = { boxing:82, kicks:92, clinch:80, takedowns:98, submissions:97, topControl:88, cardio:90, chin:88, fightIQ:78 };
@@ -106,6 +106,15 @@ describe('settleFight', () => {
     expect(out.phase).toBe('run-over');
     expect(out.record).toEqual({ wins: 0, losses: 1 });
     expect(out.fight).not.toBeNull();
+  });
+
+  it('settleFight throws when given an unsettled (in-progress) fight', () => {
+    const run = startRun('run-42');
+    const inProgress = startFight({
+      seed: 'run-42', fightNumber: 1, playerStatLine: PLAYER, carryInDamage: 0,
+    });
+    expect(inProgress.outcome).toBeNull();
+    expect(() => settleFight(run, inProgress)).toThrow(/settled/i);
   });
 });
 
