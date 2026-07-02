@@ -100,4 +100,11 @@ describe('resolveRound', () => {
     const batteredNext = resolveRound(battered, intent);
     expect(batteredNext.player.stamina).toBeLessThan(freshNext.player.stamina);
   });
+
+  // ── Phase-guard completeness: resolveRound (mirror finishStep) ────────────────
+  it('resolveRound throws unless the fight is in-round', () => {
+    const base = start();
+    expect(() => resolveRound({ ...base, phase: 'finish-window' }, { where:'strike', target:'head', approach:'technical' })).toThrow();
+    expect(() => resolveRound({ ...base, phase: 'finished' }, { where:'strike', target:'head', approach:'technical' })).toThrow();
+  });
 });

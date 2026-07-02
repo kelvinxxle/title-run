@@ -29,6 +29,9 @@ function bodyRecoveryPenalty(bodyDamage: number): number {
 }
 
 export function resolveRound(state: FightState, playerIntent: RoundIntent): FightState {
+  if (state.phase !== 'in-round') {
+    throw new Error(`resolveRound requires state.phase === "in-round" (got "${state.phase}")`);
+  }
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}`);
   const oppIntent = opponentIntent(state);
 
