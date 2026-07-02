@@ -37,4 +37,17 @@ describe('run flow (no rewards, fresh each fight)', () => {
     expect(r.phase).toBe('run-over');
     expect(() => startNextFight(r)).toThrow();
   });
+
+  // ── Phase-guard completeness: applyDraft ─────────────────────────────────────
+  it('applyDraft only works from the drafting phase', () => {
+    const fighter = { name: 'Champ', statLine: ARCHETYPES.allrounder };
+    // Happy path: drafting → pre-fight with the fighter set.
+    const drafted = applyDraft(startRun('s'), fighter);
+    expect(drafted.phase).toBe('pre-fight');
+    expect(drafted.fighter?.name).toBe('Champ');
+    // Guarded: any non-drafting phase must throw (can't overwrite the fighter mid-run).
+    expect(() => applyDraft({ ...drafted, phase: 'pre-fight' }, fighter)).toThrow();
+    expect(() => applyDraft({ ...drafted, phase: 'fighting' }, fighter)).toThrow();
+    expect(() => applyDraft({ ...drafted, phase: 'run-over' }, fighter)).toThrow();
+  });
 });

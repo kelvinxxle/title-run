@@ -40,6 +40,9 @@ export function applyDraft(
   run: RunState,
   fighter: { name: string; statLine: StatLine },
 ): RunState {
+  if (run.phase !== 'drafting') {
+    throw new Error(`applyDraft requires phase 'drafting' (got '${run.phase}')`);
+  }
   return { ...run, phase: 'pre-fight', fighter: { name: fighter.name, statLine: fighter.statLine } };
 }
 
