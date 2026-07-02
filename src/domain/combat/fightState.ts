@@ -111,17 +111,20 @@ export function opponentIntent(state: FightState): RoundIntent {
   // Choose target: body when player is gassed, else head
   const target = isGassed(state.player.stamina) ? 'body' : 'head';
 
+  // Draw all RNG values upfront for uniform consumption
+  const roll = rng();
+  const approachIdx = rng();
+
   // Choose approach biased by fightNumber (higher → more aggressive)
   // fightNumber 1-4: favour technical/counter; 5+: favour pressure
   const aggression = Math.min(1, (state.fightNumber - 1) / 4); // 0..1
-  const roll = rng();
   let approach: Approach;
   if (roll < aggression * 0.6) {
     approach = 'pressure';
   } else if (roll < 0.5 + aggression * 0.2) {
     approach = 'technical';
   } else {
-    approach = APPROACHES[Math.floor(rng() * APPROACHES.length)];
+    approach = APPROACHES[Math.floor(approachIdx * APPROACHES.length)];
   }
 
   return { where, target, approach };
