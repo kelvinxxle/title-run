@@ -50,7 +50,7 @@ Symmetric across the three fighting phases, plus three attributes:
 | Striking | **Striking** (power/accuracy on the feet) | **Striking Defense** (evasion/head movement) |
 | Wrestling | **Takedowns** (takedown offense) | **Takedown Defense** (stuff takedowns, stay standing) |
 | Grappling | **Submissions** (ground offense / sub attempts) | **Submission Defense** (defend/escape subs) |
-| Attribute | **Cardio** (stamina pool + recovery rate) | — |
+| Attribute | **Cardio** (stamina recovery/decline rate; fixed starting pool in M8) | — |
 | Attribute | **Chin** (durability — damage tolerated before "rocked"/KO) | — |
 | Attribute | **Fight IQ** (tilts close reads, finish windows, decision scoring) | — |
 
@@ -69,7 +69,7 @@ Each round the player composes a game plan from independent sub-choices:
 
 ## 6. Stamina (core balance lever)
 
-- Each fighter has a **stamina pool derived from Cardio**; it depletes as the fight goes on.
+- Each fighter starts every fight with a **fixed stamina pool** (identical for both sides); it depletes as the fight goes on. **Cardio governs recovery/decline, not pool size** — a deliberate M8 simplification (deriving pool size from Cardio is a possible later refinement). Accumulated **body damage** further suppresses recovery.
 - **Pressure** and **Wrestling** cost more stamina; **Counter**/**Technical** cost less; partial **recovery between rounds** (scaled by Cardio).
 - **Gassing out** (low stamina) sharply reduces effective offense AND defense → you become finishable, and a **gassed opponent opens a read-based finish window** for you.
 - This is the mechanism that makes **early decisions matter** (you can't mindlessly pressure) and gives the run a fair, self-correcting difficulty.
