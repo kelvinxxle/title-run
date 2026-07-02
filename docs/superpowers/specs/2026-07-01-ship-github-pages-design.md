@@ -1,7 +1,7 @@
 # Ship Title Run to GitHub Pages — Design Spec
 
 **Date:** 2026-07-01
-**Status:** Approved (design), ready for implementation plan
+**Status:** Approved — implemented in PR #10
 **Repo:** `kelvinxxle/title-run` (public), base branch `main` @ `b9c521775`
 
 ## 1. Goal & Why
