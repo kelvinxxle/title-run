@@ -67,7 +67,7 @@ PersistedState = {
 
 ## 6. Robustness (persistence never crashes the app)
 
-- **Corruption/staleness:** `load()` wraps `JSON.parse` in try/catch; if parsing fails, `version !== SCHEMA_VERSION`, or the `run` fails a minimal shape check (`phase` is one of the known `RunPhase` values, or `run` is `null`), it returns defaults `{ run: null, bestReign: null }` and best-effort clears the bad key. A tampered/old save degrades to a clean landing, never a white screen.
+- **Corruption/staleness:** `load()` wraps `JSON.parse` in try/catch; if parsing fails, `version !== SCHEMA_VERSION`, or the `run` fails the full top-level `RunState` shape check (see the **[PM call]** below — or `run` is `null`, which is accepted), it returns defaults `{ run: null, bestReign: null }` and best-effort clears the bad key. A tampered/old save degrades to a clean landing, never a white screen.
 - **localStorage unavailable:** access is wrapped in try/catch (private-mode Safari and some test/embedded contexts throw on access). On failure, persistence degrades to **in-memory only** — the game still plays for the session, it just doesn't survive reload. No crash, no error surfaced to the player.
 - **[PM call]** Validation now checks the full top-level `RunState` shape (every field the UI dereferences directly: `seed`, `phase`, `fightNumber`, `carriedDamage`, `isChampion`, `defenses`, `record.wins/losses`, `fighter` null-or-object, `fight` null-or-object) so a corrupt or tampered blob degrades to a clean landing per success criterion §11 #3; nested `FightState` internals are still not recursively validated because screens guard them with optional chaining. The `version` gate remains the primary migration safety net.
 
