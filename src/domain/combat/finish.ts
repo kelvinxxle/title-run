@@ -17,7 +17,7 @@ const LOW_SUB_DEF = 55;
 /** Head-damage threshold to be "rocked". Scales directly with chin:
  *  higher chin ⇒ higher threshold ⇒ harder to rock. */
 export function ROCKED_HEAD_DMG(chin: number): number {
-  return Math.round(chin * 0.72);
+  return Math.round(chin * 0.66);
 }
 
 // ── FinishChoice ──────────────────────────────────────────────────────────────
@@ -27,6 +27,9 @@ export const FINISH_CHOICES: readonly FinishChoice[] = ['commit', 'measure', 'ho
 // ── detectWindow ─────────────────────────────────────────────────────────────
 /** Context produced by resolveRound after damage + stamina are settled. */
 export interface ResolvedContext {
+  /** Head damage BEFORE this round's exchange was applied. */
+  prePlayerHeadDamage: number;
+  preOpponentHeadDamage: number;
   playerHeadDamage: number;
   opponentHeadDamage: number;
   playerStamina: number;
@@ -52,6 +55,7 @@ export interface ResolvedContext {
  */
 export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
   const {
+    prePlayerHeadDamage, preOpponentHeadDamage,
     playerHeadDamage, opponentHeadDamage,
     playerStamina, opponentStamina,
     playerStatLine, opponentStatLine,
@@ -59,10 +63,24 @@ export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
   } = ctx;
 
   // ── 1. Damage path (KO) ───────────────────────────────────────────────────
-  if (opponentHeadDamage >= ROCKED_HEAD_DMG(opponentStatLine.chin)) {
+  // A damage-path window opens ONLY for the side that won THIS exchange, and
+  // only when THIS round's head damage pushed the loser across the rocked
+  // threshold (pre < threshold ≤ post). Stale accumulated damage from a prior
+  // round never re-opens a window.
+  const oppRocked = ROCKED_HEAD_DMG(opponentStatLine.chin);
+  const playerRocked = ROCKED_HEAD_DMG(playerStatLine.chin);
+  if (
+    dominance > 0 &&
+    preOpponentHeadDamage < oppRocked &&
+    opponentHeadDamage >= oppRocked
+  ) {
     return { side: 'player', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
-  if (playerHeadDamage >= ROCKED_HEAD_DMG(playerStatLine.chin)) {
+  if (
+    dominance < 0 &&
+    prePlayerHeadDamage < playerRocked &&
+    playerHeadDamage >= playerRocked
+  ) {
     return { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
 

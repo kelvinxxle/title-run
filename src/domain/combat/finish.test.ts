@@ -56,6 +56,8 @@ describe('finish flow', () => {
     // Opponent head damage is 0. This deterministically hits the damage-path
     // branch: playerHeadDamage >= ROCKED_HEAD_DMG(playerStatLine.chin).
     const ctx: ResolvedContext = {
+      prePlayerHeadDamage: 0,
+      preOpponentHeadDamage: 0,
       playerHeadDamage: 25,
       opponentHeadDamage: 0,
       playerStamina: STAMINA_MAX,
@@ -68,6 +70,58 @@ describe('finish flow', () => {
     };
     const win = detectWindow(ctx);
     expect(win?.side).toBe('opponent');
+    expect(win?.method).toBe('KO');
+  });
+
+  // ── Fix 2: finish-window side & staleness ────────────────────────────────────
+  const baseDmgCtx = (over: Partial<ResolvedContext>): ResolvedContext => ({
+    prePlayerHeadDamage: 0,
+    preOpponentHeadDamage: 0,
+    playerHeadDamage: 0,
+    opponentHeadDamage: 0,
+    playerStamina: STAMINA_MAX,
+    opponentStamina: STAMINA_MAX,
+    playerStatLine: { ...ARCHETYPES.striker, chin: 50 },
+    opponentStatLine: { ...ARCHETYPES.striker, chin: 50 },
+    dominance: 0,
+    playerIntent:   { where: 'strike', target: 'head', approach: 'technical' },
+    opponentIntent: { where: 'strike', target: 'head', approach: 'technical' },
+    ...over,
+  });
+
+  it('no damage-path window reopens from stale head damage when the other side won', () => {
+    // Opponent was rocked in a PRIOR round (pre == post, no new damage this round),
+    // but THIS exchange the opponent won (dominance < 0). No player window should open.
+    const ctx = baseDmgCtx({
+      preOpponentHeadDamage: 50,
+      opponentHeadDamage: 50, // unchanged this round → stale
+      dominance: -12,
+    });
+    expect(detectWindow(ctx)).toBeNull();
+  });
+
+  it('damage-path window aligns with the exchange winner (no opponent-first priority)', () => {
+    // Opponent carries stale head damage above threshold, but the player is the one
+    // freshly rocked THIS round and the opponent won the exchange → window is opponent-side.
+    const ctx = baseDmgCtx({
+      preOpponentHeadDamage: 60,
+      opponentHeadDamage: 60,     // stale, above threshold
+      prePlayerHeadDamage: 0,
+      playerHeadDamage: 40,       // fresh crossing (ROCKED(50)=36 ≤ 40)
+      dominance: -12,             // opponent won
+    });
+    const win = detectWindow(ctx);
+    expect(win?.side).toBe('opponent');
+  });
+
+  it('a fresh head-damage crossing by the exchange winner opens a window', () => {
+    const ctx = baseDmgCtx({
+      preOpponentHeadDamage: 10,  // below threshold
+      opponentHeadDamage: 40,     // crosses ROCKED(50)=36 this round
+      dominance: 12,              // player won
+    });
+    const win = detectWindow(ctx);
+    expect(win?.side).toBe('player');
     expect(win?.method).toBe('KO');
   });
 

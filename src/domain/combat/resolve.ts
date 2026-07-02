@@ -117,6 +117,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
   // Finish detection: open a window instead of advancing when triggered
   const finishWindow = detectWindow({
+    prePlayerHeadDamage: state.player.headDamage,
+    preOpponentHeadDamage: state.opponent.headDamage,
     playerHeadDamage: playerHead,
     opponentHeadDamage: oppHead,
     playerStamina,
