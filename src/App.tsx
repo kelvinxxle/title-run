@@ -49,6 +49,11 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
       );
     }
     if (run.phase === 'drafting') return <DraftScreen seed={run.seed} onComplete={handleDraftComplete} />;
+    // Resume note: a run parked mid-fight restores the run exactly (fightNumber,
+    // fighter, carriedDamage, record, reign) but the current fight itself restarts
+    // from its deterministic seed. FightScreen owns transient in-fight state (merged
+    // M4/M5); M7 does not lift it into RunState (spec §3/§7/§12). The run is never
+    // lost — replaying identical intents reproduces the identical result.
     if (run.phase === 'fighting') {
       if (!run.fighter) return null;
       return (

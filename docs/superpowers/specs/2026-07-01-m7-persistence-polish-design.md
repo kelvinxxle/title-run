@@ -35,6 +35,7 @@ The PRD's headline promise — *"quit anytime and resume exactly where you left 
 - Sound, animation, or heavy end-of-run cinematics (PRD: "no sound/music"; celebration stays a text/visual flourish).
 - Undo/history of past runs (only the current run + best reign persist).
 - **Mid-draft pick-level resume** — see §7 [PM call]: resuming a run parked mid-draft restarts the draft from the same seed (identical rolls), rather than restoring individual kept picks.
+- **Mid-fight round-level resume** — a run parked mid-`fighting` restores the run exactly (fight number, fighter, carried damage, record, reign), but the *current fight* restarts from its deterministic seed (identical draws), not the exact in-progress round. `FightScreen` owns the transient in-fight `FightState` (merged M4/M5); the run is never lost — replaying the same intents reproduces the identical result. Same rationale/trade-off as mid-draft (§7); see §12.
 
 ## 4. What persists, and when
 
@@ -123,5 +124,6 @@ Persistence introduces **no new randomness**. A resumed run continues from the e
 ## 12. Open items (deferred, non-blocking)
 
 - Pick-level mid-draft resume (see §7) — a clean future add via the preserved `DraftState` seam.
+- Round-level mid-fight resume (see §3/§7) — a future add if fights grow beyond today's short, one-click-per-round, fully seed-deterministic bouts; would lift `FightScreen`'s in-progress `FightState` into `RunState`, which is out of M7's no-`FightScreen`/no-`src/domain`-change scope.
 - Multiple save slots / run history / share codes — not in v1.
 - Richer end-of-run cinematics and sound — PRD out-of-scope for v1.
