@@ -17,7 +17,7 @@ const LOW_SUB_DEF = 55;
 /** Head-damage threshold to be "rocked". Scales directly with chin:
  *  higher chin ⇒ higher threshold ⇒ harder to rock. */
 export function ROCKED_HEAD_DMG(chin: number): number {
-  return Math.round(chin * 1.0);
+  return Math.round(chin * 0.72);
 }
 
 // ── FinishChoice ──────────────────────────────────────────────────────────────
