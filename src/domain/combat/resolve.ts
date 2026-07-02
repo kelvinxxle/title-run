@@ -64,8 +64,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
       oppHead += dmg;
     }
   } else if (dominance < 0) {
-    // Opponent wins the exchange — player absorbs damage
-    if (playerIntent.target === 'body') {
+    // Opponent wins the exchange — player absorbs damage; winner's target drives damage type
+    if (oppIntent.target === 'body') {
       playerBody    += dmg;
       playerStamina -= Math.round(dmg * BODY_TO_STAMINA);
     } else {
