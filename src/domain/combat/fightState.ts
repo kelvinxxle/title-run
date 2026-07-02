@@ -34,6 +34,8 @@ export interface RoundLogEntry {
   round: number;
   playerIntent: RoundIntent;
   opponentIntent: RoundIntent;
+  winner: 'player' | 'opponent' | 'draw';
+  dominance: number;
 }
 
 export type OpponentLike = {
