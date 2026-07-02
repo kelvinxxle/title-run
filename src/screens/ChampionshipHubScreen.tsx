@@ -10,13 +10,22 @@ export interface HubProps {
   run: RunState | null;
   onStartRun: () => void;
   onEnterFight: () => void;
+  bestReign?: number | null;
+  isNewRecord?: boolean;
 }
 
-export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight }: HubProps) {
+export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, bestReign = null, isNewRecord = false }: HubProps) {
+  const bestReignLine = (
+    <p data-testid="best-reign">
+      {bestReign === null ? 'No title yet' : `Best reign: ${bestReign}`}
+    </p>
+  );
+
   if (run === null) {
     return (
       <section data-testid="screen-championship-hub">
         <h1>Title Run</h1>
+        {bestReignLine}
         <button data-testid="start-run" onClick={onStartRun}>Start New Run</button>
       </section>
     );
@@ -26,8 +35,10 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight }:
     return (
       <section data-testid="screen-championship-hub">
         {run.fight?.outcome && <OutcomeBanner outcome={run.fight.outcome} heading="Run Ended" />}
+        {isNewRecord && <p data-testid="new-record">★ New best reign!</p>}
         <p>Record {run.record.wins}–{run.record.losses}</p>
         <p>Reign {run.defenses}</p>
+        {bestReignLine}
         <button data-testid="start-run" onClick={onStartRun}>Start New Run</button>
       </section>
     );
