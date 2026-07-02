@@ -47,4 +47,22 @@ describe('runStorage', () => {
     expect(load()).toEqual({ run: null, bestReign: null });
     spy.mockRestore();
   });
+
+  // FIX A — phase-valid but structurally malformed blob must be rejected
+  it('returns defaults and clears the key when run is phase-valid but structurally malformed', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, run: { phase: 'pre-fight' }, bestReign: 0 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  // FIX B — bestReign must be a non-negative integer
+  it('returns bestReign: null for a negative bestReign', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, run: null, bestReign: -3 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+  });
+
+  it('returns bestReign: null for a non-integer bestReign', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, run: null, bestReign: 2.5 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+  });
 });
