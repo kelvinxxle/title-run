@@ -103,7 +103,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
   const win = state.window!;
   // Derive a stable step index from steps consumed: 0 on first call, +1 each
   const stepIndex = INITIAL_STEPS - win.stepsLeft;
-  const rng = createRng(`${state.seed}#f${state.fightNumber}#finish${stepIndex}`);
+  const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#finish${stepIndex}`);
   const roll = rng();
 
   const p = choice === 'commit' ? COMMIT_P : MEASURE_P;
