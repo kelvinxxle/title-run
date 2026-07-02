@@ -1,5 +1,6 @@
 import type { FightState, RoundLogEntry } from './fightState';
 import { opponentIntent } from './fightState';
+import { scoreFight } from './judges';
 import type { RoundIntent, Approach } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
 import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
@@ -141,27 +142,46 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   }
 
   const isLastRound = state.round >= state.rounds;
-  // TEMP: replaced by judges in Task 10
-  const nextPhase = isLastRound ? 'finished' : 'in-round';
+
+  const resolvedPlayer = {
+    ...state.player,
+    headDamage: playerHead,
+    bodyDamage: playerBody,
+    stamina: playerStamina,
+    roundScore: playerScore,
+  };
+  const resolvedOpponent = {
+    ...state.opponent,
+    headDamage: oppHead,
+    bodyDamage: oppBody,
+    stamina: oppStamina,
+    roundScore: oppScore,
+  };
+
+  if (isLastRound) {
+    // Build the fully-resolved final state so scoreFight sees the last round's scores.
+    const finalBase: FightState = {
+      ...state,
+      round: state.round,
+      phase: 'finished',
+      player: resolvedPlayer,
+      opponent: resolvedOpponent,
+      log: [...state.log, logEntry],
+    };
+    return {
+      ...finalBase,
+      round: state.round,
+      outcome: scoreFight(finalBase),
+    };
+  }
 
   return {
     ...state,
     round: state.round + 1,
-    phase: nextPhase,
-    player: {
-      ...state.player,
-      headDamage: playerHead,
-      bodyDamage: playerBody,
-      stamina: playerStamina,
-      roundScore: playerScore,
-    },
-    opponent: {
-      ...state.opponent,
-      headDamage: oppHead,
-      bodyDamage: oppBody,
-      stamina: oppStamina,
-      roundScore: oppScore,
-    },
+    phase: 'in-round',
+    outcome: null,
+    player: resolvedPlayer,
+    opponent: resolvedOpponent,
     log: [...state.log, logEntry],
   };
 }

@@ -3,6 +3,7 @@ import type { RoundIntent } from './intents';
 import type { StatLine } from './stats';
 import { isGassed, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
+import { scoreFight } from './judges';
 
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 export const COMMIT_P = 0.7;
@@ -126,10 +127,10 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
   if (choice === 'commit') {
     // Window closes; apply stamina cost to finisher; advance round
     const newRound = state.round + 1;
-    const nextPhase = newRound > state.rounds ? 'finished' : 'in-round';
-    return {
+    const isOver = newRound > state.rounds;
+    const updatedState: FightState = {
       ...state,
-      phase: nextPhase,
+      phase: isOver ? 'finished' : 'in-round',
       window: null,
       round: newRound,
       player: {
@@ -145,16 +146,24 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
           : state.opponent.stamina,
       },
     };
+    if (isOver) {
+      return { ...updatedState, outcome: scoreFight({ ...updatedState, round: state.round }) };
+    }
+    return updatedState;
   }
 
   // measure / hold: lower probability but preserves a step
   const newStepsLeft = win.stepsLeft - 1;
   if (newStepsLeft <= 0) {
     const newRound = state.round + 1;
-    const nextPhase = newRound > state.rounds ? 'finished' : 'in-round';
+    const isOver = newRound > state.rounds;
+    if (isOver) {
+      const base: FightState = { ...state, phase: 'finished', window: null, round: newRound };
+      return { ...base, outcome: scoreFight({ ...base, round: state.round }) };
+    }
     return {
       ...state,
-      phase: nextPhase,
+      phase: 'in-round',
       window: null,
       round: newRound,
     };

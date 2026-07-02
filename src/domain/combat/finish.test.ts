@@ -83,3 +83,15 @@ describe('finish flow', () => {
     expect(win1Result.phase).not.toBe(win2Result.phase);
   });
 });
+
+describe('finish — last-round decision handoff', () => {
+  it('a failed finish on the final round yields finished with a non-null decision outcome', () => {
+    // From Fix-1 test: seed='two-win', round=1, commit roll=0.739 → FAIL (> COMMIT_P=0.7).
+    // Override rounds=1 so this IS the last round → expect decision outcome.
+    const s = makeWindowState({ round: 1, rounds: 1 });
+    const result = finishStep(s, 'commit');
+    expect(result.phase).toBe('finished');
+    expect(result.outcome).not.toBeNull();
+    expect(result.outcome!.method).toBe('decision');
+  });
+});
