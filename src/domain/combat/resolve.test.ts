@@ -85,4 +85,19 @@ describe('resolveRound', () => {
     const stoutDmg  = stout.player.headDamage + stout.player.bodyDamage;
     expect(stoutDmg).toBeLessThan(porousDmg);
   });
+
+  // ── Fix 3: accumulated body damage matters (reduces later-round recovery) ─────
+  it('accumulated body damage lowers the victim later-round stamina recovery', () => {
+    const opp = { id: 'o', name: 'Foe', archetype: 'brawler' as const, statLine: ARCHETYPES.brawler };
+    const base = startFight({ seed: 'body-recovery', fightNumber: 1, playerStatLine: ARCHETYPES.striker, opponent: opp });
+    const intent = { where: 'strike' as const, target: 'head' as const, approach: 'technical' as const };
+    // Two identical states except the player's accumulated body damage. bodyDamage does
+    // not feed dominance, so the exchange (and any immediate hit) is identical in both —
+    // only the recovery applied at round end can differ.
+    const fresh    = { ...base, player: { ...base.player, stamina: 50, bodyDamage: 0 } };
+    const battered = { ...base, player: { ...base.player, stamina: 50, bodyDamage: 60 } };
+    const freshNext    = resolveRound(fresh, intent);
+    const batteredNext = resolveRound(battered, intent);
+    expect(batteredNext.player.stamina).toBeLessThan(freshNext.player.stamina);
+  });
 });

@@ -13,12 +13,19 @@ const SWING_RANGE    = 24;
 const DMG_FACTOR     = 0.45;
 const COUNTER_BONUS  = 10;
 const BODY_TO_STAMINA = 0.5;
+/** Stamina recovery lost per point of accumulated body damage carried into a round. */
+const BODY_RECOVERY_FACTOR = 0.08;
 
 const APPROACH_ATK: Record<Approach, number> = { pressure: 1.3, technical: 1.0, counter: 0.8 };
 const APPROACH_DEF: Record<Approach, number> = { pressure: 0.8, technical: 1.0, counter: 1.2 };
 
 function clampStamina(s: number): number {
   return Math.max(0, Math.min(STAMINA_MAX, s));
+}
+
+/** Accumulated body damage suppresses recovery — a battered body doesn't bounce back. */
+function bodyRecoveryPenalty(bodyDamage: number): number {
+  return Math.round(bodyDamage * BODY_RECOVERY_FACTOR);
 }
 
 export function resolveRound(state: FightState, playerIntent: RoundIntent): FightState {
@@ -86,12 +93,14 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     }
   }
 
-  // Stamina: subtract effort cost, add recovery, clamp
+  // Stamina: subtract effort cost, add recovery (suppressed by carried body damage), clamp
   playerStamina = clampStamina(
-    playerStamina - staminaCost(playerIntent.where, playerIntent.approach) + recovery(state.player.statLine)
+    playerStamina - staminaCost(playerIntent.where, playerIntent.approach)
+      + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
   );
   oppStamina = clampStamina(
-    oppStamina - staminaCost(oppIntent.where, oppIntent.approach) + recovery(state.opponent.statLine)
+    oppStamina - staminaCost(oppIntent.where, oppIntent.approach)
+      + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
   );
 
   // Round scoring: winner +1 plus a margin bonus
