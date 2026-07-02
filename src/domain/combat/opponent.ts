@@ -16,7 +16,7 @@ const NICK = ['The Hammer', 'Ironjaw', 'Nightmare', 'The Surgeon', 'Cyclone', 'G
 const LAST = ['Stone', 'Vega', 'Kruger', 'Mercer', 'Okafor', 'Novak', 'Rivas', 'Falk', 'Draco', 'Voss', 'Ito', 'Bane'] as const;
 
 export function targetRating(fightNumber: number): number {
-  const raw = 50 + fightNumber * 3;
+  const raw = 63 + fightNumber * 1.0;
   return Math.min(73, raw);
 }
 

@@ -10,7 +10,7 @@ import { detectWindow } from './finish';
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 const IQ_FACTOR      = 0.1;
 const SWING_RANGE    = 24;
-const DMG_FACTOR     = 0.45;
+const DMG_FACTOR     = 0.55;
 const COUNTER_BONUS  = 10;
 const BODY_TO_STAMINA = 0.5;
 /** Stamina recovery lost per point of accumulated body damage carried into a round. */
