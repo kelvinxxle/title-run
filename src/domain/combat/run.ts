@@ -64,6 +64,15 @@ export function startNextFight(run: RunState): RunState {
 }
 
 export function settleFight(run: RunState, fightState: FightState): RunState {
+  if (run.phase !== 'fighting') {
+    throw new Error(`settleFight requires phase 'fighting' (got '${run.phase}')`);
+  }
+  if (!run.fight) {
+    throw new Error('settleFight requires an active fight');
+  }
+  if (fightState.seed !== run.seed || fightState.fightNumber !== run.fightNumber) {
+    throw new Error('settleFight requires the fightState to match the active fight (seed + fightNumber)');
+  }
   if (!fightState.outcome) {
     throw new Error('settleFight requires a settled fight (outcome must be non-null)');
   }

@@ -50,4 +50,27 @@ describe('run flow (no rewards, fresh each fight)', () => {
     expect(() => applyDraft({ ...drafted, phase: 'fighting' }, fighter)).toThrow();
     expect(() => applyDraft({ ...drafted, phase: 'run-over' }, fighter)).toThrow();
   });
+
+  // ── Phase-guard completeness: settleFight ────────────────────────────────────
+  it('settleFight only settles the active fight from the fighting phase', () => {
+    const r = startNextFight(draftInto()); // phase 'fighting', fight active
+    const won = { ...r.fight!, phase: 'finished' as const, outcome: { winner: 'player' as const, method: 'KO' as const, round: 1 } };
+    // Guarded: cannot settle from a non-fighting phase (would revive a dead run).
+    expect(() => settleFight({ ...r, phase: 'run-over' }, won)).toThrow();
+    expect(() => settleFight({ ...r, phase: 'drafting' }, won)).toThrow();
+    expect(() => settleFight({ ...r, phase: 'pre-fight' }, won)).toThrow();
+    // Guarded: the fightState must match the active fight (seed + fightNumber).
+    expect(() => settleFight(r, { ...won, seed: 'someone-elses-fight' })).toThrow();
+    expect(() => settleFight(r, { ...won, fightNumber: r.fightNumber + 1 })).toThrow();
+    // Happy path still works.
+    const settled = settleFight(r, won);
+    expect(settled.phase).toBe('pre-fight');
+    expect(settled.fightNumber).toBe(2);
+  });
+
+  it('settleFight requires an active fight', () => {
+    const r = startNextFight(draftInto());
+    const won = { ...r.fight!, phase: 'finished' as const, outcome: { winner: 'player' as const, method: 'KO' as const, round: 1 } };
+    expect(() => settleFight({ ...r, fight: null }, won)).toThrow();
+  });
 });
