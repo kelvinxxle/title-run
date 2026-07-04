@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import ChampionshipHubScreen from './ChampionshipHubScreen';
 import { startRun, applyDraft, generateOpponent, STAT_IDS, type RunState, type StatLine } from '../domain/combat';
@@ -27,8 +27,8 @@ describe('ChampionshipHubScreen (v2)', () => {
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} />);
     const avatars = screen.getAllByTestId('fighter-avatar');
     expect(avatars).toHaveLength(2);
-    expect(screen.getByRole('img', { name: /Ace portrait/i })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: new RegExp(`${opponent.name} portrait`, 'i') })).toBeInTheDocument();
+    expect(screen.getByLabelText('Ace portrait', { exact: true })).toBeInTheDocument();
+    expect(screen.getByLabelText(`${opponent.name} portrait`, { exact: true })).toBeInTheDocument();
   });
 
   it('run-over shows record + reign + new-record flourish', () => {
@@ -36,5 +36,24 @@ describe('ChampionshipHubScreen (v2)', () => {
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} bestReign={0} isNewRecord />);
     expect(screen.getByText('Record 5–1')).toBeInTheDocument();
     expect(screen.getByTestId('new-record')).toBeInTheDocument();
+  });
+
+  it('seeds opponent avatars by fight identity so same-named opponents in one run look different', () => {
+    const o4 = generateOpponent('209', 4);
+    const o7 = generateOpponent('209', 7);
+    expect(o4.name).toBe(o7.name);
+    expect(o4.archetype).toBe(o7.archetype);
+
+    const mk = (fightNumber: number): RunState => ({
+      seed: '209', phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
+      fightNumber, record: { wins: fightNumber - 1, losses: 0 }, isChampion: false, defenses: 0, fight: null,
+    });
+
+    const r4 = render(<ChampionshipHubScreen run={mk(4)} onStartRun={noop} onEnterFight={noop} />);
+    const opp4 = within(r4.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    r4.unmount();
+    const r7 = render(<ChampionshipHubScreen run={mk(7)} onStartRun={noop} onEnterFight={noop} />);
+    const opp7 = within(r7.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    expect(opp4).not.toBe(opp7);
   });
 });

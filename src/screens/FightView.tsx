@@ -28,7 +28,7 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
         <FighterHealthCard side="player" name={playerName} subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`} badge="YOU" healthPct={healthPct(player)} avatarSeed={playerName} archetype={archetypeFromStatLine(player.statLine)} />
-        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} avatarSeed={opponent.name} archetype={opponent.archetype} />
+        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} avatarSeed={`${fightState.seed}#opp${fightState.fightNumber}`} archetype={opponent.archetype} />
       </div>
 
       {phase === 'in-round' && (

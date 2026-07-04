@@ -73,7 +73,7 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
       <div data-testid="next-opponent" className="w-full max-w-lg bg-surface-container border border-outline p-sm">
         <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">Next opponent</p>
         <div className="flex items-center gap-sm">
-          <FighterAvatar seed={opponent.name} archetype={opponent.archetype} name={opponent.name} />
+          <FighterAvatar seed={`${run.seed}#opp${run.fightNumber}`} archetype={opponent.archetype} name={opponent.name} />
           <p className="font-display text-xl uppercase text-secondary">{opponent.name}</p>
         </div>
         <p className="font-mono text-xs uppercase text-on-surface-variant">{opponent.archetype}</p>
