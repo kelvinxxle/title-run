@@ -242,9 +242,9 @@ describe('M14: corner + game-plan', () => {
     const rNull = resolveRound(s0null, intent);
     const rBody = resolveRound(s0body, intent);
 
-    if (rNull.opponent.headDamage > 0 || rBody.opponent.bodyDamage > 0) {
-      expect(rBody.opponent.bodyDamage).toBeGreaterThanOrEqual(rNull.opponent.bodyDamage);
-    }
+    expect(rNull.opponent.headDamage).toBeGreaterThan(0);  // fixture must land damage
+    expect(rBody.opponent.bodyDamage).toBeGreaterThan(0);   // body routing applied
+    expect(rBody.opponent.bodyDamage).toBeGreaterThanOrEqual(rNull.opponent.bodyDamage);
   });
 
   it('(f) round 1 with gamePlan:null is the pre-M14 golden master (frozen literals)', () => {
