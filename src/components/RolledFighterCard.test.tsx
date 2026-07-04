@@ -22,4 +22,12 @@ describe('RolledFighterCard', () => {
     render(<RolledFighterCard state={state} onKeep={() => {}} />);
     expect(screen.getByTestId('filled-stat-submissions')).toBeInTheDocument();
   });
+
+  it('renders a fighter avatar with aria-label matching the fighter name', () => {
+    const state = startDraft('title-run');
+    const fighter = getFighter(state.current!.fighterId);
+    render(<RolledFighterCard state={state} onKeep={() => {}} />);
+    expect(screen.getByTestId('fighter-avatar')).toBeInTheDocument();
+    expect(screen.getByLabelText(`${fighter.name} portrait`, { exact: true })).toBeInTheDocument();
+  });
 });

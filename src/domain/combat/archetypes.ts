@@ -11,3 +11,16 @@ export const ARCHETYPES: Record<ArchetypeId, StatLine> = {
 };
 
 export const ARCHETYPE_IDS = Object.keys(ARCHETYPES) as ArchetypeId[];
+
+export function archetypeFromStatLine(s: StatLine): ArchetypeId {
+  const offensive: [number, ArchetypeId][] = [
+    [s.striking,    'striker'],
+    [s.takedowns,   'wrestler'],
+    [s.submissions, 'grappler'],
+  ];
+  offensive.sort((a, b) => b[0] - a[0]);
+  const [first, second] = offensive;
+  if (first[0] - second[0] <= 5) return 'allrounder';
+  return first[1];
+}
+

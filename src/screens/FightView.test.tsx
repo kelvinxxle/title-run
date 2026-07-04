@@ -46,4 +46,11 @@ describe('FightView', () => {
     fireEvent.click(screen.getByTestId('fight-continue'));
     expect(onContinue).toHaveBeenCalled();
   });
+
+  it('renders fighter-avatar for both player and opponent', () => {
+    render(<FightView fightState={base()} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.getAllByTestId('fighter-avatar')).toHaveLength(2);
+    expect(screen.getByRole('img', { name: 'Me portrait' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Rival portrait' })).toBeInTheDocument();
+  });
 });

@@ -1,9 +1,10 @@
 import {
-  generateOpponent, STAT_IDS, STAT_LABELS, TITLE_FIGHT,
+  generateOpponent, archetypeFromStatLine, STAT_IDS, STAT_LABELS, TITLE_FIGHT,
   type RunState,
 } from '../domain/combat';
 import StatBar from '../components/StatBar';
 import OutcomeBanner from '../components/OutcomeBanner';
+import FighterAvatar from '../components/FighterAvatar';
 
 export interface HubProps {
   run: RunState | null;
@@ -59,7 +60,10 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
 
       {fighter && (
         <div className="w-full max-w-lg">
-          <p data-testid="player-name" className="font-display text-2xl uppercase text-on-surface">{fighter.name}</p>
+          <div className="flex items-center gap-sm">
+            <FighterAvatar seed={fighter.name} archetype={archetypeFromStatLine(fighter.statLine)} name={fighter.name} />
+            <p data-testid="player-name" className="font-display text-2xl uppercase text-on-surface">{fighter.name}</p>
+          </div>
           <div className="flex flex-col gap-xs mt-sm">
             {STAT_IDS.map((s) => (<StatBar key={s} value={fighter.statLine[s]} label={STAT_LABELS[s]} />))}
           </div>
@@ -68,7 +72,10 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
 
       <div data-testid="next-opponent" className="w-full max-w-lg bg-surface-container border border-outline p-sm">
         <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">Next opponent</p>
-        <p className="font-display text-xl uppercase text-secondary">{opponent.name}</p>
+        <div className="flex items-center gap-sm">
+          <FighterAvatar seed={`${run.seed}#opp${run.fightNumber}`} archetype={opponent.archetype} name={opponent.name} />
+          <p className="font-display text-xl uppercase text-secondary">{opponent.name}</p>
+        </div>
         <p className="font-mono text-xs uppercase text-on-surface-variant">{opponent.archetype}</p>
       </div>
 
