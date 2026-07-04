@@ -157,6 +157,15 @@ function makeGroundWindowState(overrides: Partial<FightState> = {}): FightState 
   };
 }
 
+describe('ROCKED_HEAD_DMG threshold clamp', () => {
+  it('never returns a threshold below 1, even for a minimal chin', () => {
+    // Guard: a threshold that rounds to 0 would make the damage-path window
+    // impossible to reason about (0 head damage would "rock"). Clamp floors it at 1.
+    expect(ROCKED_HEAD_DMG(1)).toBeGreaterThanOrEqual(1);
+    expect(ROCKED_HEAD_DMG(0)).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('ground window (Task 2)', () => {
   it('a winning player wrestle opens a ground window without advancing the round', () => {
     // seed 'ground-probe-0': player (huge takedowns) beats a weak-takedownDef striker

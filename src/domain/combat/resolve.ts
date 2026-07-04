@@ -19,9 +19,11 @@ const BODY_RECOVERY_FACTOR = 0.08;
 
 const STRIKE_TACTIC_ATK: Record<StrikeTactic, number> = { pressure: 1.3, counter: 0.8, pickApart: 1.0 };
 const STRIKE_TACTIC_DEF: Record<StrikeTactic, number> = { pressure: 0.8, counter: 1.2, pickApart: 1.0 };
-// Interim wrestle constants (Task 1). Nudged above the spec's baselines (1.0 / 0.7)
-// so exploiting a takedown-defense hole is a real edge while the ground window is
-// absent; retuned in Task 5 once wrestle resolves through the ground game.
+// Wrestle constants. Set above the spec's baselines (1.0 / 0.7) in Task 1 so
+// exploiting a takedown-defense hole is a real edge. Task 5 evaluated retuning
+// these toward 1.0 / 0.7 now that wrestle resolves through the ground game, but
+// KEPT them at 1.1 / 0.9: all four strengthened balance bands stay green with them
+// and the ground window already governs wrestle outcomes, so no retune was needed.
 const WRESTLE_ATK = 1.1;
 /** Shooting for a takedown leaves you open to strikes on the way in (<1). */
 const WRESTLE_VS_STRIKE_DEF = 0.9;

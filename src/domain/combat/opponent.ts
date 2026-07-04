@@ -16,7 +16,11 @@ const NICK = ['The Hammer', 'Ironjaw', 'Nightmare', 'The Surgeon', 'Cyclone', 'G
 const LAST = ['Stone', 'Vega', 'Kruger', 'Mercer', 'Okafor', 'Novak', 'Rivas', 'Falk', 'Draco', 'Voss', 'Ito', 'Bane'] as const;
 
 export function targetRating(fightNumber: number): number {
-  const raw = 63 + fightNumber * 1.0;
+  // Intercept raised 63→66 in Task 5: makes EARLY fights harder so careless@1
+  // drops to ~0.67 (comfortably under the strengthened ≤0.72 band, margin ~0.05),
+  // while late fights stay pinned at the 73 cap, so BAND3 (good@9/@10) is unaffected.
+  // Cap unchanged.
+  const raw = 66 + fightNumber * 1.0;
   return Math.min(73, raw);
 }
 

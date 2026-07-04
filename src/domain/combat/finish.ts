@@ -29,7 +29,10 @@ const GROUND_STAMINA_COST = 12;
 /** Head-damage threshold to be "rocked". Scales directly with chin:
  *  higher chin ⇒ higher threshold ⇒ harder to rock. */
 export function ROCKED_HEAD_DMG(chin: number): number {
-  return Math.round(chin * 0.56);
+  // Clamp to a floor of 1: a threshold that rounds to 0 would let 0 head damage
+  // "rock" a fighter, making the damage-path finish window impossible to reason
+  // about. Load-bearing only if k drops below ~0.5; at the current k it is a guard.
+  return Math.max(1, Math.round(chin * 0.56));
 }
 
 // ── Shared ground math ────────────────────────────────────────────────────────

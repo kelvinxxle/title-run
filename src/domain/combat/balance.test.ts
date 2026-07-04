@@ -111,18 +111,18 @@ describe('combat balance bands', () => {
   it('BAND 1 — finishes are attainable: good play finishes >= 25% of all fights', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    expect(totalFinishRate).toBeGreaterThanOrEqual(0.25);
+    expect(totalFinishRate).toBeGreaterThanOrEqual(0.30);
   });
 
   it('BAND 2 — early decisions matter: careless is genuinely punished, good play dominates', () => {
-    expect(careless[1].winRate).toBeLessThanOrEqual(0.80);        // reckless play loses meaningfully even at fight 1
+    expect(careless[1].winRate).toBeLessThanOrEqual(0.72);        // reckless play loses meaningfully even at fight 1
     expect(good[1].winRate).toBeGreaterThan(0.8);                 // good play wins the large majority
-    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.15); // good beats careless by >= 15 points
+    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.20); // good beats careless by >= 20 points
   });
 
   it('BAND 3 — no wall: late fights stay winnable with good play', () => {
-    expect(good[9].winRate).toBeGreaterThanOrEqual(0.4);
-    expect(good[10].winRate).toBeGreaterThanOrEqual(0.4);
+    expect(good[9].winRate).toBeGreaterThanOrEqual(0.45);
+    expect(good[10].winRate).toBeGreaterThanOrEqual(0.45);
     expect(good[9].winRate).toBeGreaterThan(0);
     expect(good[10].winRate).toBeGreaterThan(0);
   });
