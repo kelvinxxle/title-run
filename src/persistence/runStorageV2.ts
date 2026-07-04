@@ -59,6 +59,14 @@ function isValidFightState(x: unknown): boolean {
     if (!Number.isFinite(out['round'])) return false;
   }
   if (!Array.isArray(x['log'])) return false;
+  // Phase ↔ payload invariant (matches the resolve/finish engine contract):
+  //   in-round      → window null AND outcome null
+  //   finish-window → window non-null AND outcome null
+  //   finished      → window null AND outcome non-null
+  const phase = x['phase'] as string;
+  if (phase === 'in-round' && (win !== null || out !== null)) return false;
+  if (phase === 'finish-window' && (win === null || out !== null)) return false;
+  if (phase === 'finished' && (win !== null || out === null)) return false;
   return true;
 }
 

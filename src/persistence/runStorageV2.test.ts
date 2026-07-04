@@ -10,6 +10,14 @@ function midFight(): RunState {
   const started = startNextFight(preFight());
   return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
 }
+// seed 'fw-0' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
+function finishWindowRun(): RunState {
+  let run = startNextFight(applyDraft(startRun('fw-0'), { name: 'A', statLine: LINE }));
+  let f = run.fight as FightState;
+  while (f.phase === 'in-round') f = resolveRound(f, JAB);
+  run = { ...run, fight: f };
+  return run;
+}
 function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
 }
@@ -87,5 +95,38 @@ describe('runStorageV2', () => {
     };
     save({ run: postWin, bestReign: 2 });
     expect(load()).toEqual({ run: postWin, bestReign: 2 });
+  });
+
+  it('rejects a finish-window fight with a null window (phase↔payload invariant), and clears the key', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: null } });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a finished fight with a null outcome (phase↔payload invariant)', () => {
+    const finished: FightState = {
+      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
+      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
+      opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+      window: null, outcome: null, log: [],
+    };
+    store({ ...preFight(), phase: 'fighting', fight: finished });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects an in-round fight carrying a non-null window or outcome', () => {
+    const run = midFight();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'player', method: 'KO', stepsLeft: 2 } } });
+    expect(load().run).toBeNull();
+    store({ ...run, fight: { ...(run.fight as FightState), outcome: { winner: 'player', method: 'KO', round: 1 } } });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real finish-window run (no false reject)', () => {
+    const run = finishWindowRun();
+    expect((run.fight as FightState).phase).toBe('finish-window');
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
   });
 });
