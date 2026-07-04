@@ -110,7 +110,7 @@ const ADAPTIVE_CAP = 0.65;
 
 /**
  * Fraction of the last `n` log entries where the player used strike/pressure.
- * Returns 0 for an empty log (no data to read).
+ * Returns 0 whenever the log has fewer than `n` entries (not enough data to read).
  */
 export function computePredictability(log: RoundLogEntry[], n: number): number {
   if (log.length < n) return 0;

@@ -94,9 +94,6 @@ describe('T2 — real-fighter tiered ladder', () => {
 
   // Verification: computed tier composition matches plan §3 table (same fighter sets, any order)
   it('tier composition matches plan §3 pinned table (same fighter sets)', () => {
-    // NOTE: The plan §3 table has robert-whittaker in Tier 3 and demian-maia in Tier 2,
-    // but the computed overall sort places robert-whittaker (67.78) in Tier 2 and
-    // demian-maia (69.00) in Tier 3. The code-computed values are authoritative.
     // Plan §3 table — fighter sets (order within tier doesn't matter).
     // The plan correctly places demian-maia in Tier 2 (overall ~68.1) and
     // robert-whittaker in Tier 3 (overall ~69.1), computed from the actual
