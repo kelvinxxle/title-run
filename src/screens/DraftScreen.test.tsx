@@ -44,6 +44,16 @@ describe('DraftScreen (v2)', () => {
     expect(onComplete.mock.calls[0][0]).toMatchObject({ name: 'The Chosen One', statLine: expected.statLine });
   });
 
+  it('shows a fighter avatar with aria-label matching the chosen name in complete state', async () => {
+    const user = userEvent.setup();
+    render(<DraftScreen seed="run-42" />);
+    for (let i = 0; i < 9; i++) await user.click(screen.getByTestId('suggested-stat'));
+    await user.type(screen.getByLabelText(/fighter name/i), 'The Chosen One');
+    await user.click(screen.getByRole('button', { name: /confirm fighter/i }));
+    expect(screen.getByTestId('fighter-avatar')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /The Chosen One portrait/i })).toBeInTheDocument();
+  });
+
   // Rendered under <StrictMode> to exercise render/initializer double-invocation
   // (render purity) and stay forward-compatible. NOTE: React 18.3.1 does NOT
   // double-invoke event-triggered setState updaters, so this test cannot go RED

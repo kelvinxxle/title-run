@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { STAT_IDS, STAT_LABELS, type StatId } from '../domain/combat';
 import {
   startDraft, keepStat, nameFighter, filledCount, getDraftedFighter,
+  archetypeFromStatLine,
   type DraftState, type DraftedFighter,
 } from '../domain/combat';
 import DraftProgress from '../components/DraftProgress';
 import RolledFighterCard from '../components/RolledFighterCard';
 import SlotStatusChips from '../components/SlotStatusChips';
 import NameFighterForm from '../components/NameFighterForm';
+import FighterAvatar from '../components/FighterAvatar';
 
 interface DraftScreenProps {
   seed?: string;
@@ -46,27 +48,38 @@ export default function DraftScreen({ seed, onComplete }: DraftScreenProps = {})
       {state.status === 'complete' && (
         <div className="w-full max-w-md flex flex-col items-center gap-sm">
           <h2 className="font-display text-2xl uppercase text-primary">Fighter Ready</h2>
-          <p
-            data-testid="fighter-name"
-            className="font-display text-4xl uppercase text-on-surface"
-          >
-            {state.name}
-          </p>
-          <div className="w-full flex flex-col gap-xs">
-            {(() => {
-              const drafted = getDraftedFighter(state);
-              return STAT_IDS.map((stat) => (
-                <div key={stat} className="flex justify-between font-mono text-sm">
-                  <span className="uppercase tracking-widest text-on-surface-variant">
-                    {STAT_LABELS[stat]}
-                  </span>
-                  <span className="text-on-surface">
-                    {drafted.statLine[stat]}
-                  </span>
+          {(() => {
+            const drafted = getDraftedFighter(state);
+            return (
+              <>
+                <div className="flex items-center gap-sm">
+                  <FighterAvatar
+                    seed={state.name!}
+                    archetype={archetypeFromStatLine(drafted.statLine)}
+                    name={state.name!}
+                  />
+                  <p
+                    data-testid="fighter-name"
+                    className="font-display text-4xl uppercase text-on-surface"
+                  >
+                    {state.name}
+                  </p>
                 </div>
-              ));
-            })()}
-          </div>
+                <div className="w-full flex flex-col gap-xs">
+                  {STAT_IDS.map((stat) => (
+                    <div key={stat} className="flex justify-between font-mono text-sm">
+                      <span className="uppercase tracking-widest text-on-surface-variant">
+                        {STAT_LABELS[stat]}
+                      </span>
+                      <span className="text-on-surface">
+                        {drafted.statLine[stat]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
           <button
             type="button"
             onClick={handleRestart}

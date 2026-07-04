@@ -2,6 +2,7 @@ import StatRow, { type StatRowState } from './StatRow';
 import { STAT_IDS, type StatId } from '../domain/combat';
 import { getFighter } from '../domain/combat';
 import { suggestedStatId, type DraftState } from '../domain/combat';
+import FighterAvatar from './FighterAvatar';
 
 interface RolledFighterCardProps {
   state: DraftState;
@@ -17,12 +18,17 @@ export default function RolledFighterCard({ state, onKeep }: RolledFighterCardPr
   const current = state.current;
   return (
     <div className="w-full max-w-lg bg-surface-container border-2 border-outline p-md">
-      <h3 className="font-display text-3xl uppercase text-primary leading-tight">
-        {fighter.name}
-      </h3>
-      <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant mb-sm">
-        {fighter.archetype}
-      </p>
+      <div className="flex items-center gap-sm">
+        <FighterAvatar seed={fighter.id} archetype={fighter.archetype} name={fighter.name} />
+        <div>
+          <h3 className="font-display text-3xl uppercase text-primary leading-tight">
+            {fighter.name}
+          </h3>
+          <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant mb-sm">
+            {fighter.archetype}
+          </p>
+        </div>
+      </div>
       <div className="flex flex-col gap-xs">
         {STAT_IDS.map((stat) => {
           const fill = state.slots[stat];
