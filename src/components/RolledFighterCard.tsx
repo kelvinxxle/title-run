@@ -18,7 +18,7 @@ export default function RolledFighterCard({ state, onKeep }: RolledFighterCardPr
   const current = state.current;
   return (
     <div className="w-full max-w-lg bg-surface-container border-2 border-outline p-md">
-      <div data-testid="draft-hero" className="relative h-64 w-full overflow-hidden border-b-2 border-outline -mx-md -mt-md mb-md" style={{ width: 'calc(100% + 2rem)', marginLeft: '-1rem', marginTop: '-1rem' }}>
+      <div data-testid="draft-hero" className="relative h-64 w-[calc(100%+48px)] -ml-md -mt-md mb-md overflow-hidden border-b-2 border-outline">
         <FighterImage fighterId={fighter.id} name={fighter.name} archetype={fighter.archetype} variant="hero" />
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
