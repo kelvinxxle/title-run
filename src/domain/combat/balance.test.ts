@@ -100,6 +100,23 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
 }
 
+// ── M12 T4: co-tuned balance constants (measured across 300 seeds, fightNumbers 1..10) ──────
+// Full measurement table in task-4-report.md.
+
+/** Anti-exploit ceiling: pressure-spam must not reliably win vs Tier-5 (fights 9–10).
+ *  Achievable-floor: measured max(careless@9=0.3567, careless@10=0.3333) + 0.05 buffer. */
+const CARELESS_CEILING_LATE = 0.42;
+
+/** Skill-separation floor: good adaptive play must beat careless by this margin at fights 9–10.
+ *  Achievable-floor: measured min(gap@9=0.1300, gap@10=0.1833) − 0.03 buffer. */
+const GAP_LATE = 0.10;
+
+/** Monotonic-ladder noise allowance.
+ *  Measured max consecutive upward delta = 0.20 (fight 2→3: Tier-2 wrestlers partially
+ *  neutralise GSP's wrestling edge while Tier-3 has softer takedownDef; spike is real,
+ *  not a balance bug — documented in task-4-report.md). Buffer +0.02 → 0.22. */
+const MONOTONIC_NOISE = 0.22;
+
 describe('combat balance bands', () => {
   const good: Band[] = [];
   const careless: Band[] = [];
@@ -108,19 +125,25 @@ describe('combat balance bands', () => {
     careless[fn] = simulate(fn, 'careless');
   }
 
-  it('BAND 1 — finishes are attainable: good play finishes >= 25% of all fights', () => {
+  it('BAND 1 — finishes are attainable: good play finishes >= 40% of all fights', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    expect(totalFinishRate).toBeGreaterThanOrEqual(0.30);
+    // Tightened 0.30 → 0.40 (M12 T4): measured aggregate finishRate=0.4680; comfortable margin.
+    expect(totalFinishRate).toBeGreaterThanOrEqual(0.40);
   });
 
   it('BAND 2 — early decisions matter: careless is genuinely punished, good play dominates', () => {
-    expect(careless[1].winRate).toBeLessThanOrEqual(0.72);        // reckless play loses meaningfully even at fight 1
-    expect(good[1].winRate).toBeGreaterThan(0.8);                 // good play wins the large majority
-    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.20); // good beats careless by >= 20 points
+    // measured careless@1=0.6933; margin 0.027 — kept at 0.72 (too thin to tighten safely)
+    expect(careless[1].winRate).toBeLessThanOrEqual(0.72);
+    // Tightened 0.80 → 0.90 (M12 T4): measured good@1=0.9833 vs Tier-1 warm-up.
+    expect(good[1].winRate).toBeGreaterThan(0.90);
+    // Tightened 0.20 → 0.25 (M12 T4): measured gap@1=0.2900.
+    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.25);
   });
 
   it('BAND 3 — no wall: late fights stay winnable with good play', () => {
+    // Achievable-floor preserved at 0.45: measured good@9=0.4867, good@10=0.5167 (slim margin).
+    // GSP takedowns=90 threads Tier-5 champions via wrestling even vs Jon Jones (fightIQ=94).
     expect(good[9].winRate).toBeGreaterThanOrEqual(0.45);
     expect(good[10].winRate).toBeGreaterThanOrEqual(0.45);
     expect(good[9].winRate).toBeGreaterThan(0);
@@ -132,5 +155,26 @@ describe('combat balance bands', () => {
     const late = (good[9].winRate + good[10].winRate) / 2;
     expect(late).toBeLessThanOrEqual(early);   // late fights are not easier than early
     expect(late).toBeLessThan(0.9);            // late fights remain a real challenge
+  });
+
+  it('BAND 5a — anti-exploit: pressure-spam cannot reliably win vs Tier-5 champions', () => {
+    // CARELESS_CEILING_LATE=0.42 (achievable-floor, measured M12 T4).
+    // Directly encodes the Feature A guarantee: high-IQ Tier-5 opponents punish predictability.
+    expect(careless[9].winRate).toBeLessThanOrEqual(CARELESS_CEILING_LATE);
+    expect(careless[10].winRate).toBeLessThanOrEqual(CARELESS_CEILING_LATE);
+  });
+
+  it('BAND 5b — skill separation late: good adaptive play beats pure pressure by >= GAP_LATE', () => {
+    // GAP_LATE=0.10 (achievable-floor: measured min gap 0.1300 − 0.03 buffer).
+    // Allrounders/champions read and counter predictable pressure — skill separates.
+    expect(good[9].winRate - careless[9].winRate).toBeGreaterThanOrEqual(GAP_LATE);
+    expect(good[10].winRate - careless[10].winRate).toBeGreaterThanOrEqual(GAP_LATE);
+  });
+
+  it('BAND 6 — difficulty-monotonic: win-rate is non-increasing as fightNumber rises (within noise)', () => {
+    // MONOTONIC_NOISE=0.22; max observed consecutive upward delta=0.20 (fight 2→3) + 0.02 buffer.
+    for (let n = 1; n <= 9; n++) {
+      expect(good[n + 1].winRate).toBeLessThanOrEqual(good[n].winRate + MONOTONIC_NOISE);
+    }
   });
 });
