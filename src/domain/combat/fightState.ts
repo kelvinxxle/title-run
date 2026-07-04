@@ -113,7 +113,7 @@ const ADAPTIVE_CAP = 0.65;
  * Returns 0 for an empty log (no data to read).
  */
 export function computePredictability(log: RoundLogEntry[], n: number): number {
-  if (log.length === 0) return 0;
+  if (log.length < n) return 0;
   const recent = log.slice(-n);
   const pressureCount = recent.filter(
     e => e.playerIntent.kind === 'strike' && e.playerIntent.tactic === 'pressure',

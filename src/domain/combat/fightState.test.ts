@@ -124,4 +124,16 @@ describe('opponentIntent: Feature A adaptive counter-reading (T1)', () => {
     expect((i1 as Extract<typeof i1, { kind: 'strike' }>).tactic).not.toBe('counter');
     expect(i2).toEqual({ kind: 'strike', target: 'head', tactic: 'counter' });
   });
+
+  it('T1.6 short-log guard: single pressure entry in 3-round window returns predictability 0', () => {
+    // Bug fix: with log.length < n guard, a 1-entry log should return 0 predictability.
+    // Before fix: 1/1 = 1.0 (high-IQ opp reads counter prematurely on rounds 2-3).
+    // After fix:  1 < 3 → return 0 (fair-play: need at least n rounds of data).
+    const state = makeAdaptiveState(highIqOpp, [pressureEntry(1)]);
+    // With predictability=0, counterChance ≈ 0.05, so the counter gate should not fire.
+    // The tactic will fall through to the normal distribution (pickApart or other).
+    const intent = opponentIntent(state);
+    expect(intent.kind).toBe('strike');
+    expect((intent as Extract<typeof intent, { kind: 'strike' }>).tactic).not.toBe('counter');
+  });
 });
