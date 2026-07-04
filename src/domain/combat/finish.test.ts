@@ -310,3 +310,42 @@ describe('finish — last-round decision handoff', () => {
     expect(holdRes.outcome!.round).toBe(holdRes.round);
   });
 });
+
+// ── M14 fix: groundStep lastReport ─────────────────────────────────────────────
+// groundAndPoundDamage(ARCHETYPES.striker, ARCHETYPES.brawler):
+//   raw = (0.5*80 + 0.5*42) - 0.5*54 = 61 - 27 = 34
+//   gpDmg = Math.max(8, Math.round(34 * 0.7)) = Math.max(8, 24) = 24
+// ROCKED_HEAD_DMG(84) = Math.max(1, Math.round(84*0.56)) = 47 → 24 < 47, no TKO.
+// ROCKED_HEAD_DMG(1)  = 1 → 24 >= 1, TKO.
+
+describe('M14 fix: groundStep lastReport', () => {
+  it('non-TKO ground-and-pound rebuilds lastReport with correct opponentHeadDelta and winner', () => {
+    // Default makeGroundWindowState: striker vs brawler(chin=84). gpDmg=24 < rocked(47) → no TKO.
+    const s = makeGroundWindowState();
+    const result = groundStep(s, 'ground-and-pound');
+    expect(result.phase).toBe('corner');
+    expect(result.lastReport).not.toBeNull();
+    expect(result.lastReport!.winner).toBe('player');
+    expect(result.lastReport!.opponentHeadDelta).toBeGreaterThan(0);
+    expect(result.lastReport!.opponentHeadDelta).toBe(24); // gpDmg = 24
+  });
+
+  it('TKO ground-and-pound rebuilds lastReport with opponentBecameRocked=true signal and correct delta', () => {
+    // chin=1 → ROCKED_HEAD_DMG(1)=1 → any GnP damage crosses threshold → TKO.
+    const opp = {
+      statLine: { ...ARCHETYPES.brawler, chin: 1 },
+      headDamage: 0,
+      bodyDamage: 0,
+      stamina: STAMINA_MAX,
+      roundScore: 0,
+      name: 'Opp',
+      archetype: 'brawler' as const,
+    };
+    const s = makeGroundWindowState({ opponent: opp });
+    const result = groundStep(s, 'ground-and-pound');
+    expect(result.phase).toBe('finished');
+    expect(result.lastReport).not.toBeNull();
+    expect(result.lastReport!.winner).toBe('player');
+    expect(result.lastReport!.opponentHeadDelta).toBeGreaterThan(0);
+  });
+});

@@ -4,6 +4,7 @@ import type { StatLine } from './stats';
 import { isGassed, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
 import { scoreFight } from './judges';
+import { buildRoundReport } from './report';
 
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 export const COMMIT_P = 0.7;
@@ -271,20 +272,52 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
 
     if (preHead < rocked && postHead >= rocked) {
       // TKO
+      const lastReport = buildRoundReport({
+        round: state.round,
+        winner: finisher,
+        dominance: 10,
+        playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+        opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+        playerHeadDelta: 0,
+        playerBodyDelta: 0,
+        opponentHeadDelta: gpDmg,
+        opponentBodyDelta: 0,
+        playerBecameRocked: false,
+        opponentBecameRocked: true,
+        playerGassed: isGassed(attacker.stamina),
+        opponentGassed: isGassed(defender.stamina),
+      });
       return {
         ...withDamage,
         phase: 'finished',
         window: null,
+        lastReport,
         outcome: { winner: finisher, method: 'KO', round: state.round },
       };
     }
 
     // No finish: close window, advance round (or hand off to a decision if last round).
+    const lastReport = buildRoundReport({
+      round: state.round,
+      winner: finisher,
+      dominance: 10,
+      playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+      opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+      playerHeadDelta: 0,
+      playerBodyDelta: 0,
+      opponentHeadDelta: gpDmg,
+      opponentBodyDelta: 0,
+      playerBecameRocked: false,
+      opponentBecameRocked: false,
+      playerGassed: isGassed(attacker.stamina),
+      opponentGassed: isGassed(defender.stamina),
+    });
     const advanced: FightState = {
       ...withDamage,
       phase: isOver ? 'finished' : 'corner',
       window: null,
       round: isOver ? state.round : newRound,
+      lastReport,
     };
     return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;
   }
@@ -306,11 +339,27 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
   const withDrain: FightState = finisher === 'player'
     ? { ...state, player: { ...state.player, stamina: drain(state.player.stamina) } }
     : { ...state, opponent: { ...state.opponent, stamina: drain(state.opponent.stamina) } };
+  const subFailReport = buildRoundReport({
+    round: state.round,
+    winner: 'draw',
+    dominance: 0,
+    playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+    opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+    playerHeadDelta: 0,
+    playerBodyDelta: 0,
+    opponentHeadDelta: 0,
+    opponentBodyDelta: 0,
+    playerBecameRocked: false,
+    opponentBecameRocked: false,
+    playerGassed: false,
+    opponentGassed: false,
+  });
   const advanced: FightState = {
     ...withDrain,
     phase: isOver ? 'finished' : 'corner',
     window: null,
     round: isOver ? state.round : newRound,
+    lastReport: subFailReport,
   };
   return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;
 }
