@@ -96,6 +96,40 @@ export function startFight(args: {
   };
 }
 
+// ── Feature A tuning constants (tune in T4) ───────────────────────────────────
+/** Number of recent log entries to examine for player pressure. */
+const ADAPTIVE_N = 3;
+/** Baseline counter-chance addition (fires even with 0 predictability). */
+const ADAPTIVE_BASE = 0.05;
+/** Scales (IQ − IQ_MID) × predictability into extra counter probability. */
+const ADAPTIVE_IQ_FACTOR = 0.008;
+/** Opponents at or below this IQ gain no read bonus. */
+const ADAPTIVE_IQ_MID = 60;
+/** Hard cap on total counter-chance from the adaptive gate. */
+const ADAPTIVE_CAP = 0.65;
+
+/**
+ * Fraction of the last `n` log entries where the player used strike/pressure.
+ * Returns 0 whenever the log has fewer than `n` entries (not enough data to read).
+ */
+export function computePredictability(log: RoundLogEntry[], n: number): number {
+  if (log.length < n) return 0;
+  const recent = log.slice(-n);
+  const pressureCount = recent.filter(
+    e => e.playerIntent.kind === 'strike' && e.playerIntent.tactic === 'pressure',
+  ).length;
+  return pressureCount / recent.length;
+}
+
+/**
+ * Adaptive counter probability for an opponent with the given fightIQ reading
+ * the given player predictability score.
+ */
+export function adaptiveCounterChance(fightIQ: number, predictability: number): number {
+  const readBonus = ADAPTIVE_IQ_FACTOR * Math.max(0, fightIQ - ADAPTIVE_IQ_MID) * predictability;
+  return Math.max(0, Math.min(ADAPTIVE_CAP, ADAPTIVE_BASE + readBonus));
+}
+
 // ── Opponent AI ───────────────────────────────────────────────────────────────
 
 export function opponentIntent(state: FightState): RoundIntent {
@@ -115,6 +149,16 @@ export function opponentIntent(state: FightState): RoundIntent {
 
   // Striking: target body when the player is gassed, else head.
   const target = isGassed(state.player.stamina) ? 'body' : 'head';
+
+  // Feature A: high-IQ opponents read the player's recent pressure history.
+  // Gate reuses the existing upfront `roll` (no extra RNG draw) to minimise
+  // determinism churn.  opponentIntent is called BEFORE this round's log entry
+  // is pushed, so state.log contains only past rounds — fair-play preserved.
+  const predictability = computePredictability(state.log, ADAPTIVE_N);
+  const counterChance  = adaptiveCounterChance(state.opponent.statLine.fightIQ, predictability);
+  if (roll < counterChance) {
+    return { kind: 'strike', target, tactic: 'counter' };
+  }
 
   // Choose tactic biased by fightNumber (higher → more aggressive).
   // fightNumber 1-4: favour pickApart/counter; 5+: favour pressure.

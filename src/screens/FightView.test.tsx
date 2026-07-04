@@ -53,4 +53,36 @@ describe('FightView', () => {
     expect(screen.getByRole('img', { name: 'Me portrait' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Rival portrait' })).toBeInTheDocument();
   });
+
+  it('seeds opponent avatars by opponent name so same opponent name produces same avatar', () => {
+    const st1 = base({ fightNumber: 1, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
+    const st2 = base({ fightNumber: 5, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
+
+    const r1 = render(<FightView fightState={st1} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    const opp1Avatars = r1.container.querySelectorAll('[data-testid="fighter-avatar"]');
+    const opp1SVG = opp1Avatars[1].outerHTML;
+    r1.unmount();
+
+    const r2 = render(<FightView fightState={st2} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    const opp2Avatars = r2.container.querySelectorAll('[data-testid="fighter-avatar"]');
+    const opp2SVG = opp2Avatars[1].outerHTML;
+
+    expect(opp1SVG).toBe(opp2SVG);
+  });
+
+  it('seeds opponent avatars by opponent name so different names produce different avatars', () => {
+    const st1 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
+    const st2 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Other', archetype:'Boxer' } });
+
+    const r1 = render(<FightView fightState={st1} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    const opp1Avatars = r1.container.querySelectorAll('[data-testid="fighter-avatar"]');
+    const opp1SVG = opp1Avatars[1].outerHTML;
+    r1.unmount();
+
+    const r2 = render(<FightView fightState={st2} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    const opp2Avatars = r2.container.querySelectorAll('[data-testid="fighter-avatar"]');
+    const opp2SVG = opp2Avatars[1].outerHTML;
+
+    expect(opp1SVG).not.toBe(opp2SVG);
+  });
 });

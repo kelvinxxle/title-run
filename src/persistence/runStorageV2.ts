@@ -79,7 +79,7 @@ function isValidRun(run: unknown): run is RunState | null {
   const r = run as Record<string, unknown>;
   if (typeof r['seed'] !== 'string') return false;
   if (typeof r['phase'] !== 'string' || !(KNOWN_PHASES as string[]).includes(r['phase'] as string)) return false;
-  if (!Number.isFinite(r['fightNumber'])) return false;
+  if (!Number.isInteger(r['fightNumber']) || (r['fightNumber'] as number) < 1) return false;
   if (typeof r['isChampion'] !== 'boolean') return false;
   if (!Number.isFinite(r['defenses'])) return false;
   if (typeof r['record'] !== 'object' || r['record'] === null) return false;

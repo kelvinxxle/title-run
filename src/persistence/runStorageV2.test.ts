@@ -20,9 +20,10 @@ function finishWindowRun(): RunState {
   run = { ...run, fight: f };
   return run;
 }
-// seed 'gw-5' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
+// seed 'gw-0' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
+// (seed updated in T2 — real opponent system changed the fight dynamics; 'gw-0' verified deterministic)
 function groundWindowRun(): RunState {
-  const run = startNextFight(applyDraft(startRun('gw-5'), { name: 'A', statLine: WRESTLER }));
+  const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
   return { ...run, fight: resolveRound(run.fight as FightState, { kind: 'wrestle' }) };
 }
 function store(run: unknown): void {
@@ -206,5 +207,25 @@ describe('runStorageV2', () => {
     const pre = preFight();
     save({ run: pre, bestReign: 4 });
     expect(load()).toEqual({ run: pre, bestReign: 4 });
+  });
+
+  it('rejects a pre-fight run with fightNumber: 0 (not a positive integer)', () => {
+    store({ ...preFight(), fightNumber: 0 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: -1 (not a positive integer)', () => {
+    store({ ...preFight(), fightNumber: -1 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: 2.5 (not an integer)', () => {
+    store({ ...preFight(), fightNumber: 2.5 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: NaN (not finite)', () => {
+    store({ ...preFight(), fightNumber: NaN });
+    expect(load().run).toBeNull();
   });
 });
