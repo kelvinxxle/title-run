@@ -284,6 +284,10 @@ Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
 
 ### Task 3: Final balance tuning — widen the tight margins
 
+> **DEFERRED to the M10 combat-decision-redesign milestone — not implemented in this PR (roster-only).**
+>
+> The combat decision model is being redesigned in M10 (style-aware round decisions + wrestle→ground-and-pound/submission), which re-measures and re-tunes these bands from scratch against a new decision tree. Tuning the current striking-only model now would be thrown away and touches the same files (`resolve.ts`, `finish.ts`, `balance.test.ts`, `opponent.ts`). Roster (Tasks 1–2) is fully decoupled from balance (the harness uses a fixed GSP player + procedural opponents), so this PR ships roster-only with the existing `main` balance assertions unchanged and green.
+
 **Files:**
 - Modify (as needed): `src/domain/combat/opponent.ts`, `src/domain/combat/resolve.ts`, `src/domain/combat/finish.ts`
 - Test: `src/domain/combat/balance.test.ts` (strengthen), `src/domain/combat/opponent.test.ts` (keep green)
