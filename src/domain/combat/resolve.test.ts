@@ -179,12 +179,9 @@ describe('M14: corner + game-plan', () => {
   }
 
   it('(a) normal non-terminal resolveRound → phase=corner, round advances, lastReport set', () => {
+    // verified: 'test-corner-seed' always produces corner at round 1 with GSP vs generated opponent
     const s0 = makeState();
     const s1 = resolveRound(s0, { kind: 'strike', target: 'head', tactic: 'pickApart' });
-    if (s1.phase === 'finish-window' || s1.phase === 'ground-window') {
-      return;
-    }
-    if (s1.phase === 'finished') return;
     expect(s1.phase).toBe('corner');
     expect(s1.window).toBeNull();
     expect(s1.lastReport).not.toBeNull();
@@ -193,9 +190,10 @@ describe('M14: corner + game-plan', () => {
   });
 
   it('(b) chooseGamePlan from corner sets gamePlan and phase', () => {
+    // verified: 'test-corner-seed' always produces corner at round 1 with GSP vs generated opponent
     const s0 = makeState();
     const s1 = resolveRound(s0, { kind: 'strike', target: 'head', tactic: 'pickApart' });
-    if (s1.phase !== 'corner') return;
+    expect(s1.phase).toBe('corner');
     const s2 = chooseGamePlan(s1, 'push-pace');
     expect(s2.phase).toBe('in-round');
     expect(s2.gamePlan).toBe('push-pace');
@@ -249,25 +247,28 @@ describe('M14: corner + game-plan', () => {
     }
   });
 
-  it('(f) round 1 with gamePlan:null reproduces pre-M14 resolveRound result', () => {
+  it('(f) round 1 with gamePlan:null is the pre-M14 golden master (frozen literals)', () => {
+    // gamePlanEffect(null) = {atkMult:1,defMult:1,staminaDelta:0,forceBodyTarget:false} — identity.
+    // Combat numbers (damage, stamina, roundScore) are byte-for-byte identical to origin/main's
+    // pre-M14 resolveRound. phase differs: M14 routes to 'corner', pre-M14 to 'in-round'.
     const seed = 'determinism-guard';
     const opponent = generateOpponent(seed, 1);
     const s0 = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
     expect(s0.gamePlan).toBeNull();
-    expect(s0.lastReport).toBeNull();
 
     const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
     const result = resolveRound(s0, intent);
 
-    expect(result.player.headDamage).toBeTypeOf('number');
-    expect(result.player.stamina).toBeTypeOf('number');
-    expect(result.opponent.headDamage).toBeTypeOf('number');
-
-    const result2 = resolveRound(s0, intent);
-    expect(result.player.headDamage).toBe(result2.player.headDamage);
-    expect(result.player.stamina).toBe(result2.player.stamina);
-    expect(result.opponent.headDamage).toBe(result2.opponent.headDamage);
-    expect(result.player.bodyDamage).toBe(result2.player.bodyDamage);
-    expect(result.opponent.bodyDamage).toBe(result2.opponent.bodyDamage);
+    // ── Frozen golden-master literals ──
+    expect(result.player.headDamage).toBe(0);
+    expect(result.player.bodyDamage).toBe(0);
+    expect(result.player.stamina).toBe(100);
+    expect(result.player.roundScore).toBe(3);
+    expect(result.opponent.headDamage).toBe(14);
+    expect(result.opponent.bodyDamage).toBe(0);
+    expect(result.opponent.stamina).toBe(100);
+    expect(result.opponent.roundScore).toBe(0);
+    expect(result.phase).toBe('corner');    // M14: corner; pre-M14 was 'in-round'
+    expect(result.round).toBe(2);
   });
 });
