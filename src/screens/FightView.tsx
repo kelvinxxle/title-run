@@ -1,4 +1,4 @@
-import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan } from '../domain/combat';
+import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan, archetypeFromStatLine } from '../domain/combat';
 import { healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import IntentPanelV2 from '../components/IntentPanelV2';
@@ -27,8 +27,8 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
     >
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
-        <FighterHealthCard side="player" name={playerName} subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`} badge="YOU" healthPct={healthPct(player)} />
-        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} />
+        <FighterHealthCard side="player" name={playerName} subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`} badge="YOU" healthPct={healthPct(player)} avatarSeed={playerName} archetype={archetypeFromStatLine(player.statLine)} />
+        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} avatarSeed={opponent.name} archetype={opponent.archetype} />
       </div>
 
       {phase === 'in-round' && (

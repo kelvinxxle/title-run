@@ -30,4 +30,19 @@ describe('FighterHealthCard', () => {
     );
     expect(screen.getByRole('meter', { name: /ace health/i })).toHaveAttribute('aria-valuenow', '100');
   });
+
+  it('renders fighter-avatar when avatarSeed and archetype are provided', () => {
+    render(
+      <FighterHealthCard side="player" name="Ace" subtitle="YOU" badge="YOU" healthPct={1} avatarSeed="Ace" archetype="striker" />,
+    );
+    expect(screen.getByTestId('fighter-avatar')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Ace portrait' })).toBeInTheDocument();
+  });
+
+  it('does not render fighter-avatar when avatar props are absent', () => {
+    render(
+      <FighterHealthCard side="player" name="Ace" subtitle="YOU" badge="YOU" healthPct={1} />,
+    );
+    expect(screen.queryByTestId('fighter-avatar')).toBeNull();
+  });
 });

@@ -1,3 +1,5 @@
+import FighterAvatar from './FighterAvatar';
+
 interface FighterHealthCardProps {
   side: 'player' | 'opponent';
   name: string;
@@ -5,6 +7,8 @@ interface FighterHealthCardProps {
   badge: string;
   healthPct: number;
   read?: string;
+  avatarSeed?: string;
+  archetype?: string;
 }
 
 const SEGMENTS = 10;
@@ -16,6 +20,8 @@ export default function FighterHealthCard({
   badge,
   healthPct,
   read,
+  avatarSeed,
+  archetype,
 }: FighterHealthCardProps) {
   const clamped = Math.min(1, Math.max(0, healthPct));
   const filled = Math.round(clamped * SEGMENTS);
@@ -30,7 +36,12 @@ export default function FighterHealthCard({
       className={`flex-1 bg-surface-container ${accent} p-md flex flex-col gap-xs`}
     >
       <div className="flex items-start justify-between gap-xs">
-        <h3 className="font-display text-2xl uppercase leading-tight text-on-surface">{name}</h3>
+        <div className="flex items-center gap-xs">
+          {avatarSeed && archetype && (
+            <FighterAvatar seed={avatarSeed} archetype={archetype} name={name} size={40} />
+          )}
+          <h3 className="font-display text-2xl uppercase leading-tight text-on-surface">{name}</h3>
+        </div>
         <span className={`font-mono text-[10px] uppercase tracking-widest ${badgeColor}`}>
           {badge}
         </span>
