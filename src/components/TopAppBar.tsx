@@ -1,4 +1,4 @@
-import type { RunState } from '../domain';
+import type { RunState } from '../domain/combat';
 
 export function runStatusLabel(run: RunState | null): string {
   if (!run) return '';

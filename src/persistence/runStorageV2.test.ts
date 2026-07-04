@@ -1,0 +1,158 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { load, save, STORAGE_KEY, SCHEMA_VERSION } from './runStorageV2';
+import { startRun, applyDraft, startNextFight, resolveRound, type RunState, type RoundIntent, type FightState } from '../domain/combat';
+import { STAT_IDS, type StatLine } from '../domain/combat';
+
+const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
+const JAB: RoundIntent = { where: 'strike', target: 'head', approach: 'technical' };
+function midFight(): RunState {
+  const started = startNextFight(preFight());
+  return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
+}
+// seed 'fw-0' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
+function finishWindowRun(): RunState {
+  let run = startNextFight(applyDraft(startRun('fw-0'), { name: 'A', statLine: LINE }));
+  let f = run.fight as FightState;
+  while (f.phase === 'in-round') f = resolveRound(f, JAB);
+  run = { ...run, fight: f };
+  return run;
+}
+function store(run: unknown): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
+}
+
+describe('runStorageV2', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('round-trips a valid v2 run', () => {
+    const run = preFight();
+    save({ run, bestReign: 3 });
+    expect(load()).toEqual({ run, bestReign: 3 });
+  });
+
+  it('returns defaults when nothing is stored', () => {
+    expect(load()).toEqual({ run: null, bestReign: null });
+  });
+
+  it('rejects a wrong schema version and clears the key', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, run: preFight(), bestReign: 0 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a malformed run blob (phase-valid but missing fields)', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: { phase: 'pre-fight' }, bestReign: 0 }));
+    expect(load().run).toBeNull();
+  });
+
+  it('coerces a non-integer/negative bestReign to null', () => {
+    save({ run: null, bestReign: null });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: null, bestReign: -3 }));
+    expect(load().bestReign).toBeNull();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: null, bestReign: 2.5 }));
+    expect(load().bestReign).toBeNull();
+  });
+
+  it('rejects a fighting run whose fight is a same-schema-but-empty object, and clears the key', () => {
+    store({ ...preFight(), phase: 'fighting', fight: {} });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a fighting run with a null fight (phase invariant)', () => {
+    store({ ...preFight(), phase: 'fighting', fight: null });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a fighting run whose fight seed/fightNumber does not match the run', () => {
+    const run = midFight();
+    store({ ...run, fight: { ...(run.fight as FightState), seed: 'other-seed' } });
+    expect(load().run).toBeNull();
+    store({ ...run, fight: { ...(run.fight as FightState), fightNumber: 99 } });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a run whose fighter.statLine is missing stat keys', () => {
+    store({ ...preFight(), fighter: { name: 'A', statLine: {} } });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real mid-fight run and a finished-fight pre-fight run', () => {
+    const mid = midFight();
+    save({ run: mid, bestReign: 1 });
+    expect(load()).toEqual({ run: mid, bestReign: 1 });
+
+    const finishedFight: FightState = {
+      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
+      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
+      opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+      window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
+    };
+    const postWin: RunState = {
+      seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE },
+      fightNumber: 2, record: { wins: 1, losses: 0 }, isChampion: false, defenses: 0, fight: finishedFight,
+    };
+    save({ run: postWin, bestReign: 2 });
+    expect(load()).toEqual({ run: postWin, bestReign: 2 });
+  });
+
+  it('rejects a finish-window fight with a null window (phase↔payload invariant), and clears the key', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: null } });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a finished fight with a null outcome (phase↔payload invariant)', () => {
+    const finished: FightState = {
+      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
+      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
+      opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+      window: null, outcome: null, log: [],
+    };
+    store({ ...preFight(), phase: 'fighting', fight: finished });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects an in-round fight carrying a non-null window or outcome', () => {
+    const run = midFight();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'player', method: 'KO', stepsLeft: 2 } } });
+    expect(load().run).toBeNull();
+    store({ ...run, fight: { ...(run.fight as FightState), outcome: { winner: 'player', method: 'KO', round: 1 } } });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real finish-window run (no false reject)', () => {
+    const run = finishWindowRun();
+    expect((run.fight as FightState).phase).toBe('finish-window');
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('rejects a non-drafting run with a null fighter (pre-fight), and clears the key', () => {
+    store({ ...preFight(), phase: 'pre-fight', fighter: null });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a run-over run with a null fighter', () => {
+    store({ ...preFight(), phase: 'run-over', fighter: null });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a drafting run that already has a fighter', () => {
+    store({ ...preFight(), phase: 'drafting' });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real drafting run and a real pre-fight run (no false reject)', () => {
+    const drafting = startRun('seed-1');
+    save({ run: drafting, bestReign: null });
+    expect(load()).toEqual({ run: drafting, bestReign: null });
+
+    const pre = preFight();
+    save({ run: pre, bestReign: 4 });
+    expect(load()).toEqual({ run: pre, bestReign: 4 });
+  });
+});

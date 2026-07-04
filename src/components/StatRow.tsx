@@ -1,5 +1,5 @@
 import StatBar from './StatBar';
-import { STAT_LABELS, type StatId } from '../domain/stats';
+import { STAT_LABELS, type StatId } from '../domain/combat';
 
 export type StatRowState = 'available' | 'suggested' | 'filled';
 

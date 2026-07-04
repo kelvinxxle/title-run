@@ -1,8 +1,7 @@
 import {
-  generateOpponent, STAT_IDS, STAT_LABELS, TITLE_FIGHT, durability,
+  generateOpponent, STAT_IDS, STAT_LABELS, TITLE_FIGHT,
   type RunState,
-} from '../domain';
-import FighterHealthCard from '../components/FighterHealthCard';
+} from '../domain/combat';
 import StatBar from '../components/StatBar';
 import OutcomeBanner from '../components/OutcomeBanner';
 
@@ -16,30 +15,28 @@ export interface HubProps {
 
 export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, bestReign = null, isNewRecord = false }: HubProps) {
   const bestReignLine = (
-    <p data-testid="best-reign">
-      {bestReign === null ? 'No title yet' : `Best reign: ${bestReign}`}
-    </p>
+    <p data-testid="best-reign">{bestReign === null ? 'No title yet' : `Best reign: ${bestReign}`}</p>
   );
 
   if (run === null) {
     return (
-      <section data-testid="screen-championship-hub">
-        <h1>Title Run</h1>
+      <section data-testid="screen-championship-hub" className="p-md flex flex-col items-center gap-sm">
+        <h1 className="font-display text-4xl uppercase text-primary">Title Run</h1>
         {bestReignLine}
-        <button data-testid="start-run" onClick={onStartRun}>Start New Run</button>
+        <button data-testid="start-run" onClick={onStartRun} className="bg-primary text-on-primary font-display text-xl uppercase px-lg py-sm">Start New Run</button>
       </section>
     );
   }
 
   if (run.phase === 'run-over') {
     return (
-      <section data-testid="screen-championship-hub">
+      <section data-testid="screen-championship-hub" className="p-md flex flex-col items-center gap-sm">
         {run.fight?.outcome && <OutcomeBanner outcome={run.fight.outcome} heading="Run Ended" />}
         {isNewRecord && <p data-testid="new-record">★ New best reign!</p>}
         <p>Record {run.record.wins}–{run.record.losses}</p>
         <p>Reign {run.defenses}</p>
         {bestReignLine}
-        <button data-testid="start-run" onClick={onStartRun}>Start New Run</button>
+        <button data-testid="start-run" onClick={onStartRun} className="bg-primary text-on-primary font-display text-xl uppercase px-lg py-sm">Start New Run</button>
       </section>
     );
   }
@@ -51,38 +48,31 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
   const opponent = generateOpponent(run.seed, run.fightNumber);
 
   return (
-    <section data-testid="screen-championship-hub">
+    <section data-testid="screen-championship-hub" className="p-md flex flex-col items-center gap-md">
       {isChampion ? (
-        <h2>Champion · Reign {run.defenses}</h2>
+        <h2 className="font-display text-3xl uppercase text-primary">Champion · Reign {run.defenses}</h2>
       ) : isTitle ? (
-        <h2>For the Vacant Belt</h2>
+        <h2 className="font-display text-3xl uppercase text-primary">For the Vacant Belt</h2>
       ) : (
-        <h2>Fight {run.fightNumber}</h2>
+        <h2 className="font-display text-3xl uppercase text-on-surface">Fight {run.fightNumber}</h2>
       )}
 
       {fighter && (
-        <>
-          <FighterHealthCard
-            side="player"
-            name={fighter.name}
-            subtitle="YOUR FIGHTER"
-            badge="YOU"
-            healthPct={1 - run.carriedDamage / durability(fighter.statLine)}
-          />
-          <div>
-            {STAT_IDS.map((s) => (
-              <StatBar key={s} value={fighter.statLine[s]} label={STAT_LABELS[s]} />
-            ))}
+        <div className="w-full max-w-lg">
+          <p data-testid="player-name" className="font-display text-2xl uppercase text-on-surface">{fighter.name}</p>
+          <div className="flex flex-col gap-xs mt-sm">
+            {STAT_IDS.map((s) => (<StatBar key={s} value={fighter.statLine[s]} label={STAT_LABELS[s]} />))}
           </div>
-        </>
+        </div>
       )}
 
-      <div data-testid="next-opponent">
-        <p>{opponent.name}</p>
-        <p>{opponent.style}</p>
+      <div data-testid="next-opponent" className="w-full max-w-lg bg-surface-container border border-outline p-sm">
+        <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">Next opponent</p>
+        <p className="font-display text-xl uppercase text-secondary">{opponent.name}</p>
+        <p className="font-mono text-xs uppercase text-on-surface-variant">{opponent.archetype}</p>
       </div>
 
-      <button data-testid="enter-fight" onClick={onEnterFight}>
+      <button data-testid="enter-fight" onClick={onEnterFight} className="w-full max-w-lg h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide">
         {isChampion ? 'Defend the Belt' : isTitle ? 'Fight for the Belt' : 'Enter the Octagon'}
       </button>
     </section>

@@ -1,14 +1,9 @@
 import { useState } from 'react';
-import { STAT_IDS, STAT_LABELS, type StatId } from '../domain/stats';
+import { STAT_IDS, STAT_LABELS, type StatId } from '../domain/combat';
 import {
-  startDraft,
-  keepStat,
-  nameFighter,
-  filledCount,
-  getDraftedFighter,
-  type DraftState,
-  type DraftedFighter,
-} from '../domain/draft';
+  startDraft, keepStat, nameFighter, filledCount, getDraftedFighter,
+  type DraftState, type DraftedFighter,
+} from '../domain/combat';
 import DraftProgress from '../components/DraftProgress';
 import RolledFighterCard from '../components/RolledFighterCard';
 import SlotStatusChips from '../components/SlotStatusChips';

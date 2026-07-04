@@ -1,79 +1,113 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import App from './App';
-import { STORAGE_KEY } from './persistence/runStorage';
-import { STAT_IDS } from './domain';
-const SAMPLE_STAT_LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 50])) as import('./domain').StatLine;
+import { save } from './persistence/runStorageV2';
+import { startRun, applyDraft, startNextFight, finishStep, STAT_IDS, type RunState, type StatLine, type FightState } from './domain/combat';
 
-describe('App run loop', () => {
-  it('landing → draft → pre-fight → fight → reward → next fight', () => {
-    render(<App makeSeed={() => 'run-42'} />);
+const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
 
-    // landing
-    fireEvent.click(screen.getByTestId('start-run'));
+function fightingRun(fight: FightState): RunState {
+  return {
+    seed: fight.seed, phase: 'fighting', fighter: { name: 'Ace', statLine: LINE },
+    fightNumber: fight.fightNumber, record: { wins: 0, losses: 0 }, isChampion: false, defenses: 0, fight,
+  };
+}
+function finishWindowFight(): FightState {
+  return {
+    seed: 'fw', fightNumber: 1, rounds: 3, round: 2, phase: 'finish-window',
+    player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, roundScore: 1 },
+    opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
+  };
+}
+function finishedFight(winner: 'player' | 'opponent'): FightState {
+  return {
+    seed: 'done', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
+    player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0 },
+    opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
+  };
+}
 
-    // draft: keep suggested 9x, then name
-    for (let i = 0; i < 9; i++) fireEvent.click(screen.getByTestId('suggested-stat'));
-    fireEvent.change(screen.getByLabelText(/fighter name/i), { target: { value: 'Kelvin' } });
-    fireEvent.click(screen.getByRole('button', { name: /confirm fighter/i }));
+beforeEach(() => localStorage.clear());
+afterEach(() => cleanup());
 
-    // pre-fight hub → enter octagon
+describe('App (v2 flow)', () => {
+  it('fresh load shows the Hub with Start New Run', () => {
+    render(<App />);
     expect(screen.getByTestId('screen-championship-hub')).toBeInTheDocument();
+    expect(screen.getByTestId('start-run')).toBeInTheDocument();
+  });
+
+  it('Start New Run enters the draft', () => {
+    render(<App makeSeed={() => 'seedA'} />);
+    fireEvent.click(screen.getByTestId('start-run'));
+    expect(screen.getByTestId('screen-draft')).toBeInTheDocument();
+  });
+
+  it('pre-fight Hub → Enter the Octagon renders the in-round FightView', () => {
+    save({ run: applyDraft(startRun('seedB'), { name: 'Ace', statLine: LINE }), bestReign: null });
+    render(<App />);
     fireEvent.click(screen.getByTestId('enter-fight'));
+    const view = screen.getByTestId('fight-view');
+    expect(view).toHaveAttribute('data-phase', 'in-round');
+    expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
+  });
 
-    // fight: strike x3 => decision win round 3 (seeded run-42 fight 1)
-    fireEvent.click(screen.getByTestId('intent-strike'));
-    fireEvent.click(screen.getByTestId('intent-strike'));
-    fireEvent.click(screen.getByTestId('intent-strike'));
+  it('committing an intent advances the fight deterministically', () => {
+    let run: RunState = applyDraft(startRun('seedC'), { name: 'Ace', statLine: LINE });
+    run = startNextFight(run);
+    save({ run, bestReign: null });
+    render(<App />);
+    const view = screen.getByTestId('fight-view');
+    const before = view.getAttribute('data-round');
+    fireEvent.click(screen.getByTestId('intent-commit'));
+    const after = screen.getByTestId('fight-view');
+    // either the round advanced or a finish window / finish opened — the view changed
+    const changed = after.getAttribute('data-round') !== before || after.getAttribute('data-phase') !== 'in-round';
+    expect(changed).toBe(true);
+  });
 
-    // reward: bump boxing, confirm
-    expect(screen.getByTestId('screen-reward')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('reward-type-bump'));
-    fireEvent.click(screen.getByTestId('reward-stat-boxing'));
-    fireEvent.click(screen.getByTestId('reward-confirm'));
+  it('run-over Hub shows the outcome banner and Start New Run', () => {
+    const lost: RunState = {
+      seed: 'x', phase: 'run-over', fighter: { name: 'Ace', statLine: LINE },
+      fightNumber: 2, record: { wins: 1, losses: 1 }, isChampion: false, defenses: 0,
+      fight: {
+        seed: 'x', fightNumber: 2, rounds: 3, round: 3, phase: 'finished',
+        player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0 },
+        opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+        window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
+      },
+    };
+    save({ run: lost, bestReign: null });
+    render(<App />);
+    expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('start-run')).toBeInTheDocument();
+  });
 
-    // back at the hub, now fight 2
+  it('finish-window choice routes through finishStep (controller wiring)', () => {
+    const fight = finishWindowFight();
+    save({ run: fightingRun(fight), bestReign: null });
+    render(<App />);
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'finish-window');
+    fireEvent.click(screen.getByTestId('finish-commit'));
+    const expected = finishStep(fight, 'commit').phase;
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', expected);
+  });
+
+  it('Continue after a player win settles the fight and returns to the pre-fight Hub', () => {
+    save({ run: fightingRun(finishedFight('player')), bestReign: null });
+    render(<App />);
+    fireEvent.click(screen.getByTestId('fight-continue'));
     expect(screen.getByTestId('screen-championship-hub')).toBeInTheDocument();
-    expect(screen.getByTestId('run-status')).toHaveTextContent(/fight 2/i);
+    expect(screen.getByTestId('enter-fight')).toBeInTheDocument();
+  });
+
+  it('Continue after a loss settles the fight and shows the run-over Hub', () => {
+    save({ run: fightingRun(finishedFight('opponent')), bestReign: null });
+    render(<App />);
+    fireEvent.click(screen.getByTestId('fight-continue'));
+    expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('start-run')).toBeInTheDocument();
   });
 });
-
-describe('App persistence', () => {
-  it('autosaves the run to localStorage after a transition', () => {
-    render(<App makeSeed={() => 'run-42'} />);
-    fireEvent.click(screen.getByTestId('start-run'));
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    expect(saved.version).toBe(1);
-    expect(saved.run.phase).toBe('drafting');
-    expect(saved.run.seed).toBe('run-42');
-  });
-
-  it('hydrates the exact phase from a saved blob on mount', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      version: 1,
-      run: { seed: 'run-42', phase: 'pre-fight', fighter: { name: 'Kelvin', statLine: SAMPLE_STAT_LINE }, fightNumber: 3, carriedDamage: 0, record: { wins: 2, losses: 0 }, isChampion: false, defenses: 0, fight: null },
-      bestReign: null,
-    }));
-    render(<App makeSeed={() => 'unused'} />);
-    expect(screen.getByTestId('screen-championship-hub')).toBeInTheDocument();
-    expect(screen.getByTestId('run-status')).toHaveTextContent(/fight 3/i);
-  });
-
-  it('celebrates a new best reign on a champion run-over and commits it on Start New Run', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      version: 1,
-      run: { seed: 'run-42', phase: 'run-over', fighter: null, fightNumber: 6, carriedDamage: 0, record: { wins: 5, losses: 1 }, isChampion: true, defenses: 2, fight: { outcome: { method: 'decision', round: 5, winner: 'opponent' } } },
-      bestReign: 1,
-    }));
-    render(<App makeSeed={() => 'next-run'} />);
-    expect(screen.getByTestId('new-record')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('start-run'));
-    // now drafting a fresh run; the reign was committed to max(1, 2) = 2
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    expect(saved.bestReign).toBe(2);
-    expect(saved.run.phase).toBe('drafting');
-    expect(screen.queryByTestId('new-record')).toBeNull();
-  });
-});
-

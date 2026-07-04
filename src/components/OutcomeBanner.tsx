@@ -1,4 +1,4 @@
-import type { FightOutcome } from '../domain';
+import type { FightOutcome } from '../domain/combat';
 
 interface OutcomeBannerProps {
   outcome: FightOutcome;

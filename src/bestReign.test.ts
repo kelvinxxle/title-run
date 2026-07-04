@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isNewRecord, commitReign } from './bestReign';
-import { startRun, type RunState } from './domain';
+import { startRun, type RunState } from './domain/combat';
 
 function runOver(partial: Partial<RunState>): RunState {
   return { ...startRun('x'), phase: 'run-over', ...partial };

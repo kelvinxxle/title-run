@@ -1,7 +1,7 @@
 import StatRow, { type StatRowState } from './StatRow';
-import { STAT_IDS, type StatId } from '../domain/stats';
-import { getFighter } from '../domain/roster';
-import { suggestedStatId, type DraftState } from '../domain/draft';
+import { STAT_IDS, type StatId } from '../domain/combat';
+import { getFighter } from '../domain/combat';
+import { suggestedStatId, type DraftState } from '../domain/combat';
 
 interface RolledFighterCardProps {
   state: DraftState;
@@ -21,7 +21,7 @@ export default function RolledFighterCard({ state, onKeep }: RolledFighterCardPr
         {fighter.name}
       </h3>
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant mb-sm">
-        {fighter.weightClass}
+        {fighter.archetype}
       </p>
       <div className="flex flex-col gap-xs">
         {STAT_IDS.map((stat) => {
