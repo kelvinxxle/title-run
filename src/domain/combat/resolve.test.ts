@@ -113,6 +113,51 @@ describe('resolveRound', () => {
     expect(batteredNext.player.stamina).toBeLessThan(freshNext.player.stamina);
   });
 
+  // ── Task 3: opponent takedown → AI ground action routes through finish window ──
+  // When a WRESTLER opponent wins the wrestle, its takedown lands and it auto-resolves
+  // an AI-chosen ground action against the player. Dangerous outcomes open an
+  // opponent-side finish window so the player keeps defensive agency.
+  const wrestlerOpp = (over: Partial<typeof ARCHETYPES.wrestler> = {}) =>
+    ({ id: 'w', name: 'Wr', archetype: 'wrestler' as const,
+       statLine: { ...ARCHETYPES.wrestler, takedowns: 99, striking: 40, ...over } });
+
+  it('opponent GnP that rocks the player opens an opponent-side KO finish window (player defends)', () => {
+    // player.submissionDef 58 (≥ LOW_SUB_DEF 55) → AI picks ground-and-pound.
+    // Low chin (30 → ROCKED 17) means the GnP damage rocks the player.
+    const player = { ...ARCHETYPES.striker, striking: 1, takedownDef: 1, submissionDef: 58, chin: 30 };
+    const s = startFight({ seed: 'opp-gnp', fightNumber: 1, playerStatLine: player, opponent: wrestlerOpp() });
+    const r = resolveRound(s, strike('head', 'pickApart'));
+    expect(r.phase).toBe('finish-window');
+    expect(r.window).toEqual({ side: 'opponent', method: 'KO', stepsLeft: 3 });
+    // GnP damage (not the interim flat exchange damage) is applied to the player's head.
+    // gpDmg = max(8, round((0.5*40 + 0.5*99 − 0.5*74) * 0.7)) = 23.
+    expect(r.player.headDamage).toBe(23);
+    expect(r.round).toBe(1); // window opened → round NOT advanced
+  });
+
+  it('opponent takedown against a low submission defense opens an opponent-side submission window (no head damage)', () => {
+    // player.submissionDef 40 (< LOW_SUB_DEF 55) → AI picks submission.
+    const player = { ...ARCHETYPES.striker, striking: 1, takedownDef: 1, submissionDef: 40, chin: 30 };
+    const s = startFight({ seed: 'opp-sub', fightNumber: 1, playerStatLine: player, opponent: wrestlerOpp() });
+    const r = resolveRound(s, strike('head', 'pickApart'));
+    expect(r.phase).toBe('finish-window');
+    expect(r.window).toEqual({ side: 'opponent', method: 'submission', stepsLeft: 3 });
+    expect(r.player.headDamage).toBe(0); // submission threat opens a window; no damage applied
+    expect(r.round).toBe(1); // window opened → round NOT advanced
+  });
+
+  it('opponent GnP that does NOT rock the player applies partial head damage and advances the round', () => {
+    // High chin (99 → ROCKED 55) means gpDmg 23 is not a rock → partial damage, round advances.
+    const player = { ...ARCHETYPES.striker, striking: 1, takedownDef: 1, submissionDef: 58, chin: 99 };
+    const s = startFight({ seed: 'opp-partial', fightNumber: 1, playerStatLine: player, opponent: wrestlerOpp() });
+    const r = resolveRound(s, strike('head', 'pickApart'));
+    expect(r.phase).toBe('in-round');
+    expect(r.window).toBeNull();
+    expect(r.player.headDamage).toBe(23); // partial GnP damage carried forward
+    expect(r.round).toBe(2); // no finish → round advanced normally
+    expect(r.opponent.roundScore).toBeGreaterThan(0); // opponent won the round
+  });
+
   // ── Phase-guard completeness: resolveRound (mirror finishStep) ────────────────
   it('resolveRound throws unless the fight is in-round', () => {
     const base = start();

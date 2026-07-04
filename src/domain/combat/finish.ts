@@ -32,6 +32,29 @@ export function ROCKED_HEAD_DMG(chin: number): number {
   return Math.round(chin * 0.56);
 }
 
+// ── Shared ground math ────────────────────────────────────────────────────────
+/** Ground-and-pound head damage for one step: `attacker` posts up on `defender`.
+ *  Used by BOTH the player ground window (groundStep) and the opponent takedown
+ *  follow-up (resolveRound) so the two sides share one formula, not a copy. */
+export function groundAndPoundDamage(attacker: StatLine, defender: StatLine): number {
+  const raw = (0.5 * attacker.striking + 0.5 * attacker.takedowns) - 0.5 * defender.strikingDef;
+  return Math.max(GP_MIN, Math.round(raw * GP_FACTOR));
+}
+
+/** Submission tap probability for one step, clamped to [0.05, 0.95]. Shared by
+ *  both sides' ground game so the read is identical whoever is finishing. */
+export function submissionTapProbability(attacker: StatLine, defender: StatLine): number {
+  return Math.max(
+    0.05,
+    Math.min(0.95, SUB_BASE + (attacker.submissions - defender.submissionDef) * SUB_SCALE),
+  );
+}
+
+/** submissionDef below LOW_SUB_DEF → the ground AI reads a submission over GnP. */
+export function chooseGroundPlan(defenderStatLine: StatLine): GroundPlan {
+  return defenderStatLine.submissionDef < LOW_SUB_DEF ? 'submission' : 'ground-and-pound';
+}
+
 // ── FinishChoice ──────────────────────────────────────────────────────────────
 export type FinishChoice = 'commit' | 'measure' | 'hold';
 export const FINISH_CHOICES: readonly FinishChoice[] = ['commit', 'measure', 'hold'] as const;
@@ -234,9 +257,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
   const isOver = newRound > state.rounds;
 
   if (plan === 'ground-and-pound') {
-    const raw = (0.5 * attacker.statLine.striking + 0.5 * attacker.statLine.takedowns)
-      - 0.5 * defender.statLine.strikingDef;
-    const gpDmg = Math.max(GP_MIN, Math.round(raw * GP_FACTOR));
+    const gpDmg = groundAndPoundDamage(attacker.statLine, defender.statLine);
     const preHead = defender.headDamage;
     const postHead = preHead + gpDmg;
     const rocked = ROCKED_HEAD_DMG(defender.statLine.chin);
@@ -267,10 +288,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
   }
 
   // plan === 'submission'
-  const p = Math.max(
-    0.05,
-    Math.min(0.95, SUB_BASE + (attacker.statLine.submissions - defender.statLine.submissionDef) * SUB_SCALE),
-  );
+  const p = submissionTapProbability(attacker.statLine, defender.statLine);
   const roll = rng();
   if (roll < p) {
     return {

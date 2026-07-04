@@ -6,7 +6,7 @@ import { intentPhase } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
 import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
-import { detectWindow, INITIAL_STEPS } from './finish';
+import { detectWindow, INITIAL_STEPS, chooseGroundPlan, groundAndPoundDamage, ROCKED_HEAD_DMG } from './finish';
 
 // ── Tuning constants (adjust in Task 5) ──────────────────────────────────────
 const IQ_FACTOR      = 0.1;
@@ -130,6 +130,97 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
             + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
         ),
       },
+      log: [...state.log, groundLog],
+    };
+  }
+
+  // ── Opponent takedown → ground threat (Task 3) ──────────────────────────────
+  // A winning OPPONENT wrestle takes the player down; the opponent AI then resolves
+  // a ground action (submission read vs ground-and-pound). Dangerous outcomes open
+  // an OPPONENT-side finish window so the player keeps defensive agency — they
+  // defend via the existing finishStep/FinishSequencePanel. Mirrors the player
+  // ground-window branch above: apply this round's stamina for both sides + the
+  // opponent's roundScore + append the log. When a window opens the round is NOT
+  // advanced; a non-rocking GnP advances the round like a normal loss. No extra RNG
+  // is drawn here (GnP is deterministic; a submission threat just opens a window).
+  if (dominance < 0 && oppIntent.kind === 'wrestle') {
+    const groundMargin = Math.floor(Math.abs(dominance) / 10);
+    const groundLog: RoundLogEntry = {
+      round: state.round,
+      playerIntent,
+      opponentIntent: oppIntent,
+      winner: 'opponent',
+      dominance,
+    };
+    const playerStaminaAfter = clampStamina(
+      state.player.stamina - staminaCost(playerIntent)
+        + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
+    );
+    const oppStaminaAfter = clampStamina(
+      state.opponent.stamina - staminaCost(oppIntent)
+        + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
+    );
+    const oppScoreAfter = state.opponent.roundScore + 1 + groundMargin;
+
+    // AI ground choice: submission only when the player's submission defense is porous.
+    const oppPlan = chooseGroundPlan(state.player.statLine);
+
+    if (oppPlan === 'submission') {
+      // The read is dangerous by definition — open a defensible submission window.
+      // No head damage; the player DEFENDS via finishStep (opponent must not auto-tap).
+      return {
+        ...state,
+        phase: 'finish-window',
+        window: { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS },
+        player: { ...state.player, stamina: playerStaminaAfter },
+        opponent: { ...state.opponent, stamina: oppStaminaAfter, roundScore: oppScoreAfter },
+        log: [...state.log, groundLog],
+      };
+    }
+
+    // ground-and-pound: deterministic damage against the player.
+    const gpDmg = groundAndPoundDamage(state.opponent.statLine, state.player.statLine);
+    const preHead = state.player.headDamage;
+    const postHead = preHead + gpDmg;
+    const rocked = ROCKED_HEAD_DMG(state.player.statLine.chin);
+
+    const groundedPlayer = { ...state.player, headDamage: postHead, stamina: playerStaminaAfter };
+    const groundedOpponent = { ...state.opponent, stamina: oppStaminaAfter, roundScore: oppScoreAfter };
+
+    if (preHead < rocked && postHead >= rocked) {
+      // Rock → opponent-side KO finish window. Applied head damage is carried in
+      // the returned state; the player defends via finishStep. Round NOT advanced.
+      return {
+        ...state,
+        phase: 'finish-window',
+        window: { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS },
+        player: groundedPlayer,
+        opponent: groundedOpponent,
+        log: [...state.log, groundLog],
+      };
+    }
+
+    // No rock → partial GnP damage; advance the round (or score on the last round),
+    // mirroring the non-finish resolveRound tail.
+    const isLastGroundRound = state.round >= state.rounds;
+    if (isLastGroundRound) {
+      const finalBase: FightState = {
+        ...state,
+        round: state.round,
+        phase: 'finished',
+        player: groundedPlayer,
+        opponent: groundedOpponent,
+        log: [...state.log, groundLog],
+      };
+      return { ...finalBase, round: state.round, outcome: scoreFight(finalBase) };
+    }
+    return {
+      ...state,
+      round: state.round + 1,
+      phase: 'in-round',
+      outcome: null,
+      player: groundedPlayer,
+      opponent: groundedOpponent,
       log: [...state.log, groundLog],
     };
   }
