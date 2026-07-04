@@ -8,7 +8,9 @@ export interface GamePlanEffect {
 }
 
 export const GAME_PLAN_EFFECTS: Record<GamePlan, GamePlanEffect> = {
-  'push-pace': { atkMult: 1.15, defMult: 1.0, staminaDelta: -6, forceBodyTarget: false },
+  // M14 T5: retuned push-pace atkMult 1.15→1.10 to keep BAND 2/5a/5b green when careless always pushes pace.
+  // Measured good/careless table recorded in balance.test.ts comment.
+  'push-pace': { atkMult: 1.10, defMult: 1.0, staminaDelta: -6, forceBodyTarget: false },
   'work-body': { atkMult: 1.0, defMult: 1.0, staminaDelta: 0, forceBodyTarget: true },
   'stay-disciplined': { atkMult: 1.0, defMult: 1.15, staminaDelta: 0, forceBodyTarget: false },
   'catch-breath': { atkMult: 0.85, defMult: 1.0, staminaDelta: +8, forceBodyTarget: false },
