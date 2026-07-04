@@ -188,6 +188,11 @@ describe('ground window (Task 2)', () => {
     expect(() => groundStep(s, 'ground-and-pound')).toThrow();
   });
 
+  it('groundStep throws if the window is opponent-side (player-top-control invariant)', () => {
+    const s = makeGroundWindowState({ window: { side: 'opponent', method: 'ground', stepsLeft: 3 } });
+    expect(() => groundStep(s, 'ground-and-pound')).toThrow();
+  });
+
   it('ground-and-pound that rocks a fragile-chin opponent scores a TKO (KO)', () => {
     // chin=1 → ROCKED_HEAD_DMG=1, so any GnP damage crosses the threshold from 0.
     const opp = { statLine: { ...ARCHETYPES.brawler, chin: 1 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' };

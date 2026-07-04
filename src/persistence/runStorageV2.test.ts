@@ -163,6 +163,12 @@ describe('runStorageV2', () => {
     expect(load().run).toBeNull();
   });
 
+  it('rejects a ground-window fight whose window is opponent-side (player-top-control invariant)', () => {
+    const run = groundWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+    expect(load().run).toBeNull();
+  });
+
   it('rejects a non-drafting run with a null fighter (pre-fight), and clears the key', () => {
     store({ ...preFight(), phase: 'pre-fight', fighter: null });
     expect(load().run).toBeNull();

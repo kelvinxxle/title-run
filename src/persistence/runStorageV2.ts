@@ -63,12 +63,12 @@ function isValidFightState(x: unknown): boolean {
   // Phase ↔ payload invariant (matches the resolve/finish engine contract):
   //   in-round      → window null AND outcome null
   //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission)
-  //   ground-window → window non-null AND window.method === 'ground' AND outcome null
+  //   ground-window → window non-null AND window.method === 'ground' AND window.side === 'player' AND outcome null
   //   finished      → window null AND outcome non-null
   const phase = x['phase'] as string;
   if (phase === 'in-round' && (win !== null || out !== null)) return false;
   if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string))) return false;
-  if (phase === 'ground-window' && (win === null || (win as Record<string, unknown>)['method'] !== 'ground' || out !== null)) return false;
+  if (phase === 'ground-window' && (win === null || (win as Record<string, unknown>)['method'] !== 'ground' || (win as Record<string, unknown>)['side'] !== 'player' || out !== null)) return false;
   if (phase === 'finished' && (win !== null || out === null)) return false;
   return true;
 }

@@ -249,6 +249,9 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     throw new Error('groundStep requires state.phase === "ground-window"');
   }
   const win = state.window!;
+  if (win.method !== 'ground' || win.side !== 'player') {
+    throw new Error('groundStep requires a player-side ground window');
+  }
   const stepIndex = INITIAL_STEPS - win.stepsLeft;
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#ground${stepIndex}`);
 
