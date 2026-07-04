@@ -179,15 +179,48 @@ describe('combat integration: finishing methods through the real state machine',
   });
 
   it('the three finishing paths are fully reproducible from their seeds', () => {
-    const player = { ...ARCHETYPES.wrestler, takedowns: 99 };
-    const opp = {
+    // 1. Strike KO — same setup as the strike-KO test above.
+    const strikePlayer = { ...ARCHETYPES.brawler, striking: 99 };
+    const strikeOpp = {
+      id: 'g',
+      name: 'Glass',
+      archetype: 'brawler' as const,
+      statLine: { ...ARCHETYPES.brawler, chin: 20, strikingDef: 20 },
+    };
+    const strikeIntent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pressure' };
+    const strikeEndA = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
+    const strikeEndB = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
+    expect(strikeEndA.outcome).not.toBeNull();
+    expect(strikeEndB.outcome).toEqual(strikeEndA.outcome);
+
+    // 2. Ground & Pound — same setup as the GnP test above.
+    const gnpPlayer = { ...ARCHETYPES.wrestler, takedowns: 99 };
+    const gnpOpp = {
       id: 'o',
       name: 'Opp',
       archetype: 'striker' as const,
       statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
     };
-    const openA = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp }), { kind: 'wrestle' });
-    const openB = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp }), { kind: 'wrestle' });
-    expect(groundStep(openB, 'ground-and-pound').outcome).toEqual(groundStep(openA, 'ground-and-pound').outcome);
+    const gnpOpenA = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
+    const gnpOpenB = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
+    const gnpEndA = groundStep(gnpOpenA, 'ground-and-pound');
+    const gnpEndB = groundStep(gnpOpenB, 'ground-and-pound');
+    expect(gnpEndA.outcome).not.toBeNull();
+    expect(gnpEndB.outcome).toEqual(gnpEndA.outcome);
+
+    // 3. Submission — same setup as the submission test above.
+    const subPlayer = { ...ARCHETYPES.grappler, takedowns: 99 };
+    const subOpp = {
+      id: 'o',
+      name: 'Opp',
+      archetype: 'striker' as const,
+      statLine: { ...ARCHETYPES.striker, takedownDef: 20, submissionDef: 10 },
+    };
+    const subOpenA = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
+    const subOpenB = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
+    const subEndA = groundStep(subOpenA, 'submission');
+    const subEndB = groundStep(subOpenB, 'submission');
+    expect(subEndA.outcome).not.toBeNull();
+    expect(subEndB.outcome).toEqual(subEndA.outcome);
   });
 });

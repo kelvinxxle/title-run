@@ -137,6 +137,12 @@ describe('runStorageV2', () => {
     expect(load()).toEqual({ run, bestReign: 0 });
   });
 
+  it('rejects a finish-window fight with a ground-method window (phase↔payload invariant)', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+    expect(load().run).toBeNull();
+  });
+
   it('round-trips a real ground-window run (no false reject)', () => {
     const run = groundWindowRun();
     expect((run.fight as FightState).phase).toBe('ground-window');
