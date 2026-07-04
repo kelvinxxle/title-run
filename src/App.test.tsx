@@ -2,9 +2,32 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import App from './App';
 import { save } from './persistence/runStorageV2';
-import { startRun, applyDraft, startNextFight, STAT_IDS, type RunState, type StatLine } from './domain/combat';
+import { startRun, applyDraft, startNextFight, finishStep, STAT_IDS, type RunState, type StatLine, type FightState } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+
+function fightingRun(fight: FightState): RunState {
+  return {
+    seed: fight.seed, phase: 'fighting', fighter: { name: 'Ace', statLine: LINE },
+    fightNumber: fight.fightNumber, record: { wins: 0, losses: 0 }, isChampion: false, defenses: 0, fight,
+  };
+}
+function finishWindowFight(): FightState {
+  return {
+    seed: 'fw', fightNumber: 1, rounds: 3, round: 2, phase: 'finish-window',
+    player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, roundScore: 1 },
+    opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
+  };
+}
+function finishedFight(winner: 'player' | 'opponent'): FightState {
+  return {
+    seed: 'done', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
+    player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0 },
+    opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
+  };
+}
 
 beforeEach(() => localStorage.clear());
 afterEach(() => cleanup());
@@ -58,6 +81,32 @@ describe('App (v2 flow)', () => {
     };
     save({ run: lost, bestReign: null });
     render(<App />);
+    expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
+    expect(screen.getByTestId('start-run')).toBeInTheDocument();
+  });
+
+  it('finish-window choice routes through finishStep (controller wiring)', () => {
+    const fight = finishWindowFight();
+    save({ run: fightingRun(fight), bestReign: null });
+    render(<App />);
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'finish-window');
+    fireEvent.click(screen.getByTestId('finish-commit'));
+    const expected = finishStep(fight, 'commit').phase;
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', expected);
+  });
+
+  it('Continue after a player win settles the fight and returns to the pre-fight Hub', () => {
+    save({ run: fightingRun(finishedFight('player')), bestReign: null });
+    render(<App />);
+    fireEvent.click(screen.getByTestId('fight-continue'));
+    expect(screen.getByTestId('screen-championship-hub')).toBeInTheDocument();
+    expect(screen.getByTestId('enter-fight')).toBeInTheDocument();
+  });
+
+  it('Continue after a loss settles the fight and shows the run-over Hub', () => {
+    save({ run: fightingRun(finishedFight('opponent')), bestReign: null });
+    render(<App />);
+    fireEvent.click(screen.getByTestId('fight-continue'));
     expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
     expect(screen.getByTestId('start-run')).toBeInTheDocument();
   });
