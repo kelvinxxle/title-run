@@ -1,5 +1,5 @@
 import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan, archetypeFromStatLine, fighterIdByName } from '../domain/combat';
-import { healthPct, staminaPct, roundLabel } from '../fightDisplay';
+import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import IntentPanelV2 from '../components/IntentPanelV2';
 import FinishSequencePanel from '../components/FinishSequencePanel';
@@ -27,8 +27,31 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
     >
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
-        <FighterHealthCard side="player" name={playerName} subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`} badge="YOU" healthPct={healthPct(player)} avatarSeed={playerName} archetype={archetypeFromStatLine(player.statLine)} />
-        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} avatarSeed={opponent.name} archetype={opponent.archetype} fighterId={fighterIdByName(opponent.name)} />
+        <FighterHealthCard
+          side="player"
+          name={playerName}
+          subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`}
+          badge="YOU"
+          healthPct={healthPct(player)}
+          bodyPct={bodyPct(player)}
+          staminaPct={staminaPct(player)}
+          headStateLabel={headState(player)}
+          avatarSeed={playerName}
+          archetype={archetypeFromStatLine(player.statLine)}
+        />
+        <FighterHealthCard
+          side="opponent"
+          name={opponent.name}
+          subtitle={opponent.archetype}
+          badge="OPP"
+          healthPct={healthPct(opponent)}
+          bodyPct={bodyPct(opponent)}
+          staminaPct={staminaPct(opponent)}
+          headStateLabel={headState(opponent)}
+          avatarSeed={opponent.name}
+          archetype={opponent.archetype}
+          fighterId={fighterIdByName(opponent.name)}
+        />
       </div>
 
       {phase === 'in-round' && (
