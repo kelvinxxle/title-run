@@ -50,6 +50,11 @@ describe('finish flow', () => {
     expect(() => finishStep(s, 'commit')).toThrow();
   });
 
+  it('finishStep throws on a ground-method window (must route through groundStep)', () => {
+    const s = makeWindowState({ window: { side: 'player', method: 'ground', stepsLeft: 3 } });
+    expect(() => finishStep(s, 'commit')).toThrow();
+  });
+
   // ── Fix 2: opponent-side finish window ──────────────────────────────────────
   it('detectWindow opens opponent-side window when player is rocked', () => {
     // Player has chin=20 and takes 25 head damage → ROCKED_HEAD_DMG(20)=20 ≤ 25.

@@ -164,6 +164,9 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     throw new Error('finishStep requires state.phase === "finish-window"');
   }
   const win = state.window!;
+  if (win.method === 'ground') {
+    throw new Error('finishStep cannot resolve a ground-method window (ground windows resolve via groundStep)');
+  }
   // Derive a stable step index from steps consumed: 0 on first call, +1 each
   const stepIndex = INITIAL_STEPS - win.stepsLeft;
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#finish${stepIndex}`);
@@ -174,7 +177,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
   if (roll < p) {
     // SUCCESS → fight finished. A finish window is only ever KO/submission;
     // 'ground' windows resolve through groundStep, never here.
-    const method = win.method === 'ground' ? 'KO' : win.method;
+    const method = win.method;   // narrowed to 'KO' | 'submission' by the guard above
     return {
       ...state,
       phase: 'finished',
