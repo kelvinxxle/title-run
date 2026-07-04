@@ -3,34 +3,45 @@ import { StrictMode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DraftScreen from './DraftScreen';
+import {
+  startDraft, keepStat, nameFighter, getDraftedFighter, suggestedStatId, getFighter,
+  type DraftState,
+} from '../domain/combat';
 
-describe('DraftScreen', () => {
+// Deterministically replay the "always keep the suggested stat" policy in the domain,
+// so UI assertions never hardcode a v2 roster/RNG detail.
+function replay(seed: string, name: string) {
+  let s: DraftState = startDraft(seed);
+  for (let i = 0; i < 9; i++) s = keepStat(s, suggestedStatId(s)!);
+  s = nameFighter(s, name);
+  return getDraftedFighter(s);
+}
+
+describe('DraftScreen (v2)', () => {
   it('keeps the screen test id for navigation', () => {
     render(<DraftScreen seed="run-42" />);
     expect(screen.getByTestId('screen-draft')).toBeInTheDocument();
   });
 
-  it('plays a full draft to a named, complete fighter', async () => {
+  it('renders the first rolled fighter and 0/9 progress', () => {
+    const first = getFighter(startDraft('run-42').current!.fighterId);
+    render(<DraftScreen seed="run-42" />);
+    expect(screen.getByRole('heading', { name: new RegExp(first.name, 'i') })).toBeInTheDocument();
+    expect(screen.getByText(/stat 0\/9 filled/i)).toBeInTheDocument();
+  });
+
+  it('plays a full draft to a named, complete fighter matching the domain', async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
     render(<DraftScreen seed="run-42" onComplete={onComplete} />);
-
-    expect(screen.getByRole('heading', { name: /charles oliveira/i })).toBeInTheDocument();
-    expect(screen.getByText(/stat 0\/9 filled/i)).toBeInTheDocument();
-
-    for (let i = 0; i < 9; i++) {
-      await user.click(screen.getByTestId('suggested-stat'));
-    }
-
-    const input = screen.getByLabelText(/fighter name/i);
-    await user.type(input, 'The Chosen One');
+    for (let i = 0; i < 9; i++) await user.click(screen.getByTestId('suggested-stat'));
+    await user.type(screen.getByLabelText(/fighter name/i), 'The Chosen One');
     await user.click(screen.getByRole('button', { name: /confirm fighter/i }));
 
+    const expected = replay('run-42', 'The Chosen One');
     expect(screen.getByTestId('fighter-name')).toHaveTextContent('The Chosen One');
-    expect(screen.getByText('98')).toBeInTheDocument();
-    expect(screen.getByText('97')).toBeInTheDocument();
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete.mock.calls[0][0].name).toBe('The Chosen One');
+    expect(onComplete.mock.calls[0][0]).toMatchObject({ name: 'The Chosen One', statLine: expected.statLine });
   });
 
   // Rendered under <StrictMode> to exercise render/initializer double-invocation
@@ -42,10 +53,7 @@ describe('DraftScreen', () => {
   it('calls onComplete once with the drafted fighter after naming', () => {
     const onComplete = vi.fn();
     render(<StrictMode><DraftScreen seed="run-42" onComplete={onComplete} /></StrictMode>);
-    // keep the suggested stat 9 times
-    for (let i = 0; i < 9; i++) {
-      fireEvent.click(screen.getByTestId('suggested-stat'));
-    }
+    for (let i = 0; i < 9; i++) fireEvent.click(screen.getByTestId('suggested-stat'));
     fireEvent.change(screen.getByLabelText(/fighter name/i), { target: { value: 'Kelvin' } });
     fireEvent.click(screen.getByRole('button', { name: /confirm fighter/i }));
     expect(onComplete).toHaveBeenCalledTimes(1);

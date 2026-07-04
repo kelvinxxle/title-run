@@ -2,15 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RolledFighterCard from './RolledFighterCard';
-import { startDraft, keepStat } from '../domain/draft';
+import { startDraft, keepStat, suggestedStatId } from '../domain/combat';
 
 describe('RolledFighterCard', () => {
   it('shows the current fighter and keeps a stat on click', async () => {
     const onKeep = vi.fn();
-    render(<RolledFighterCard state={startDraft('title-run')} onKeep={onKeep} />);
-    expect(screen.getByRole('heading', { name: /charles oliveira/i })).toBeInTheDocument();
+    const state = startDraft('title-run');
+    render(<RolledFighterCard state={state} onKeep={onKeep} />);
+    expect(screen.getByRole('heading', { name: /khabib nurmagomedov/i })).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('suggested-stat'));
-    expect(onKeep).toHaveBeenCalledWith('submissions');
+    expect(onKeep).toHaveBeenCalledWith(suggestedStatId(state));
   });
 
   it('renders already-filled slots as non-interactive', () => {

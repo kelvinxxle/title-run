@@ -1,5 +1,5 @@
-import { STAT_IDS, STAT_LABELS } from '../domain/stats';
-import type { DraftState } from '../domain/draft';
+import { STAT_IDS, STAT_LABELS } from '../domain/combat';
+import type { DraftState } from '../domain/combat';
 
 interface SlotStatusChipsProps {
   slots: DraftState['slots'];
