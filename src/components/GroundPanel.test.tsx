@@ -12,7 +12,8 @@ describe('GroundPanel', () => {
     expect(screen.getByTestId('ground-panel')).toHaveTextContent('TOP CONTROL');
     expect(screen.getByTestId('ground-gnp')).toHaveTextContent('Ground & Pound');
     expect(screen.getByTestId('ground-sub')).toHaveTextContent('Submission');
-    expect(screen.getByTestId('ground-steps')).toHaveTextContent('3');
+    expect(screen.queryByTestId('ground-steps')).toBeNull();
+    expect(screen.getByTestId('ground-panel')).toHaveTextContent('pick your finish');
   });
 
   it('forwards ground-and-pound', () => {

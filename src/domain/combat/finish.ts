@@ -246,6 +246,8 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
   if (win.method !== 'ground' || win.side !== 'player') {
     throw new Error('groundStep requires a player-side ground window');
   }
+  // The ground window is intentionally a SINGLE decision: every branch below either
+  // finishes the fight or advances the round, so stepsLeft is never decremented here.
   const stepIndex = INITIAL_STEPS - win.stepsLeft;
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#ground${stepIndex}`);
 

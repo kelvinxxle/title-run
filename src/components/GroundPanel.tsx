@@ -16,7 +16,7 @@ export default function GroundPanel({ window: win, onGround, disabled = false }:
     >
       <h3 className="font-display text-2xl uppercase tracking-wide text-primary">TOP CONTROL</h3>
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">
-        Advance position — <span data-testid="ground-steps">{win.stepsLeft}</span> left
+        You've secured top control — pick your finish.
       </p>
       <div className="grid grid-cols-2 gap-xs">
         {GROUND_PLANS.map((plan) => (
