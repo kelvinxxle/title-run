@@ -100,8 +100,10 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   // ── Ground window (Task 2) ──────────────────────────────────────────────────
   // A winning PLAYER wrestle opens a ground window instead of dealing exchange
   // damage. The player then chooses Ground & Pound or Submission via groundStep.
-  // This is an early branch: no exchange damage, round is NOT advanced. The
-  // opponent-winning wrestle path stays interim (head damage) until Task 3.
+  // This is an early branch: no exchange damage, round is NOT advanced. A winning
+  // OPPONENT wrestle is handled by the opponent-ground branch below (Task 3): a
+  // submission-read or a rocking Ground & Pound opens an opponent-side finish window,
+  // while a non-rocking Ground & Pound applies partial head damage and advances the round.
   if (dominance > 0 && playerIntent.kind === 'wrestle') {
     const groundMargin = Math.floor(Math.abs(dominance) / 10);
     const groundLog: RoundLogEntry = {
