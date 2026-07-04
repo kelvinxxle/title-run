@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, applyReward,
-  type RunState, type Reward, type FightState,
-} from './domain';
-import type { DraftedFighter } from './domain/draft';
-import { load, save } from './persistence/runStorage';
+  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep,
+  type RunState, type RoundIntent, type FinishChoice, type DraftedFighter,
+} from './domain/combat';
+import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
 import TopAppBar from './components/TopAppBar';
 import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
-import FightScreen from './screens/FightScreen';
-import RewardScreen from './screens/RewardScreen';
+import FightView from './screens/FightView';
 
 export interface AppProps { makeSeed?: () => string; }
 
@@ -19,20 +17,31 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
   const [run, setRun] = useState<RunState | null>(store.run);
   const [bestReign, setBestReign] = useState<number | null>(store.bestReign);
 
-  useEffect(() => {
-    save({ run, bestReign });
-  }, [run, bestReign]);
+  useEffect(() => { save({ run, bestReign }); }, [run, bestReign]);
 
   const handleStartRun = () => {
-    if (run && run.phase === 'run-over') {
-      setBestReign((b) => commitReign(b, run));
-    }
+    if (run && run.phase === 'run-over') setBestReign((b) => commitReign(b, run));
     setRun(startRun(makeSeed()));
   };
-  const handleDraftComplete = (d: DraftedFighter) => setRun((r) => (r ? applyDraft(r, d) : r));
+  const handleDraftComplete = (d: DraftedFighter) =>
+    setRun((r) => (r ? applyDraft(r, { name: d.name, statLine: d.statLine }) : r));
   const handleEnterFight = () => setRun((r) => (r ? startNextFight(r) : r));
-  const handleSettled = (fight: FightState) => setRun((r) => (r ? settleFight(r, fight) : r));
-  const handleReward = (reward: Reward) => setRun((r) => (r ? applyReward(r, reward) : r));
+
+  const handleIntent = (intent: RoundIntent) =>
+    setRun((r) => {
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'in-round') return r;
+      return { ...r, fight: resolveRound(r.fight, intent) };
+    });
+  const handleFinishStep = (choice: FinishChoice) =>
+    setRun((r) => {
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'finish-window') return r;
+      return { ...r, fight: finishStep(r.fight, choice) };
+    });
+  const handleContinue = () =>
+    setRun((r) => {
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'finished') return r;
+      return settleFight(r, r.fight);
+    });
 
   const showNewRecord = run !== null && run.phase === 'run-over' && computeIsNewRecord(bestReign, run);
 
@@ -49,24 +58,18 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
       );
     }
     if (run.phase === 'drafting') return <DraftScreen seed={run.seed} onComplete={handleDraftComplete} />;
-    // Resume note: a run parked mid-fight restores the run exactly (fightNumber,
-    // fighter, carriedDamage, record, reign) but the current fight itself restarts
-    // from its deterministic seed. FightScreen owns transient in-fight state (merged
-    // M4/M5); M7 does not lift it into RunState (spec §3/§7/§12). The run is never
-    // lost — replaying identical intents reproduces the identical result.
-    if (run.phase === 'fighting') {
-      if (!run.fighter) return null;
-      return (
-        <FightScreen
-          seed={run.seed}
-          fightNumber={run.fightNumber}
-          fighter={run.fighter}
-          carriedDamage={run.carriedDamage}
-          onSettled={handleSettled}
-        />
-      );
-    }
-    return <RewardScreen run={run} onReward={handleReward} />;
+    // phase === 'fighting' — controller owns the serializable FightState in run.fight,
+    // so a parked mid-fight run resumes EXACTLY (round, damage, stamina, window) from storage.
+    if (!run.fight || !run.fighter) return null;
+    return (
+      <FightView
+        fightState={run.fight}
+        playerName={run.fighter.name}
+        onIntent={handleIntent}
+        onFinishStep={handleFinishStep}
+        onContinue={handleContinue}
+      />
+    );
   }
 
   return (
