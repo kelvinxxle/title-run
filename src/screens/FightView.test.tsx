@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
@@ -86,3 +86,21 @@ describe('FightView', () => {
     expect(opp1SVG).not.toBe(opp2SVG);
   });
 });
+
+  it('shows a real photo for a roster opponent and avatar fallback for the player', () => {
+    // Jon Jones IS in the roster; 'Me' is a custom name NOT in the roster
+    const fightState = base({
+      opponent: {
+        statLine: { striking:88, strikingDef:84, takedowns:86, takedownDef:88, submissions:76, submissionDef:80, cardio:84, chin:82, fightIQ:94 },
+        headDamage:0, bodyDamage:0, stamina:100, roundScore:0,
+        name: 'Jon Jones', archetype: 'allrounder',
+      },
+    });
+    render(<FightView fightState={fightState} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
+    const oppImg = within(screen.getByTestId('fighter-card-opponent')).getByTestId('fighter-photo') as HTMLImageElement;
+    expect(oppImg.getAttribute('src')).toMatch(/fighters\/jon-jones\.jpg$/);
+    expect(oppImg).toHaveAttribute('alt', 'Jon Jones');
+    // player corner stays a procedural avatar (no roster id)
+    expect(within(screen.getByTestId('fighter-card-player')).queryByTestId('fighter-photo')).toBeNull();
+    expect(within(screen.getByTestId('fighter-card-player')).getByLabelText(/portrait$/)).toBeInTheDocument();
+  });

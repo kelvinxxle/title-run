@@ -4,7 +4,7 @@ import {
 } from '../domain/combat';
 import StatBar from '../components/StatBar';
 import OutcomeBanner from '../components/OutcomeBanner';
-import FighterAvatar from '../components/FighterAvatar';
+import FighterImage from '../components/FighterImage';
 
 export interface HubProps {
   run: RunState | null;
@@ -61,7 +61,7 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
       {fighter && (
         <div className="w-full max-w-lg">
           <div className="flex items-center gap-sm">
-            <FighterAvatar seed={fighter.name} archetype={archetypeFromStatLine(fighter.statLine)} name={fighter.name} />
+            <FighterImage name={fighter.name} archetype={archetypeFromStatLine(fighter.statLine)} seed={fighter.name} />
             <p data-testid="player-name" className="font-display text-2xl uppercase text-on-surface">{fighter.name}</p>
           </div>
           <div className="flex flex-col gap-xs mt-sm">
@@ -73,7 +73,7 @@ export default function ChampionshipHubScreen({ run, onStartRun, onEnterFight, b
       <div data-testid="next-opponent" className="w-full max-w-lg bg-surface-container border border-outline p-sm">
         <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">Next opponent</p>
         <div className="flex items-center gap-sm">
-          <FighterAvatar seed={opponent.name} archetype={opponent.archetype} name={opponent.name} />
+          <FighterImage fighterId={opponent.id} name={opponent.name} archetype={opponent.archetype} seed={opponent.name} />
           <p className="font-display text-xl uppercase text-secondary">{opponent.name}</p>
         </div>
         <p className="font-mono text-xs uppercase text-on-surface-variant">{opponent.archetype}</p>

@@ -1,4 +1,4 @@
-import FighterAvatar from './FighterAvatar';
+import FighterImage from './FighterImage';
 
 interface FighterHealthCardProps {
   side: 'player' | 'opponent';
@@ -9,6 +9,7 @@ interface FighterHealthCardProps {
   read?: string;
   avatarSeed?: string;
   archetype?: string;
+  fighterId?: string;
 }
 
 const SEGMENTS = 10;
@@ -22,6 +23,7 @@ export default function FighterHealthCard({
   read,
   avatarSeed,
   archetype,
+  fighterId,
 }: FighterHealthCardProps) {
   const clamped = Math.min(1, Math.max(0, healthPct));
   const filled = Math.round(clamped * SEGMENTS);
@@ -38,7 +40,7 @@ export default function FighterHealthCard({
       <div className="flex items-start justify-between gap-xs">
         {avatarSeed && archetype ? (
           <div className="flex items-center gap-xs">
-            <FighterAvatar seed={avatarSeed} archetype={archetype} name={name} size={40} />
+            <FighterImage fighterId={fighterId} name={name} archetype={archetype} seed={avatarSeed} size={40} />
             <h3 className="font-display text-2xl uppercase leading-tight text-on-surface">{name}</h3>
           </div>
         ) : (

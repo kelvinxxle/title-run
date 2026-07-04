@@ -21,14 +21,16 @@ describe('ChampionshipHubScreen (v2)', () => {
     expect(screen.getByTestId('enter-fight')).toHaveTextContent(/Enter the Octagon/i);
   });
 
-  it('pre-fight shows two fighter avatars for player and opponent', () => {
+  it('pre-fight shows opponent photo and player avatar fallback', () => {
     const run = applyDraft(startRun('seedH'), { name: 'Ace', statLine: LINE });
     const opponent = generateOpponent(run.seed, run.fightNumber);
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} />);
-    const avatars = screen.getAllByTestId('fighter-avatar');
-    expect(avatars).toHaveLength(2);
+    // player (no roster id) → avatar fallback
     expect(screen.getByLabelText('Ace portrait', { exact: true })).toBeInTheDocument();
-    expect(screen.getByLabelText(`${opponent.name} portrait`, { exact: true })).toBeInTheDocument();
+    // opponent (roster fighter with id) → real photo
+    const oppImg = within(screen.getByTestId('next-opponent')).getByTestId('fighter-photo') as HTMLImageElement;
+    expect(oppImg.getAttribute('src')).toMatch(new RegExp(`fighters/${opponent.id}\\.jpg$`));
+    expect(oppImg).toHaveAttribute('alt', opponent.name);
   });
 
   it('run-over shows record + reign + new-record flourish', () => {
@@ -38,12 +40,12 @@ describe('ChampionshipHubScreen (v2)', () => {
     expect(screen.getByTestId('new-record')).toBeInTheDocument();
   });
 
-  it('seeds opponent avatars by opponent name so same-named opponents have identical avatars', () => {
+  it('seeds opponent portraits by opponent id so same-named opponents have identical photo src', () => {
     // seeds 's0' and 's4' both pick the same Tier-5 fighter at fight 5 (verified deterministic)
     const o5a = generateOpponent('s0', 5);
     const o5b = generateOpponent('s4', 5);
     expect(o5a.name).toBe(o5b.name);
-    expect(o5a.archetype).toBe(o5b.archetype);
+    expect(o5a.id).toBe(o5b.id);
 
     const mk = (seed: string, fightNumber: number): RunState => ({
       seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
@@ -51,17 +53,18 @@ describe('ChampionshipHubScreen (v2)', () => {
     });
 
     const r5a = render(<ChampionshipHubScreen run={mk('s0', 5)} onStartRun={noop} onEnterFight={noop} />);
-    const oppA = within(r5a.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    const oppA = (within(r5a.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-photo') as HTMLImageElement).getAttribute('src');
     r5a.unmount();
     const r5b = render(<ChampionshipHubScreen run={mk('s4', 5)} onStartRun={noop} onEnterFight={noop} />);
-    const oppB = within(r5b.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    const oppB = (within(r5b.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-photo') as HTMLImageElement).getAttribute('src');
     expect(oppA).toBe(oppB);
   });
 
-  it('seeds opponent avatars by opponent name so different names produce different avatars', () => {
+  it('seeds opponent portraits by opponent id so different opponents have different photo src', () => {
     const o1 = generateOpponent('999', 1);
     const o2 = generateOpponent('888', 1);
     expect(o1.name).not.toBe(o2.name);
+    expect(o1.id).not.toBe(o2.id);
 
     const mk = (seed: string, fightNumber: number): RunState => ({
       seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
@@ -69,10 +72,10 @@ describe('ChampionshipHubScreen (v2)', () => {
     });
 
     const r1 = render(<ChampionshipHubScreen run={mk('999', 1)} onStartRun={noop} onEnterFight={noop} />);
-    const opp1 = within(r1.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    const opp1 = (within(r1.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-photo') as HTMLImageElement).getAttribute('src');
     r1.unmount();
     const r2 = render(<ChampionshipHubScreen run={mk('888', 1)} onStartRun={noop} onEnterFight={noop} />);
-    const opp2 = within(r2.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    const opp2 = (within(r2.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-photo') as HTMLImageElement).getAttribute('src');
     expect(opp1).not.toBe(opp2);
   });
 });

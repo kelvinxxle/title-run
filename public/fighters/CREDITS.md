@@ -1,0 +1,42 @@
+# Fighter image credits
+
+Images sourced from Wikipedia / Wikimedia Commons (freely licensed). Personal, non-commercial project.
+
+- **israel-adesanya** — Israel Adesanya — https://upload.wikimedia.org/wikipedia/commons/1/12/Israel_Adesanya_at_UFC_230.jpg
+- **khabib-nurmagomedov** — Khabib Nurmagomedov — https://upload.wikimedia.org/wikipedia/commons/3/34/Khabib_nurmagomedov.jpg
+- **charles-oliveira** — Charles Oliveira — https://upload.wikimedia.org/wikipedia/commons/3/3e/Charles_Oliveira_do_Bronxs.jpg
+- **georges-st-pierre** — Georges St-Pierre — https://upload.wikimedia.org/wikipedia/commons/e/eb/2021_-_Centre_Stage_DG4_5765_%2851654942080%29_%28cropped%29.jpg
+- **francis-ngannou** — Francis Ngannou — https://upload.wikimedia.org/wikipedia/commons/5/55/Francis_Ngannou_2023_%28cropped%29.png
+- **max-holloway** — Max Holloway — https://upload.wikimedia.org/wikipedia/commons/2/2b/Blue_Angels%27_VIP_Rider_Max_Holloway_%281%29_%28cropped%29.jpg
+- **demian-maia** — Demian Maia — https://upload.wikimedia.org/wikipedia/commons/5/57/Demian_Maia.jpg
+- **conor-mcgregor** — Conor McGregor — https://upload.wikimedia.org/wikipedia/commons/e/e5/Conor_McGregor_2025.jpeg
+- **anderson-silva** — Anderson Silva — https://upload.wikimedia.org/wikipedia/commons/a/a2/Anderson_Silva.png
+- **jose-aldo** — José Aldo — https://upload.wikimedia.org/wikipedia/commons/9/9d/Jos%C3%A9_Aldo%2C_UFC_189_World_Tour_London_%282%29_%28cropped%29.jpg
+- **alexander-volkanovski** — Alexander Volkanovski — https://upload.wikimedia.org/wikipedia/commons/0/0f/Alexander_Volkanovski_at_UFC_232.jpg
+- **sean-omalley** — Sean O'Malley (fighter) — https://upload.wikimedia.org/wikipedia/commons/4/4f/UFC_Freedom_250_press_conference_at_the_Lincoln_Memorial_in_Washington%2C_D.C.%2C_Friday%2C_June_12%2C_2026_-_25%28cropped%29.jpg
+- **petr-yan** — Petr Yan — https://upload.wikimedia.org/wikipedia/commons/e/ea/PetrYan_%28cropped%29.jpg
+- **kamaru-usman** — Kamaru Usman — https://upload.wikimedia.org/wikipedia/commons/0/05/KamaruUsmanPress2018.png
+- **colby-covington** — Colby Covington — https://upload.wikimedia.org/wikipedia/commons/1/18/ColbyCovingtonFortJackson2022%28cropped%29.jpg
+- **daniel-cormier** — Daniel Cormier — https://upload.wikimedia.org/wikipedia/commons/2/22/Daniel_Cormier_taking_a_picture_with_a_fan..jpg
+- **henry-cejudo** — Henry Cejudo — https://upload.wikimedia.org/wikipedia/commons/b/b8/Henry_Cejudo_%2854235464255%29_%28cropped%29.jpg
+- **islam-makhachev** — Islam Makhachev — https://upload.wikimedia.org/wikipedia/commons/9/95/Islam_Makhachev_and_Sergey_Melikov_2025_%28cropped%29.jpg
+- **cain-velasquez** — Cain Velasquez — https://upload.wikimedia.org/wikipedia/commons/7/7b/Cain_Velasquez.jpg
+- **jon-jones** — Jon Jones — https://upload.wikimedia.org/wikipedia/commons/4/43/Jon_Jones_-_Supporting_Brain_Health_Study.jpg
+- **justin-gaethje** — Justin Gaethje — https://upload.wikimedia.org/wikipedia/commons/8/86/UFC_Freedom_250%2C_the_mixed_martial_arts_event_produced_by_the_Ultimate_Fighting_Championship%2C_Sunday%2C_June_14%2C_2026%2C_in_the_Grand_Foyer_of_the_White_House_-_67%28cropped%29.jpg
+- **robert-whittaker** — Robert Whittaker (fighter) — https://upload.wikimedia.org/wikipedia/commons/e/ed/Robert_Whittaker_2024.png
+- **chael-sonnen** — Chael Sonnen — https://upload.wikimedia.org/wikipedia/commons/5/53/Meet_and_Greet_with_Special_MMA_Clinic_%282%29.jpg
+- **matt-hughes** — Matt Hughes (fighter) — https://upload.wikimedia.org/wikipedia/commons/2/27/Matt_Hughes_%28cropped%29.png
+- **nate-diaz** — Nate Diaz — https://upload.wikimedia.org/wikipedia/commons/1/13/Nate_Diaz_Oct_2019.jpg
+- **bj-penn** — BJ Penn — https://upload.wikimedia.org/wikipedia/commons/2/29/B.J._Penn%2C_2019.jpg
+- **fabricio-werdum** — Fabrício Werdum — https://upload.wikimedia.org/wikipedia/commons/8/8d/Fabricio_Werdum.jpg
+- **frank-mir** — Frank Mir — https://upload.wikimedia.org/wikipedia/commons/4/48/Frank_Mir_GCW_Bloodsport_%28cropped%29.jpg
+- **ronaldo-souza** — Ronaldo Souza — https://upload.wikimedia.org/wikipedia/commons/7/70/Ronaldo_Jacar%C3%A9_Souza.jpg
+- **brian-ortega** — Brian Ortega — https://upload.wikimedia.org/wikipedia/commons/9/9f/Brian_Ortega_on_MMAnytt.jpg
+- **stipe-miocic** — Stipe Miocic — https://upload.wikimedia.org/wikipedia/commons/2/2c/Stipe_Miocic_%2848086643396%29_%28cropped%29.jpg
+- **frankie-edgar** — Frankie Edgar — https://upload.wikimedia.org/wikipedia/commons/0/08/Frankie_Edgar.jpg
+- **tj-dillashaw** — T.J. Dillashaw — https://upload.wikimedia.org/wikipedia/commons/6/68/TJ_Dillashaw.png
+- **dominick-cruz** — Dominick Cruz — https://upload.wikimedia.org/wikipedia/commons/1/13/Dom_Cruz_2.png
+- **leon-edwards** — Leon Edwards — https://upload.wikimedia.org/wikipedia/commons/5/51/Leon_Edwards_2021.png
+- **robbie-lawler** — Robbie Lawler — https://upload.wikimedia.org/wikipedia/commons/1/12/Robbie_Lawler.png
+- **derrick-lewis** — Derrick Lewis (fighter) — https://upload.wikimedia.org/wikipedia/commons/3/3a/Derrick_Lewis_after_UFC_239.jpg
+- **mark-hunt** — Mark Hunt — https://upload.wikimedia.org/wikipedia/commons/d/d2/Mark_Hunt_on_22_November_2007.jpg
