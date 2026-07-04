@@ -60,7 +60,19 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     if (run.phase === 'drafting') return <DraftScreen seed={run.seed} onComplete={handleDraftComplete} />;
     // phase === 'fighting' — controller owns the serializable FightState in run.fight,
     // so a parked mid-fight run resumes EXACTLY (round, damage, stamina, window) from storage.
-    if (!run.fight || !run.fighter) return null;
+    // Deep storage validation guarantees a valid fight+fighter here, but fall back to a fresh
+    // Hub rather than a blank render if either is somehow missing (no blank-screen path).
+    if (!run.fight || !run.fighter) {
+      return (
+        <ChampionshipHubScreen
+          run={null}
+          bestReign={bestReign}
+          isNewRecord={false}
+          onStartRun={handleStartRun}
+          onEnterFight={handleEnterFight}
+        />
+      );
+    }
     return (
       <FightView
         fightState={run.fight}
