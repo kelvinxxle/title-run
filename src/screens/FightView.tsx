@@ -1,10 +1,12 @@
-import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan, archetypeFromStatLine, fighterIdByName } from '../domain/combat';
-import { healthPct, staminaPct, roundLabel } from '../fightDisplay';
+import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan, type GamePlan, archetypeFromStatLine, fighterIdByName } from '../domain/combat';
+import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import IntentPanelV2 from '../components/IntentPanelV2';
 import FinishSequencePanel from '../components/FinishSequencePanel';
 import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
+import CornerScreen from '../components/CornerScreen';
+import RoundRecap from '../components/RoundRecap';
 
 interface Props {
   fightState: FightState;
@@ -12,11 +14,21 @@ interface Props {
   onIntent: (intent: RoundIntent) => void;
   onFinishStep: (choice: FinishChoice) => void;
   onGroundStep: (plan: GroundPlan) => void;
+  onChooseGamePlan: (plan: GamePlan) => void;
   onContinue: () => void;
 }
 
-export default function FightView({ fightState, playerName, onIntent, onFinishStep, onGroundStep, onContinue }: Props) {
-  const { player, opponent, phase, window: win, outcome } = fightState;
+export default function FightView({ fightState, playerName, onIntent, onFinishStep, onGroundStep, onChooseGamePlan, onContinue }: Props) {
+  const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
+
+  // Damage flash: show deltas from the last resolved round
+  const playerFlash = lastReport
+    ? { head: lastReport.playerHeadDelta, body: lastReport.playerBodyDelta }
+    : undefined;
+  const opponentFlash = lastReport
+    ? { head: lastReport.opponentHeadDelta, body: lastReport.opponentBodyDelta }
+    : undefined;
+
   return (
     <section
       data-testid="fight-view"
@@ -27,12 +39,46 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
     >
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
-        <FighterHealthCard side="player" name={playerName} subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`} badge="YOU" healthPct={healthPct(player)} avatarSeed={playerName} archetype={archetypeFromStatLine(player.statLine)} />
-        <FighterHealthCard side="opponent" name={opponent.name} subtitle={opponent.archetype} badge="OPP" healthPct={healthPct(opponent)} avatarSeed={opponent.name} archetype={opponent.archetype} fighterId={fighterIdByName(opponent.name)} />
+        <FighterHealthCard
+          side="player"
+          name={playerName}
+          subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`}
+          badge="YOU"
+          healthPct={healthPct(player)}
+          bodyPct={bodyPct(player)}
+          staminaPct={staminaPct(player)}
+          headStateLabel={headState(player)}
+          damageFlash={playerFlash}
+          avatarSeed={playerName}
+          archetype={archetypeFromStatLine(player.statLine)}
+        />
+        <FighterHealthCard
+          side="opponent"
+          name={opponent.name}
+          subtitle={opponent.archetype}
+          badge="OPP"
+          healthPct={healthPct(opponent)}
+          bodyPct={bodyPct(opponent)}
+          staminaPct={staminaPct(opponent)}
+          headStateLabel={headState(opponent)}
+          damageFlash={opponentFlash}
+          avatarSeed={opponent.name}
+          archetype={opponent.archetype}
+          fighterId={fighterIdByName(opponent.name)}
+        />
       </div>
 
       {phase === 'in-round' && (
         <IntentPanelV2 statLine={player.statLine} onCommit={onIntent} />
+      )}
+      {phase === 'corner' && (
+        <CornerScreen
+          report={lastReport}
+          log={log}
+          rounds={rounds}
+          nextRound={fightState.round}
+          onChoosePlan={onChooseGamePlan}
+        />
       )}
       {phase === 'finish-window' && win && (
         <FinishSequencePanel window={win} onChoice={onFinishStep} />
@@ -42,6 +88,7 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
       )}
       {phase === 'finished' && outcome && (
         <div className="w-full flex flex-col items-center gap-sm">
+          {lastReport && <RoundRecap report={lastReport} />}
           <OutcomeBanner outcome={outcome} heading={`${playerName} vs ${opponent.name}`} />
           <button
             type="button"

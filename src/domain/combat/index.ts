@@ -12,3 +12,4 @@ export * from './finish';
 export * from './opponent';
 export * from './judges';
 export * from './run';
+export * from './gameplan';

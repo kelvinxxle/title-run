@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { startFight } from './fightState';
+import { chooseGamePlan } from './fightState';
+import type { FightState } from './fightState';
 import { resolveRound } from './resolve';
 import { ARCHETYPES } from './archetypes';
 import type { RoundIntent, StrikeTactic } from './intents';
+import { startFight, buildStatLine, getFighter, generateOpponent } from './index';
 
 const OPP = { id: 'o', name: 'Foe', archetype: 'brawler' as const, statLine: ARCHETYPES.brawler };
 const start = () => startFight({ seed: 'seed-42', fightNumber: 1, playerStatLine: ARCHETYPES.striker, opponent: OPP });
@@ -151,7 +153,7 @@ describe('resolveRound', () => {
     const player = { ...ARCHETYPES.striker, striking: 1, takedownDef: 1, submissionDef: 58, chin: 99 };
     const s = startFight({ seed: 'opp-partial', fightNumber: 1, playerStatLine: player, opponent: wrestlerOpp() });
     const r = resolveRound(s, strike('head', 'pickApart'));
-    expect(r.phase).toBe('in-round');
+    expect(r.phase).toBe('corner');
     expect(r.window).toBeNull();
     expect(r.player.headDamage).toBe(23); // partial GnP damage carried forward
     expect(r.round).toBe(2); // no finish → round advanced normally
@@ -163,5 +165,110 @@ describe('resolveRound', () => {
     const base = start();
     expect(() => resolveRound({ ...base, phase: 'finish-window' }, strike('head', 'pickApart'))).toThrow();
     expect(() => resolveRound({ ...base, phase: 'finished' }, strike('head', 'pickApart'))).toThrow();
+  });
+});
+
+describe('M14: corner + game-plan', () => {
+  const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
+
+  function makeState(round = 1, totalRounds = 3): FightState {
+    const seed = 'test-corner-seed';
+    const opponent = generateOpponent(seed, 1);
+    const state = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
+    return { ...state, round, rounds: totalRounds };
+  }
+
+  it('(a) normal non-terminal resolveRound → phase=corner, round advances, lastReport set', () => {
+    // verified: 'test-corner-seed' always produces corner at round 1 with GSP vs generated opponent
+    const s0 = makeState();
+    const s1 = resolveRound(s0, { kind: 'strike', target: 'head', tactic: 'pickApart' });
+    expect(s1.phase).toBe('corner');
+    expect(s1.window).toBeNull();
+    expect(s1.lastReport).not.toBeNull();
+    expect(s1.round).toBe(2);
+    expect(s1.gamePlan).toBeNull();
+  });
+
+  it('(b) chooseGamePlan from corner sets gamePlan and phase', () => {
+    // verified: 'test-corner-seed' always produces corner at round 1 with GSP vs generated opponent
+    const s0 = makeState();
+    const s1 = resolveRound(s0, { kind: 'strike', target: 'head', tactic: 'pickApart' });
+    expect(s1.phase).toBe('corner');
+    const s2 = chooseGamePlan(s1, 'push-pace');
+    expect(s2.phase).toBe('in-round');
+    expect(s2.gamePlan).toBe('push-pace');
+  });
+
+  it('(b) chooseGamePlan throws when not in corner', () => {
+    const s0 = makeState();
+    expect(() => chooseGamePlan(s0, 'push-pace')).toThrow('corner');
+  });
+
+  it('(c) push-pace raises player damage output vs null plan', () => {
+    const seed = 'gameplan-test-seed';
+    const opponent = generateOpponent(seed, 1);
+    const s0null = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
+    const s0push = { ...s0null, gamePlan: 'push-pace' as const };
+
+    const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pressure' };
+    const rNull = resolveRound(s0null, intent);
+    const rPush = resolveRound(s0push, intent);
+
+    const oppDmgNull = rNull.opponent.headDamage + rNull.opponent.bodyDamage;
+    const oppDmgPush = rPush.opponent.headDamage + rPush.opponent.bodyDamage;
+    expect(oppDmgPush).toBeGreaterThanOrEqual(oppDmgNull);
+  });
+
+  it('(d) catch-breath gives more post-stamina than null plan', () => {
+    const seed = 'gameplan-test-seed';
+    const opponent = generateOpponent(seed, 1);
+    const s0null = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
+    const s0catch = { ...s0null, gamePlan: 'catch-breath' as const };
+
+    const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'counter' };
+    const rNull = resolveRound(s0null, intent);
+    const rCatch = resolveRound(s0catch, intent);
+
+    expect(rCatch.player.stamina).toBeGreaterThanOrEqual(rNull.player.stamina);
+  });
+
+  it('(e) work-body routes damage to body on a head strike', () => {
+    const seed = 'gameplan-test-seed';
+    const opponent = generateOpponent(seed, 1);
+    const s0null = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
+    const s0body = { ...s0null, gamePlan: 'work-body' as const };
+
+    const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pressure' };
+    const rNull = resolveRound(s0null, intent);
+    const rBody = resolveRound(s0body, intent);
+
+    expect(rNull.opponent.headDamage).toBeGreaterThan(0);  // fixture must land damage
+    expect(rBody.opponent.bodyDamage).toBeGreaterThan(0);   // body routing applied
+    expect(rBody.opponent.bodyDamage).toBeGreaterThanOrEqual(rNull.opponent.bodyDamage);
+  });
+
+  it('(f) round 1 with gamePlan:null is the pre-M14 golden master (frozen literals)', () => {
+    // gamePlanEffect(null) = {atkMult:1,defMult:1,staminaDelta:0,forceBodyTarget:false} — identity.
+    // Combat numbers (damage, stamina, roundScore) are byte-for-byte identical to origin/main's
+    // pre-M14 resolveRound. phase differs: M14 routes to 'corner', pre-M14 to 'in-round'.
+    const seed = 'determinism-guard';
+    const opponent = generateOpponent(seed, 1);
+    const s0 = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
+    expect(s0.gamePlan).toBeNull();
+    expect(s0.lastReport).toBeNull(); // startFight must not pre-populate lastReport
+    const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
+    const result = resolveRound(s0, intent);
+
+    // ── Frozen golden-master literals ──
+    expect(result.player.headDamage).toBe(0);
+    expect(result.player.bodyDamage).toBe(0);
+    expect(result.player.stamina).toBe(100);
+    expect(result.player.roundScore).toBe(3);
+    expect(result.opponent.headDamage).toBe(14);
+    expect(result.opponent.bodyDamage).toBe(0);
+    expect(result.opponent.stamina).toBe(100);
+    expect(result.opponent.roundScore).toBe(0);
+    expect(result.phase).toBe('corner');    // M14: corner; pre-M14 was 'in-round'
+    expect(result.round).toBe(2);
   });
 });

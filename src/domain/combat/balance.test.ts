@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   startFight, resolveRound, finishStep, groundStep, generateOpponent,
-  buildStatLine, getFighter,
+  buildStatLine, getFighter, chooseGamePlan,
 } from './index';
 import type { FightState } from './fightState';
-import type { RoundIntent, StrikeTactic, GroundPlan } from './intents';
+import type { RoundIntent, StrikeTactic, GroundPlan, GamePlan } from './intents';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -50,6 +50,15 @@ function carelessIntent(): RoundIntent {
   return { kind: 'strike', target: 'head', tactic: 'pressure' };
 }
 
+/** Good play corner strategy: protect a lead (stay-disciplined), break the body when opponent is fresh,
+ *  go all-out (push-pace) when opponent is gassed to close it out, recover (catch-breath) when own gas low. */
+function goodGamePlan(s: FightState): GamePlan {
+  if (s.player.stamina < 30) return 'catch-breath';
+  if (s.player.roundScore > s.opponent.roundScore) return 'stay-disciplined';
+  if (!s.opponent.stamina || s.opponent.stamina < 25) return 'push-pace';
+  return 'work-body';
+}
+
 // Good play in a ground window: hunt the tap when the opponent's submission
 // defense is soft, otherwise pound from top control.
 function goodGroundPlan(s: FightState): GroundPlan {
@@ -63,6 +72,10 @@ function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
     if (guard++ > 300) throw new Error('fight did not terminate');
     if (s.phase === 'in-round') {
       s = resolveRound(s, policy === 'good' ? goodIntent(s) : carelessIntent());
+    } else if (s.phase === 'corner') {
+      // Use policy-derived game plan: good play picks strategically, careless always pushes pace
+      const plan: GamePlan = policy === 'good' ? goodGamePlan(s) : 'push-pace';
+      s = chooseGamePlan(s, plan);
     } else if (s.phase === 'ground-window') {
       // Only good play wrestles, so only good play reaches a player ground window.
       s = groundStep(s, goodGroundPlan(s));
@@ -102,6 +115,19 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
 
 // ── M12 T4: co-tuned balance constants (measured across 300 seeds, fightNumbers 1..10) ──────
 // Full measurement table in task-4-report.md.
+//
+// ── M14 T5: game-plan policies added to sim (push-pace retuned 1.15→1.10) ────────────────────
+// Measured table (300 seeds, M14 game-plan policies active):
+//   fight  1: good wR=0.9900 fR=0.9567 | careless wR=0.7200 fR=0.1533
+//   fight  2: good wR=0.7100 fR=0.5867 | careless wR=0.4333 fR=0.2167
+//   fight  3: good wR=0.8867 fR=0.8667 | careless wR=0.7400 fR=0.3467
+//   fight  4: good wR=0.8633 fR=0.3600 | careless wR=0.8133 fR=0.1867
+//   fight  5: good wR=0.5300 fR=0.3700 | careless wR=0.3800 fR=0.1933
+//   fight  6: good wR=0.4967 fR=0.3500 | careless wR=0.3733 fR=0.1633
+//   fight  7: good wR=0.5767 fR=0.4433 | careless wR=0.3700 fR=0.1733
+//   fight  8: good wR=0.4900 fR=0.3867 | careless wR=0.3433 fR=0.1267
+//   fight  9: good wR=0.5233 fR=0.3733 | careless wR=0.3733 fR=0.2200
+//   fight 10: good wR=0.5467 fR=0.3933 | careless wR=0.3567 fR=0.1767
 
 /** Anti-exploit ceiling: pressure-spam must not reliably win vs Tier-5 (fights 9–10).
  *  Achievable-floor: measured max(careless@9=0.3567, careless@10=0.3333) + 0.05 buffer. */

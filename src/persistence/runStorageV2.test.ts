@@ -8,6 +8,9 @@ const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
 const WRESTLER = Object.fromEntries(STAT_IDS.map((s) => [s, s === 'takedowns' ? 99 : 40])) as StatLine;
 function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
 const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
+function continueFromCorner(fight: FightState): FightState {
+  return fight.phase === 'corner' ? { ...fight, phase: 'in-round', gamePlan: null } : fight;
+}
 function midFight(): RunState {
   const started = startNextFight(preFight());
   return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
@@ -16,7 +19,9 @@ function midFight(): RunState {
 function finishWindowRun(): RunState {
   let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE }));
   let f = run.fight as FightState;
-  while (f.phase === 'in-round') f = resolveRound(f, JAB);
+  while (f.phase === 'in-round' || f.phase === 'corner') {
+    f = f.phase === 'corner' ? continueFromCorner(f) : resolveRound(f, JAB);
+  }
   run = { ...run, fight: f };
   return run;
 }
@@ -96,6 +101,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
+      gamePlan: null, lastReport: null,
     };
     const postWin: RunState = {
       seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE },
@@ -103,6 +109,15 @@ describe('runStorageV2', () => {
     };
     save({ run: postWin, bestReign: 2 });
     expect(load()).toEqual({ run: postWin, bestReign: 2 });
+  });
+
+  it('loads a legacy mid-fight save missing gamePlan/lastReport by normalizing them to null', () => {
+    const mid = midFight();
+    const legacyFight = { ...(mid.fight as FightState) } as Partial<FightState> & Record<string, unknown>;
+    delete legacyFight.gamePlan;
+    delete legacyFight.lastReport;
+    store({ ...mid, fight: legacyFight });
+    expect(load()).toEqual({ run: { ...mid, fight: { ...(mid.fight as FightState), gamePlan: null, lastReport: null } }, bestReign: 0 });
   });
 
   it('rejects a finish-window fight with a null window (phase↔payload invariant), and clears the key', () => {
@@ -118,6 +133,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
+      gamePlan: null, lastReport: null,
     };
     store({ ...preFight(), phase: 'fighting', fight: finished });
     expect(load().run).toBeNull();

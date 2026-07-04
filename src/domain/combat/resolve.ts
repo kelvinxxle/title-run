@@ -4,9 +4,12 @@ import { scoreFight } from './judges';
 import type { RoundIntent, StrikeTactic, Phase } from './intents';
 import { intentPhase } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
-import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
+import { staminaCost, recovery, effortMultiplier, STAMINA_MAX, isGassed } from './stamina';
 import { createRng } from '../rng';
 import { detectWindow, INITIAL_STEPS, chooseGroundPlan, groundAndPoundDamage, ROCKED_HEAD_DMG } from './finish';
+import { gamePlanEffect } from './gameplan';
+import { buildRoundReport } from './report';
+import type { RoundReport } from './report';
 
 // ── Tuning constants (adjust in Task 5) ──────────────────────────────────────
 const IQ_FACTOR      = 0.1;
@@ -58,12 +61,40 @@ function bodyRecoveryPenalty(bodyDamage: number): number {
   return Math.round(bodyDamage * BODY_RECOVERY_FACTOR);
 }
 
+function buildReport(
+  round: number,
+  prePH: number, prePB: number, preOH: number, preOB: number,
+  postPH: number, postPB: number, postOH: number, postOB: number,
+  postPStamina: number, postOStamina: number,
+  pChin: number, oChin: number,
+  logEntry: RoundLogEntry,
+): RoundReport {
+  const playerBecameRocked = prePH < ROCKED_HEAD_DMG(pChin) && postPH >= ROCKED_HEAD_DMG(pChin);
+  const opponentBecameRocked = preOH < ROCKED_HEAD_DMG(oChin) && postOH >= ROCKED_HEAD_DMG(oChin);
+  return buildRoundReport({
+    round,
+    winner: logEntry.winner,
+    dominance: logEntry.dominance,
+    playerIntent: logEntry.playerIntent,
+    opponentIntent: logEntry.opponentIntent,
+    playerHeadDelta: Math.max(0, postPH - prePH),
+    playerBodyDelta: Math.max(0, postPB - prePB),
+    opponentHeadDelta: Math.max(0, postOH - preOH),
+    opponentBodyDelta: Math.max(0, postOB - preOB),
+    playerBecameRocked,
+    opponentBecameRocked,
+    playerGassed: isGassed(postPStamina),
+    opponentGassed: isGassed(postOStamina),
+  });
+}
+
 export function resolveRound(state: FightState, playerIntent: RoundIntent): FightState {
   if (state.phase !== 'in-round') {
     throw new Error(`resolveRound requires state.phase === "in-round" (got "${state.phase}")`);
   }
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}`);
   const oppIntent = opponentIntent(state);
+  const planEffect = gamePlanEffect(state.gamePlan);
 
   const seededSwing = (rng() - 0.5) * SWING_RANGE;
 
@@ -82,14 +113,14 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
   // Player attacks at pPhase; opponent defends there.
   const playerAttackScore =
-    state.player.statLine[PHASE_OFFENSE[pPhase]] * playerEffort * atkMult(playerIntent) -
+    state.player.statLine[PHASE_OFFENSE[pPhase]] * playerEffort * atkMult(playerIntent) * planEffect.atkMult -
     state.opponent.statLine[PHASE_DEFENSE[pPhase]] * oppEffort * defMult(oppIntent, pPhase) +
     counterBonus(playerIntent, oppIntent);
 
   // Opponent attacks at oPhase; player defends there.
   const oppAttackScore =
     state.opponent.statLine[PHASE_OFFENSE[oPhase]] * oppEffort * atkMult(oppIntent) -
-    state.player.statLine[PHASE_DEFENSE[oPhase]] * playerEffort * defMult(playerIntent, oPhase) +
+    state.player.statLine[PHASE_DEFENSE[oPhase]] * playerEffort * defMult(playerIntent, oPhase) * planEffect.defMult +
     counterBonus(oppIntent, playerIntent);
 
   const dominance =
@@ -113,26 +144,47 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
       winner: 'player',
       dominance,
     };
+    const playerStaminaAfter = clampStamina(
+      state.player.stamina - staminaCost(playerIntent)
+        + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
+        + planEffect.staminaDelta
+    );
+    const oppStaminaAfter = clampStamina(
+      state.opponent.stamina - staminaCost(oppIntent)
+        + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
+    );
+    const report = buildReport(
+      state.round,
+      state.player.headDamage,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      state.player.headDamage,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      playerStaminaAfter,
+      oppStaminaAfter,
+      state.player.statLine.chin,
+      state.opponent.statLine.chin,
+      groundLog,
+    );
     return {
       ...state,
       // round NOT advanced — the ground sequence resolves this moment
       phase: 'ground-window',
       window: { side: 'player', method: 'ground', stepsLeft: INITIAL_STEPS },
+      gamePlan: null,
+      lastReport: report,
       player: {
         ...state.player,
         // no exchange damage on the ground-window open
-        stamina: clampStamina(
-          state.player.stamina - staminaCost(playerIntent)
-            + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
-        ),
+        stamina: playerStaminaAfter,
         roundScore: state.player.roundScore + 1 + groundMargin,
       },
       opponent: {
         ...state.opponent,
-        stamina: clampStamina(
-          state.opponent.stamina - staminaCost(oppIntent)
-            + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
-        ),
+        stamina: oppStaminaAfter,
       },
       log: [...state.log, groundLog],
     };
@@ -159,6 +211,7 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     const playerStaminaAfter = clampStamina(
       state.player.stamina - staminaCost(playerIntent)
         + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
+        + planEffect.staminaDelta
     );
     const oppStaminaAfter = clampStamina(
       state.opponent.stamina - staminaCost(oppIntent)
@@ -168,6 +221,22 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
     // AI ground choice: submission only when the player's submission defense is porous.
     const oppPlan = chooseGroundPlan(state.player.statLine);
+    const submissionReport = buildReport(
+      state.round,
+      state.player.headDamage,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      state.player.headDamage,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      playerStaminaAfter,
+      oppStaminaAfter,
+      state.player.statLine.chin,
+      state.opponent.statLine.chin,
+      groundLog,
+    );
 
     if (oppPlan === 'submission') {
       // The read is dangerous by definition — open a defensible submission window.
@@ -176,6 +245,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
         ...state,
         phase: 'finish-window',
         window: { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS },
+        gamePlan: null,
+        lastReport: submissionReport,
         player: { ...state.player, stamina: playerStaminaAfter },
         opponent: { ...state.opponent, stamina: oppStaminaAfter, roundScore: oppScoreAfter },
         log: [...state.log, groundLog],
@@ -190,6 +261,22 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
     const groundedPlayer = { ...state.player, headDamage: postHead, stamina: playerStaminaAfter };
     const groundedOpponent = { ...state.opponent, stamina: oppStaminaAfter, roundScore: oppScoreAfter };
+    const groundReport = buildReport(
+      state.round,
+      state.player.headDamage,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      postHead,
+      state.player.bodyDamage,
+      state.opponent.headDamage,
+      state.opponent.bodyDamage,
+      playerStaminaAfter,
+      oppStaminaAfter,
+      state.player.statLine.chin,
+      state.opponent.statLine.chin,
+      groundLog,
+    );
 
     if (preHead < rocked && postHead >= rocked) {
       // Rock → opponent-side KO finish window. Applied head damage is carried in
@@ -198,6 +285,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
         ...state,
         phase: 'finish-window',
         window: { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS },
+        gamePlan: null,
+        lastReport: groundReport,
         player: groundedPlayer,
         opponent: groundedOpponent,
         log: [...state.log, groundLog],
@@ -212,6 +301,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
         ...state,
         round: state.round,
         phase: 'finished',
+        gamePlan: null,
+        lastReport: groundReport,
         player: groundedPlayer,
         opponent: groundedOpponent,
         log: [...state.log, groundLog],
@@ -221,8 +312,10 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     return {
       ...state,
       round: state.round + 1,
-      phase: 'in-round',
+      phase: 'corner',
       outcome: null,
+      gamePlan: null,
+      lastReport: groundReport,
       player: groundedPlayer,
       opponent: groundedOpponent,
       log: [...state.log, groundLog],
@@ -233,17 +326,25 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   // else 'head' (interim: a winning wrestle just deals head damage until Task 2's
   // ground window arrives).
   const dmg = Math.round(Math.abs(dominance) * DMG_FACTOR);
-  let playerHead = state.player.headDamage;
-  let playerBody = state.player.bodyDamage;
-  let oppHead    = state.opponent.headDamage;
-  let oppBody    = state.opponent.bodyDamage;
+  const effectivePlayerIntent =
+    planEffect.forceBodyTarget && playerIntent.kind === 'strike'
+      ? { ...playerIntent, target: 'body' as const }
+      : playerIntent;
+  const prePlayerHead = state.player.headDamage;
+  const prePlayerBody = state.player.bodyDamage;
+  const preOppHead = state.opponent.headDamage;
+  const preOppBody = state.opponent.bodyDamage;
+  let playerHead = prePlayerHead;
+  let playerBody = prePlayerBody;
+  let oppHead = preOppHead;
+  let oppBody = preOppBody;
 
   let playerStamina = state.player.stamina;
   let oppStamina    = state.opponent.stamina;
 
   if (dominance > 0) {
     // Player wins the exchange — opponent absorbs damage
-    if (playerIntent.kind === 'strike' && playerIntent.target === 'body') {
+    if (effectivePlayerIntent.kind === 'strike' && effectivePlayerIntent.target === 'body') {
       oppBody    += dmg;
       oppStamina -= Math.round(dmg * BODY_TO_STAMINA);
     } else {
@@ -260,10 +361,11 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   }
 
   // Stamina: subtract effort cost, add recovery (suppressed by carried body damage), clamp
-  playerStamina = clampStamina(
+  playerStamina =
     playerStamina - staminaCost(playerIntent)
       + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
-  );
+      + planEffect.staminaDelta;
+  playerStamina = clampStamina(playerStamina);
   oppStamina = clampStamina(
     oppStamina - staminaCost(oppIntent)
       + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
@@ -289,6 +391,22 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     winner,
     dominance,
   };
+  const report = buildReport(
+    state.round,
+    prePlayerHead,
+    prePlayerBody,
+    preOppHead,
+    preOppBody,
+    playerHead,
+    playerBody,
+    oppHead,
+    oppBody,
+    playerStamina,
+    oppStamina,
+    state.player.statLine.chin,
+    state.opponent.statLine.chin,
+    logEntry,
+  );
 
   // Finish detection: open a window instead of advancing when triggered
   const finishWindow = detectWindow({
@@ -311,6 +429,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
       // round is NOT advanced — the finish sequence resolves this moment
       phase: 'finish-window',
       window: finishWindow,
+      gamePlan: null,
+      lastReport: report,
       player: {
         ...state.player,
         headDamage: playerHead,
@@ -352,6 +472,8 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
       ...state,
       round: state.round,
       phase: 'finished',
+      gamePlan: null,
+      lastReport: report,
       player: resolvedPlayer,
       opponent: resolvedOpponent,
       log: [...state.log, logEntry],
@@ -366,8 +488,10 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   return {
     ...state,
     round: state.round + 1,
-    phase: 'in-round',
+    phase: 'corner',
     outcome: null,
+    gamePlan: null,
+    lastReport: report,
     player: resolvedPlayer,
     opponent: resolvedOpponent,
     log: [...state.log, logEntry],

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep, groundStep,
-  type RunState, type RoundIntent, type FinishChoice, type GroundPlan, type DraftedFighter,
+  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep, groundStep, chooseGamePlan,
+  type RunState, type RoundIntent, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
 } from './domain/combat';
 import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
@@ -41,6 +41,11 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     setRun((r) => {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'ground-window') return r;
       return { ...r, fight: groundStep(r.fight, plan) };
+    });
+  const handleChooseGamePlan = (plan: GamePlan) =>
+    setRun((r) => {
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'corner') return r;
+      return { ...r, fight: chooseGamePlan(r.fight, plan) };
     });
   const handleContinue = () =>
     setRun((r) => {
@@ -85,6 +90,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
         onIntent={handleIntent}
         onFinishStep={handleFinishStep}
         onGroundStep={handleGroundStep}
+        onChooseGamePlan={handleChooseGamePlan}
         onContinue={handleContinue}
       />
     );

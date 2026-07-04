@@ -22,6 +22,10 @@ function drivePlayerIntent(): RoundIntent {
   return { kind: 'strike', target: 'head', tactic: 'pickApart' };
 }
 
+function continueFromCorner(state: FightState): FightState {
+  return state.phase === 'corner' ? { ...state, phase: 'in-round', gamePlan: null } : state;
+}
+
 function playFightToEnd(initial: FightState): FightState {
   let state = initial;
   let guard = 0;
@@ -29,6 +33,10 @@ function playFightToEnd(initial: FightState): FightState {
     if (guard++ > 200) throw new Error('fight did not terminate');
     if (state.phase === 'in-round') {
       state = resolveRound(state, drivePlayerIntent());
+    } else if (state.phase === 'corner') {
+      state = continueFromCorner(state);
+    } else if (state.phase === 'ground-window') {
+      state = groundStep(state, 'ground-and-pound');
     } else {
       // finish-window: the side with initiative commits
       state = finishStep(state, 'commit');
@@ -100,6 +108,7 @@ function driveStrikeFightToEnd(initial: FightState, intent: RoundIntent): FightS
   while (s.phase !== 'finished') {
     if (guard++ > 200) throw new Error('strike fight did not terminate');
     if (s.phase === 'in-round') s = resolveRound(s, intent);
+    else if (s.phase === 'corner') s = continueFromCorner(s);
     else if (s.phase === 'finish-window') s = finishStep(s, 'commit');
     else throw new Error(`unexpected phase in strike driver: ${s.phase}`);
   }

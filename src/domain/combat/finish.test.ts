@@ -14,7 +14,7 @@ const GLASS = { id: 'g', name: 'Glass Joe', archetype: 'brawler' as const, statL
 
 /** Minimal FightState in finish-window phase for unit-level finishStep tests. */
 function makeWindowState(overrides: Partial<FightState> = {}): FightState {
-  return {
+  const merged: FightState = {
     seed: 'two-win',
     fightNumber: 1,
     rounds: 3,
@@ -25,8 +25,11 @@ function makeWindowState(overrides: Partial<FightState> = {}): FightState {
     window: { side: 'player', method: 'KO', stepsLeft: 3 },
     outcome: null,
     log: [],
+    gamePlan: null,
+    lastReport: null,
     ...overrides,
-  };
+  } as FightState;
+  return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
 }
 
 describe('finish flow', () => {
@@ -39,7 +42,7 @@ describe('finish flow', () => {
     expect(s.window?.side).toBe('player');
     // drive the finish sequence to a terminal state
     while (s.phase === 'finish-window') s = finishStep(s, 'commit');
-    expect(['finished','in-round']).toContain(s.phase);
+    expect(['finished','corner']).toContain(s.phase);
     // If a finish outcome was recorded, it must be the player's win.
     // (A failed commit on the last round ends as 'finished' with outcome=null.)
     if (s.outcome !== null) expect(s.outcome.winner).toBe('player');
@@ -147,7 +150,7 @@ describe('finish flow', () => {
 
 /** Minimal FightState in ground-window phase for unit-level groundStep tests. */
 function makeGroundWindowState(overrides: Partial<FightState> = {}): FightState {
-  return {
+  const merged: FightState = {
     seed: 'ground',
     fightNumber: 1,
     rounds: 3,
@@ -158,8 +161,11 @@ function makeGroundWindowState(overrides: Partial<FightState> = {}): FightState 
     window: { side: 'player', method: 'ground', stepsLeft: 3 },
     outcome: null,
     log: [],
+    gamePlan: null,
+    lastReport: null,
     ...overrides,
-  };
+  } as FightState;
+  return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
 }
 
 describe('ROCKED_HEAD_DMG threshold clamp', () => {
@@ -215,7 +221,7 @@ describe('ground window (Task 2)', () => {
     const opp = { statLine: { ...ARCHETYPES.brawler, chin: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' };
     const s = makeGroundWindowState({ opponent: opp });
     const res = groundStep(s, 'ground-and-pound');
-    expect(res.phase).toBe('in-round');
+    expect(res.phase).toBe('corner');
     expect(res.window).toBeNull();
     expect(res.round).toBe(2);
     expect(res.opponent.headDamage).toBeGreaterThan(0); // damage still landed
@@ -240,10 +246,11 @@ describe('ground window (Task 2)', () => {
     const opp = { statLine: { ...ARCHETYPES.grappler, submissionDef: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'grappler' };
     const s = makeGroundWindowState({ seed: 'ground-nofin', player, opponent: opp });
     const res = groundStep(s, 'submission');
-    expect(res.phase).toBe('in-round');
+    expect(res.phase).toBe('corner');
     expect(res.window).toBeNull();
     expect(res.round).toBe(2);
     expect(res.outcome).toBeNull();
+    expect(res.lastReport).not.toBeNull();
   });
 
   it('a failed ground finish on the final round yields a decision outcome', () => {
@@ -259,6 +266,23 @@ describe('ground window (Task 2)', () => {
 });
 
 describe('finish — last-round decision handoff', () => {
+  it('a failed non-terminal commit closes the window and advances to corner', () => {
+    const result = finishStep(makeWindowState({ round: 1, rounds: 3 }), 'commit');
+    expect(result.phase).toBe('corner');
+    expect(result.window).toBeNull();
+    expect(result.round).toBe(2);
+  });
+
+  it('a depleted non-terminal hold closes the window and advances to corner', () => {
+    const result = finishStep(
+      makeWindowState({ round: 1, rounds: 3, window: { side: 'player', method: 'KO', stepsLeft: 1 } }),
+      'hold',
+    );
+    expect(result.phase).toBe('corner');
+    expect(result.window).toBeNull();
+    expect(result.round).toBe(2);
+  });
+
   it('a failed finish on the final round yields finished with a non-null decision outcome', () => {
     // From Fix-1 test: seed='two-win', round=1, commit roll=0.739 → FAIL (> COMMIT_P=0.7).
     // Override rounds=1 so this IS the last round → expect decision outcome.
@@ -285,5 +309,44 @@ describe('finish — last-round decision handoff', () => {
     expect(holdRes.round).toBe(1);
     expect(holdRes.round).toBeLessThanOrEqual(holdRes.rounds);
     expect(holdRes.outcome!.round).toBe(holdRes.round);
+  });
+});
+
+// ── M14 fix: groundStep lastReport ─────────────────────────────────────────────
+// groundAndPoundDamage(ARCHETYPES.striker, ARCHETYPES.brawler):
+//   raw = (0.5*80 + 0.5*42) - 0.5*54 = 61 - 27 = 34
+//   gpDmg = Math.max(8, Math.round(34 * 0.7)) = Math.max(8, 24) = 24
+// ROCKED_HEAD_DMG(84) = Math.max(1, Math.round(84*0.56)) = 47 → 24 < 47, no TKO.
+// ROCKED_HEAD_DMG(1)  = 1 → 24 >= 1, TKO.
+
+describe('M14 fix: groundStep lastReport', () => {
+  it('non-TKO ground-and-pound rebuilds lastReport with correct opponentHeadDelta and winner', () => {
+    // Default makeGroundWindowState: striker vs brawler(chin=84). gpDmg=24 < rocked(47) → no TKO.
+    const s = makeGroundWindowState();
+    const result = groundStep(s, 'ground-and-pound');
+    expect(result.phase).toBe('corner');
+    expect(result.lastReport).not.toBeNull();
+    expect(result.lastReport!.winner).toBe('player');
+    expect(result.lastReport!.opponentHeadDelta).toBeGreaterThan(0);
+    expect(result.lastReport!.opponentHeadDelta).toBe(24); // gpDmg = 24
+  });
+
+  it('TKO ground-and-pound rebuilds lastReport with opponentBecameRocked=true signal and correct delta', () => {
+    // chin=1 → ROCKED_HEAD_DMG(1)=1 → any GnP damage crosses threshold → TKO.
+    const opp = {
+      statLine: { ...ARCHETYPES.brawler, chin: 1 },
+      headDamage: 0,
+      bodyDamage: 0,
+      stamina: STAMINA_MAX,
+      roundScore: 0,
+      name: 'Opp',
+      archetype: 'brawler' as const,
+    };
+    const s = makeGroundWindowState({ opponent: opp });
+    const result = groundStep(s, 'ground-and-pound');
+    expect(result.phase).toBe('finished');
+    expect(result.lastReport).not.toBeNull();
+    expect(result.lastReport!.winner).toBe('player');
+    expect(result.lastReport!.opponentHeadDelta).toBeGreaterThan(0);
   });
 });
