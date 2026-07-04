@@ -351,8 +351,8 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     opponentBodyDelta: 0,
     playerBecameRocked: false,
     opponentBecameRocked: false,
-    playerGassed: false,
-    opponentGassed: false,
+    playerGassed: isGassed(withDrain.player.stamina),
+    opponentGassed: isGassed(withDrain.opponent.stamina),
   });
   const advanced: FightState = {
     ...withDrain,

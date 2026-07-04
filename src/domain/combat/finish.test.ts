@@ -250,6 +250,7 @@ describe('ground window (Task 2)', () => {
     expect(res.window).toBeNull();
     expect(res.round).toBe(2);
     expect(res.outcome).toBeNull();
+    expect(res.lastReport).not.toBeNull();
   });
 
   it('a failed ground finish on the final round yields a decision outcome', () => {
