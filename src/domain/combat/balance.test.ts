@@ -4,7 +4,7 @@ import {
   buildStatLine, getFighter,
 } from './index';
 import type { FightState } from './fightState';
-import type { RoundIntent, Where } from './intents';
+import type { RoundIntent, StrikeTactic } from './intents';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -26,32 +26,28 @@ import type { RoundIntent, Where } from './intents';
 
 const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 
-const WHERES: readonly Where[] = ['strike', 'wrestle', 'grapple'];
-const OFF = { strike: 'striking', wrestle: 'takedowns', grapple: 'submissions' } as const;
-const DEF = { strike: 'strikingDef', wrestle: 'takedownDef', grapple: 'submissionDef' } as const;
-
 function goodIntent(s: FightState): RoundIntent {
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
-  // Attack the phase where our edge over their defense is largest.
-  let best: Where = 'strike';
-  let bestEdge = -Infinity;
-  for (const w of WHERES) {
-    const edge = me[OFF[w]] - opp[DEF[w]];
-    if (edge > bestEdge) { bestEdge = edge; best = w; }
+  // Shoot the takedown when the opponent's takedownDef is the weak point — i.e. our
+  // takedown edge beats our striking edge and is genuinely positive.
+  const strikeEdge  = me.striking  - opp.strikingDef;
+  const wrestleEdge = me.takedowns - opp.takedownDef;
+  if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
+    return { kind: 'wrestle' };
   }
-  // Manage stamina: swarm a gassed opponent, press while fresh, otherwise
-  // fight technically, and drop to a low-cost counter when running low.
-  let approach: RoundIntent['approach'];
-  if (s.opponent.stamina < 25) approach = 'pressure';
-  else if (s.player.stamina > 45) approach = 'pressure';
-  else if (s.player.stamina < 30) approach = 'counter';
-  else approach = 'technical';
-  return { where: best, target: 'head', approach };
+  // Otherwise strike and read the moment: pressure a hurt/gassed opponent, press while
+  // fresh, drop to a low-cost counter when running low, pick apart when even.
+  let tactic: StrikeTactic;
+  if (s.opponent.stamina < 25) tactic = 'pressure';
+  else if (s.player.stamina > 45) tactic = 'pressure';
+  else if (s.player.stamina < 30) tactic = 'counter';
+  else tactic = 'pickApart';
+  return { kind: 'strike', target: 'head', tactic };
 }
 
 function carelessIntent(): RoundIntent {
-  return { where: 'strike', target: 'head', approach: 'pressure' };
+  return { kind: 'strike', target: 'head', tactic: 'pressure' };
 }
 
 function playFight(init: FightState, policy: 'good' | 'careless'): FightState {

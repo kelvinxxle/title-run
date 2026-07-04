@@ -8,12 +8,12 @@ import {
 } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
-const JAB: RoundIntent = { where: 'strike', target: 'head', approach: 'technical' };
+const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
 
 function midFightRun(): RunState {
   let run: RunState = applyDraft(startRun('resume-seed'), { name: 'Tester', statLine: LINE });
   run = startNextFight(run);
-  // advance one round while still in-round (technical/head is low-pressure — no early finish here)
+  // advance one round while still in-round (pick-apart/head is low-pressure — no early finish here)
   if (run.fight && run.fight.phase === 'in-round') run = { ...run, fight: resolveRound(run.fight, JAB) };
   return run;
 }

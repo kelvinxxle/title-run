@@ -16,7 +16,7 @@ import {
 // A deterministic "always technical head strike" policy — enough to drive a
 // fight to a terminal state (finish or decision) without any Math.random.
 function drivePlayerIntent(): RoundIntent {
-  return { where: 'strike', target: 'head', approach: 'technical' };
+  return { kind: 'strike', target: 'head', tactic: 'pickApart' };
 }
 
 function playFightToEnd(initial: FightState): FightState {

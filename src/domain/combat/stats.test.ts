@@ -22,7 +22,7 @@ describe('v2 stats', () => {
     expect(isStatId(5)).toBe(false);
   });
   it('maps each phase to its offensive and defensive stat', () => {
-    expect(PHASE_OFFENSE).toEqual({ strike:'striking', wrestle:'takedowns', grapple:'submissions' });
-    expect(PHASE_DEFENSE).toEqual({ strike:'strikingDef', wrestle:'takedownDef', grapple:'submissionDef' });
+    expect(PHASE_OFFENSE).toEqual({ strike:'striking', wrestle:'takedowns' });
+    expect(PHASE_DEFENSE).toEqual({ strike:'strikingDef', wrestle:'takedownDef' });
   });
 });

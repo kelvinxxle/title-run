@@ -33,7 +33,7 @@ describe('finish flow', () => {
   it('a rocked opponent opens a finish window, and commit can end it', () => {
     let s = startFight({ seed: 'ko-seed', fightNumber: 1, playerStatLine: { ...ARCHETYPES.brawler, striking: 99 }, opponent: GLASS });
     for (let i = 0; i < 3 && s.phase === 'in-round'; i++) {
-      s = resolveRound(s, { where: 'strike', target: 'head', approach: 'pressure' });
+      s = resolveRound(s, { kind: 'strike', target: 'head', tactic: 'pressure' });
     }
     expect(s.phase).toBe('finish-window');
     expect(s.window?.side).toBe('player');
@@ -65,8 +65,8 @@ describe('finish flow', () => {
       playerStatLine: { ...ARCHETYPES.brawler, chin: 20 },
       opponentStatLine: { ...ARCHETYPES.striker, striking: 99 },
       dominance: -10,
-      playerIntent:   { where: 'strike', target: 'head', approach: 'pressure' },
-      opponentIntent: { where: 'strike', target: 'head', approach: 'pressure' },
+      playerIntent:   { kind: 'strike', target: 'head', tactic: 'pressure' },
+      opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
     };
     const win = detectWindow(ctx);
     expect(win?.side).toBe('opponent');
@@ -84,8 +84,8 @@ describe('finish flow', () => {
     playerStatLine: { ...ARCHETYPES.striker, chin: 50 },
     opponentStatLine: { ...ARCHETYPES.striker, chin: 50 },
     dominance: 0,
-    playerIntent:   { where: 'strike', target: 'head', approach: 'technical' },
-    opponentIntent: { where: 'strike', target: 'head', approach: 'technical' },
+    playerIntent:   { kind: 'strike', target: 'head', tactic: 'pickApart' },
+    opponentIntent: { kind: 'strike', target: 'head', tactic: 'pickApart' },
     ...over,
   });
 

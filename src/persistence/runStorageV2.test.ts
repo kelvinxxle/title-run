@@ -5,14 +5,14 @@ import { STAT_IDS, type StatLine } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
 function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
-const JAB: RoundIntent = { where: 'strike', target: 'head', approach: 'technical' };
+const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
 function midFight(): RunState {
   const started = startNextFight(preFight());
   return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
 }
-// seed 'fw-0' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
+// seed 'fw-4' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
 function finishWindowRun(): RunState {
-  let run = startNextFight(applyDraft(startRun('fw-0'), { name: 'A', statLine: LINE }));
+  let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE }));
   let f = run.fight as FightState;
   while (f.phase === 'in-round') f = resolveRound(f, JAB);
   run = { ...run, fight: f };

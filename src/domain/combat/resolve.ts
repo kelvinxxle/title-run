@@ -1,13 +1,14 @@
 import type { FightState, RoundLogEntry } from './fightState';
 import { opponentIntent } from './fightState';
 import { scoreFight } from './judges';
-import type { RoundIntent, Approach } from './intents';
+import type { RoundIntent, StrikeTactic, Phase } from './intents';
+import { intentPhase } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
 import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
 import { detectWindow } from './finish';
 
-// ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
+// ── Tuning constants (adjust in Task 5) ──────────────────────────────────────
 const IQ_FACTOR      = 0.1;
 const SWING_RANGE    = 24;
 const DMG_FACTOR     = 0.55;
@@ -16,8 +17,35 @@ const BODY_TO_STAMINA = 0.5;
 /** Stamina recovery lost per point of accumulated body damage carried into a round. */
 const BODY_RECOVERY_FACTOR = 0.08;
 
-const APPROACH_ATK: Record<Approach, number> = { pressure: 1.3, technical: 1.0, counter: 0.8 };
-const APPROACH_DEF: Record<Approach, number> = { pressure: 0.8, technical: 1.0, counter: 1.2 };
+const STRIKE_TACTIC_ATK: Record<StrikeTactic, number> = { pressure: 1.3, counter: 0.8, pickApart: 1.0 };
+const STRIKE_TACTIC_DEF: Record<StrikeTactic, number> = { pressure: 0.8, counter: 1.2, pickApart: 1.0 };
+// Interim wrestle constants (Task 1). Nudged above the spec's baselines (1.0 / 0.7)
+// so exploiting a takedown-defense hole is a real edge while the ground window is
+// absent; retuned in Task 5 once wrestle resolves through the ground game.
+const WRESTLE_ATK = 1.1;
+/** Shooting for a takedown leaves you open to strikes on the way in (<1). */
+const WRESTLE_VS_STRIKE_DEF = 0.9;
+
+/** Offensive multiplier for the attacker's intent. Wrestle has no tactic. */
+function atkMult(intent: RoundIntent): number {
+  return intent.kind === 'strike' ? STRIKE_TACTIC_ATK[intent.tactic] : WRESTLE_ATK;
+}
+
+/** Defensive multiplier for the defender's intent against an incoming phase. */
+function defMult(defender: RoundIntent, incomingPhase: Phase): number {
+  if (incomingPhase === 'wrestle') return 1.0; // takedownDef stat carries the defense
+  // incoming strike:
+  if (defender.kind === 'strike') return STRIKE_TACTIC_DEF[defender.tactic];
+  return WRESTLE_VS_STRIKE_DEF; // shooting leaves you open (<1)
+}
+
+/** A striking Counter that meets a striking Pressure earns a clean-read bonus. */
+function counterBonus(defender: RoundIntent, attacker: RoundIntent): number {
+  return defender.kind === 'strike' && defender.tactic === 'counter' &&
+    attacker.kind === 'strike' && attacker.tactic === 'pressure'
+    ? COUNTER_BONUS
+    : 0;
+}
 
 function clampStamina(s: number): number {
   return Math.max(0, Math.min(STAMINA_MAX, s));
@@ -40,35 +68,36 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
   const playerEffort = effortMultiplier(state.player.stamina);
   const oppEffort = effortMultiplier(state.opponent.stamina);
 
+  const pPhase = intentPhase(playerIntent);
+  const oPhase = intentPhase(oppIntent);
+
   // Two-sided exchange: each side mounts an attack in the phase it CHOSE, met by
-  // the other side's defense in that same phase. Both fighters' offense AND defense
-  // stats, both stamina levels, and both `where` choices feed the result.
+  // the other side's defense against that phase. Both fighters' offense AND defense
+  // stats, both stamina levels, and both intent choices feed the result.
   //
-  //   attackScore = attacker.offense[where]·effort·ATK[approach]
-  //               − defender.defense[where]·effort·DEF[approach]  (+ counter bonus)
+  //   attackScore = attacker.offense[phase]·effort·atkMult(intent)
+  //               − defender.defense[phase]·effort·defMult(defenderIntent, phase)  (+ counter bonus)
 
-  // Player attacks at playerIntent.where; opponent defends there with oppIntent.approach.
-  const playerCounterBonus =
-    playerIntent.approach === 'counter' && oppIntent.approach === 'pressure' ? COUNTER_BONUS : 0;
+  // Player attacks at pPhase; opponent defends there.
   const playerAttackScore =
-    state.player.statLine[PHASE_OFFENSE[playerIntent.where]] * playerEffort * APPROACH_ATK[playerIntent.approach] -
-    state.opponent.statLine[PHASE_DEFENSE[playerIntent.where]] * oppEffort * APPROACH_DEF[oppIntent.approach] +
-    playerCounterBonus;
+    state.player.statLine[PHASE_OFFENSE[pPhase]] * playerEffort * atkMult(playerIntent) -
+    state.opponent.statLine[PHASE_DEFENSE[pPhase]] * oppEffort * defMult(oppIntent, pPhase) +
+    counterBonus(playerIntent, oppIntent);
 
-  // Opponent attacks at oppIntent.where; player defends there with playerIntent.approach.
-  const oppCounterBonus =
-    oppIntent.approach === 'counter' && playerIntent.approach === 'pressure' ? COUNTER_BONUS : 0;
+  // Opponent attacks at oPhase; player defends there.
   const oppAttackScore =
-    state.opponent.statLine[PHASE_OFFENSE[oppIntent.where]] * oppEffort * APPROACH_ATK[oppIntent.approach] -
-    state.player.statLine[PHASE_DEFENSE[oppIntent.where]] * playerEffort * APPROACH_DEF[playerIntent.approach] +
-    oppCounterBonus;
+    state.opponent.statLine[PHASE_OFFENSE[oPhase]] * oppEffort * atkMult(oppIntent) -
+    state.player.statLine[PHASE_DEFENSE[oPhase]] * playerEffort * defMult(playerIntent, oPhase) +
+    counterBonus(oppIntent, playerIntent);
 
   const dominance =
     playerAttackScore - oppAttackScore +
     (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR +
     seededSwing;
 
-  // Damage to the round loser
+  // Damage to the round loser. Damage type = winner's target if the winner struck,
+  // else 'head' (interim: a winning wrestle just deals head damage until Task 2's
+  // ground window arrives).
   const dmg = Math.round(Math.abs(dominance) * DMG_FACTOR);
   let playerHead = state.player.headDamage;
   let playerBody = state.player.bodyDamage;
@@ -80,15 +109,15 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
   if (dominance > 0) {
     // Player wins the exchange — opponent absorbs damage
-    if (playerIntent.target === 'body') {
+    if (playerIntent.kind === 'strike' && playerIntent.target === 'body') {
       oppBody    += dmg;
       oppStamina -= Math.round(dmg * BODY_TO_STAMINA);
     } else {
       oppHead += dmg;
     }
   } else if (dominance < 0) {
-    // Opponent wins the exchange — player absorbs damage; winner's target drives damage type
-    if (oppIntent.target === 'body') {
+    // Opponent wins the exchange — player absorbs damage; winner's target drives type
+    if (oppIntent.kind === 'strike' && oppIntent.target === 'body') {
       playerBody    += dmg;
       playerStamina -= Math.round(dmg * BODY_TO_STAMINA);
     } else {
@@ -98,11 +127,11 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
 
   // Stamina: subtract effort cost, add recovery (suppressed by carried body damage), clamp
   playerStamina = clampStamina(
-    playerStamina - staminaCost(playerIntent.where, playerIntent.approach)
+    playerStamina - staminaCost(playerIntent)
       + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
   );
   oppStamina = clampStamina(
-    oppStamina - staminaCost(oppIntent.where, oppIntent.approach)
+    oppStamina - staminaCost(oppIntent)
       + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
   );
 

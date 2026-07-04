@@ -16,7 +16,7 @@ describe('FightView', () => {
     render(<FightView fightState={base()} playerName="Me" onIntent={onIntent} onFinishStep={vi.fn()} onContinue={vi.fn()} />);
     expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('intent-commit'));
-    expect(onIntent).toHaveBeenCalledWith({ where:'strike', target:'head', approach:'technical' });
+    expect(onIntent).toHaveBeenCalledWith({ kind:'strike', target:'head', tactic:'pickApart' });
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-round', '1');
   });
 

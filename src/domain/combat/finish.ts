@@ -10,7 +10,7 @@ export const COMMIT_P = 0.7;
 export const MEASURE_P = 0.35;
 export const INITIAL_STEPS = 3;
 const FINISH_STAMINA_COST = 15;
-/** submissionDef below this → vulnerable to grapple reads */
+/** submissionDef below this → vulnerable to takedown-to-submission reads */
 const LOW_SUB_DEF = 55;
 
 // ── ROCKED_HEAD_DMG ───────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export interface ResolvedContext {
  *
  * Trigger logic (evaluated in order):
  *   1. Damage path: headDamage ≥ ROCKED_HEAD_DMG(chin) → KO window.
- *   2. Read path: clean counter vs pressure, grapple vs low submissionDef,
+ *   2. Read path: clean counter vs pressure, takedown vs low submissionDef,
  *      or gassed opponent → KO or submission window.
  *
  * `side` = the side ABOUT TO FINISH (the one who landed the trigger).
@@ -86,18 +86,24 @@ export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
 
   // ── 2. Read path ──────────────────────────────────────────────────────────
   // Clean counter that beat a pressure
-  if (playerIntent.approach === 'counter' && opponentIntent.approach === 'pressure' && dominance > 0) {
+  if (
+    playerIntent.kind === 'strike' && playerIntent.tactic === 'counter' &&
+    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'pressure' && dominance > 0
+  ) {
     return { side: 'player', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
-  if (opponentIntent.approach === 'counter' && playerIntent.approach === 'pressure' && dominance < 0) {
+  if (
+    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'counter' &&
+    playerIntent.kind === 'strike' && playerIntent.tactic === 'pressure' && dominance < 0
+  ) {
     return { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
 
-  // Grapple submission attempt vs low submissionDef
-  if (playerIntent.where === 'grapple' && opponentStatLine.submissionDef < LOW_SUB_DEF && dominance > 0) {
+  // Takedown (wrestle) that exposes a low submission defense
+  if (playerIntent.kind === 'wrestle' && opponentStatLine.submissionDef < LOW_SUB_DEF && dominance > 0) {
     return { side: 'player', method: 'submission', stepsLeft: INITIAL_STEPS };
   }
-  if (opponentIntent.where === 'grapple' && playerStatLine.submissionDef < LOW_SUB_DEF && dominance < 0) {
+  if (opponentIntent.kind === 'wrestle' && playerStatLine.submissionDef < LOW_SUB_DEF && dominance < 0) {
     return { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS };
   }
 
