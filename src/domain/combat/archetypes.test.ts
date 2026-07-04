@@ -41,13 +41,28 @@ describe('archetypeFromStatLine', () => {
     expect(archetypeFromStatLine(s)).toBe('allrounder');
   });
 
-  it('is deterministic — same input returns same output', () => {
+  it('is deterministic — same input returns the same known output on every call', () => {
+    // striking=70, takedowns=65, submissions=40 → top two differ by 5 → allrounder
     const s = { ...base, striking: 70, takedowns: 65, submissions: 40 };
-    expect(archetypeFromStatLine(s)).toBe(archetypeFromStatLine(s));
+    const expected: ArchetypeId = 'allrounder';
+    expect(archetypeFromStatLine(s)).toBe(expected);
+    expect(archetypeFromStatLine(s)).toBe(expected);
+  });
+
+  it('top two offensive stats exactly 5 apart returns allrounder (band edge, inclusive)', () => {
+    // striking=80, takedowns=75, submissions=40 → 80−75=5 ≤5 → allrounder
+    const s = { ...base, striking: 80, takedowns: 75, submissions: 40 };
+    expect(archetypeFromStatLine(s)).toBe('allrounder');
+  });
+
+  it('top two offensive stats exactly 6 apart returns the dominant archetype (just outside band)', () => {
+    // striking=80, takedowns=74, submissions=40 → 80−74=6 >5 → striker
+    const s = { ...base, striking: 80, takedowns: 74, submissions: 40 };
+    expect(archetypeFromStatLine(s)).toBe('striker');
   });
 
   it('every STARTER_ROSTER fighter buildStatLine returns a valid ArchetypeId', () => {
-    const valid: ArchetypeId[] = ['striker', 'wrestler', 'grappler', 'allrounder', 'brawler'];
+    const valid: ArchetypeId[] = ['striker', 'wrestler', 'grappler', 'allrounder'];
     for (const fighter of STARTER_ROSTER) {
       const result = archetypeFromStatLine(buildStatLine(fighter));
       expect(valid).toContain(result);
