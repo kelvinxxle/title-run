@@ -61,7 +61,7 @@ export default function FighterAvatar({ seed, archetype, name, size = 48 }: Figh
   const hairStyle = pick(rng, HAIR_STYLES);
   const gloveColor = pick(rng, GLOVE_COLORS);
 
-  const accent = ARCHETYPE_ACCENTS[archetype] ?? NEUTRAL_ACCENT;
+  const accent = Object.prototype.hasOwnProperty.call(ARCHETYPE_ACCENTS, archetype) ? ARCHETYPE_ACCENTS[archetype] : NEUTRAL_ACCENT;
   const cx = 24;
 
   return (

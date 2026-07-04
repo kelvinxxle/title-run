@@ -22,7 +22,7 @@ describe('FighterAvatar', () => {
     const outputs = new Set<string>();
     for (const f of STARTER_ROSTER) {
       const { container } = render(
-        <FighterAvatar seed={f.id} archetype={f.archetype} name={f.name} />,
+        <FighterAvatar seed={f.id} archetype="striker" name="X" />,
       );
       outputs.add(serialize(container));
     }
@@ -58,6 +58,15 @@ describe('FighterAvatar', () => {
     expect(serialize(container)).toContain('#8a8f98');
   });
 
+  it('falls back to neutral for prototype-name archetypes without throwing', () => {
+    expect(() => {
+      const { container } = render(
+        <FighterAvatar seed="seed-w" archetype="toString" name="Test" />,
+      );
+      expect(serialize(container)).toContain('#8a8f98');
+    }).not.toThrow();
+  });
+
   it('honors the size prop and defaults to 48', () => {
     const big = render(<FighterAvatar seed="s" archetype="striker" name="Big" size={96} />);
     const bigSvg = big.container.querySelector('[data-testid="fighter-avatar"]')!;
@@ -76,7 +85,9 @@ describe('FighterAvatar', () => {
     expect(el).toBeInTheDocument();
   });
 
-  it('does not use Math.random in source', () => {
+  it('does not use Math.random, useId, or Date.now in source', () => {
     expect(fighterAvatarSource).not.toContain('Math.random');
+    expect(fighterAvatarSource).not.toContain('useId');
+    expect(fighterAvatarSource).not.toContain('Date.now');
   });
 });
