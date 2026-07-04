@@ -14,7 +14,7 @@ Images sourced from Wikipedia / Wikimedia Commons (freely licensed). Personal, n
 - **jose-aldo** — José Aldo — https://upload.wikimedia.org/wikipedia/commons/9/9d/Jos%C3%A9_Aldo%2C_UFC_189_World_Tour_London_%282%29_%28cropped%29.jpg
 - **alexander-volkanovski** — Alexander Volkanovski — https://upload.wikimedia.org/wikipedia/commons/0/0f/Alexander_Volkanovski_at_UFC_232.jpg
 - **sean-omalley** — Sean O'Malley (fighter) — https://upload.wikimedia.org/wikipedia/commons/4/4f/UFC_Freedom_250_press_conference_at_the_Lincoln_Memorial_in_Washington%2C_D.C.%2C_Friday%2C_June_12%2C_2026_-_25%28cropped%29.jpg
-- **petr-yan** — Petr Yan — https://upload.wikimedia.org/wikipedia/commons/d/d0/Vladimir_Putin_at_award_ceremonies_%282026-04-22%29_24%28cropped%29.jpg
+- **petr-yan** — Petr Yan — https://upload.wikimedia.org/wikipedia/commons/e/ea/PetrYan_%28cropped%29.jpg
 - **kamaru-usman** — Kamaru Usman — https://upload.wikimedia.org/wikipedia/commons/0/05/KamaruUsmanPress2018.png
 - **colby-covington** — Colby Covington — https://upload.wikimedia.org/wikipedia/commons/1/18/ColbyCovingtonFortJackson2022%28cropped%29.jpg
 - **daniel-cormier** — Daniel Cormier — https://upload.wikimedia.org/wikipedia/commons/2/22/Daniel_Cormier_taking_a_picture_with_a_fan..jpg
