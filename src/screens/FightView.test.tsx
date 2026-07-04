@@ -67,8 +67,9 @@ describe('FightView', () => {
         onContinue={vi.fn()}
       />,
     );
+    expect(screen.getByTestId('corner-screen')).toBeInTheDocument();
     expect(screen.getByTestId('round-recap')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('gameplan-push-pace'));
+    fireEvent.click(screen.getByTestId('plan-push-pace'));
     expect(onChooseGamePlan).toHaveBeenCalledWith('push-pace');
   });
 

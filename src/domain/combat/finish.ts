@@ -188,7 +188,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     const isOver = newRound > state.rounds;
     const updatedState: FightState = {
       ...state,
-      phase: isOver ? 'finished' : 'in-round',
+      phase: isOver ? 'finished' : 'corner',
       window: null,
       round: isOver ? state.round : newRound,
       player: {
@@ -221,7 +221,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     }
     return {
       ...state,
-      phase: 'in-round',
+      phase: 'corner',
       window: null,
       round: newRound,
     };
@@ -282,7 +282,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     // No finish: close window, advance round (or hand off to a decision if last round).
     const advanced: FightState = {
       ...withDamage,
-      phase: isOver ? 'finished' : 'in-round',
+      phase: isOver ? 'finished' : 'corner',
       window: null,
       round: isOver ? state.round : newRound,
     };
@@ -308,7 +308,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     : { ...state, opponent: { ...state.opponent, stamina: drain(state.opponent.stamina) } };
   const advanced: FightState = {
     ...withDrain,
-    phase: isOver ? 'finished' : 'in-round',
+    phase: isOver ? 'finished' : 'corner',
     window: null,
     round: isOver ? state.round : newRound,
   };

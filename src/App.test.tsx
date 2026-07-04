@@ -123,7 +123,7 @@ describe('App (v2 flow)', () => {
     save({ run: fightingRun(cornerFight()), bestReign: null });
     render(<App />);
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'corner');
-    fireEvent.click(screen.getByTestId('gameplan-push-pace'));
+    fireEvent.click(screen.getByTestId('plan-push-pace'));
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'in-round');
     expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
   });

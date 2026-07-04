@@ -35,5 +35,6 @@ export function roundLabel(state: FightState): string {
   if (state.phase === 'finished') return 'Fight over';
   if (state.phase === 'finish-window') return `Finish window · Round ${state.round}`;
   if (state.phase === 'ground-window') return `Top control · Round ${state.round}`;
+  if (state.phase === 'corner') return `Corner · After round ${state.round - 1}`;
   return `Round ${state.round} of ${state.rounds}`;
 }
