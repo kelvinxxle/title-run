@@ -1,7 +1,6 @@
 import type { StatLine } from './stats';
 import { PHASE_OFFENSE } from './stats';
-import type { RoundIntent, Where, Approach } from './intents';
-import { APPROACHES } from './intents';
+import type { RoundIntent, StrikeTactic } from './intents';
 import { startingStamina } from './stamina';
 import { isGassed } from './stamina';
 import { createRng } from '../rng';
@@ -16,11 +15,11 @@ export interface Fighter2 {
   roundScore: number;
 }
 
-export type FightPhase = 'in-round' | 'finish-window' | 'finished';
+export type FightPhase = 'in-round' | 'finish-window' | 'ground-window' | 'finished';
 
 export interface FinishWindow {
   side: 'player' | 'opponent';
-  method: 'KO' | 'submission';
+  method: 'KO' | 'submission' | 'ground';
   stepsLeft: number;
 }
 
@@ -102,32 +101,34 @@ export function startFight(args: {
 export function opponentIntent(state: FightState): RoundIntent {
   const rng = createRng(`${state.seed}#f${state.fightNumber}#ai${state.round}`);
 
-  // Choose where: strongest offense stat among strike/wrestle/grapple
-  const phases: Array<{ where: Where; stat: number }> = [
-    { where: 'strike', stat: state.opponent.statLine[PHASE_OFFENSE.strike] },
-    { where: 'wrestle', stat: state.opponent.statLine[PHASE_OFFENSE.wrestle] },
-    { where: 'grapple', stat: state.opponent.statLine[PHASE_OFFENSE.grapple] },
-  ];
-  const where: Where = phases.reduce((best, cur) => (cur.stat > best.stat ? cur : best)).where;
-
-  // Choose target: body when player is gassed, else head
-  const target = isGassed(state.player.stamina) ? 'body' : 'head';
-
-  // Draw all RNG values upfront for uniform consumption
+  // Draw all RNG values upfront for uniform consumption regardless of branch.
   const roll = rng();
-  const approachIdx = rng();
+  const tacticIdx = rng();
 
-  // Choose approach biased by fightNumber (higher → more aggressive)
-  // fightNumber 1-4: favour technical/counter; 5+: favour pressure
-  const aggression = Math.min(1, (state.fightNumber - 1) / 4); // 0..1
-  let approach: Approach;
-  if (roll < aggression * 0.6) {
-    approach = 'pressure';
-  } else if (roll < 0.5 + aggression * 0.2) {
-    approach = 'technical';
-  } else {
-    approach = APPROACHES[Math.floor(approachIdx * APPROACHES.length)];
+  // Choose kind by the opponent's better edge over the player's matching defense.
+  const strikeEdge = state.opponent.statLine[PHASE_OFFENSE.strike] - state.player.statLine.strikingDef;
+  const wrestleEdge = state.opponent.statLine[PHASE_OFFENSE.wrestle] - state.player.statLine.takedownDef;
+
+  if (wrestleEdge > strikeEdge) {
+    return { kind: 'wrestle' };
   }
 
-  return { where, target, approach };
+  // Striking: target body when the player is gassed, else head.
+  const target = isGassed(state.player.stamina) ? 'body' : 'head';
+
+  // Choose tactic biased by fightNumber (higher → more aggressive).
+  // fightNumber 1-4: favour pickApart/counter; 5+: favour pressure.
+  // Fallback ordering preserves the pre-redesign distribution (technical ≡ pickApart).
+  const TACTIC_FALLBACK: readonly StrikeTactic[] = ['pressure', 'pickApart', 'counter'];
+  const aggression = Math.min(1, (state.fightNumber - 1) / 4); // 0..1
+  let tactic: StrikeTactic;
+  if (roll < aggression * 0.6) {
+    tactic = 'pressure';
+  } else if (roll < 0.5 + aggression * 0.2) {
+    tactic = 'pickApart';
+  } else {
+    tactic = TACTIC_FALLBACK[Math.floor(tacticIdx * TACTIC_FALLBACK.length)];
+  }
+
+  return { kind: 'strike', target, tactic };
 }

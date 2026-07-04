@@ -4,10 +4,13 @@ import {
   applyDraft,
   startNextFight,
   settleFight,
+  startFight,
   resolveRound,
   finishStep,
+  groundStep,
   buildStatLine,
   getFighter,
+  ARCHETYPES,
   type FightState,
   type RunState,
   type RoundIntent,
@@ -16,7 +19,7 @@ import {
 // A deterministic "always technical head strike" policy — enough to drive a
 // fight to a terminal state (finish or decision) without any Math.random.
 function drivePlayerIntent(): RoundIntent {
-  return { where: 'strike', target: 'head', approach: 'technical' };
+  return { kind: 'strike', target: 'head', tactic: 'pickApart' };
 }
 
 function playFightToEnd(initial: FightState): FightState {
@@ -79,5 +82,145 @@ describe('combat integration: full run', () => {
     }
     // Seeds should not all collapse to one identical trajectory.
     expect(outcomes.size).toBeGreaterThan(1);
+  });
+});
+
+// ── Combat decision-space integration ──────────────────────────────────────────
+// These tests drive the REAL state machine (resolveRound → finish/ground → step)
+// end-to-end for each finishing method, proving the strike/wrestle/ground redesign
+// flows through concrete outcomes. They deliberately open every window through
+// resolveRound (not by hand-constructing a window state), which is the distinct
+// value over finish.test.ts's unit-level groundStep tests.
+
+/** Drives an in-round fight to a terminal state under a fixed strike policy,
+ *  committing every finish window. Only reachable phases are in-round + finish-window. */
+function driveStrikeFightToEnd(initial: FightState, intent: RoundIntent): FightState {
+  let s = initial;
+  let guard = 0;
+  while (s.phase !== 'finished') {
+    if (guard++ > 200) throw new Error('strike fight did not terminate');
+    if (s.phase === 'in-round') s = resolveRound(s, intent);
+    else if (s.phase === 'finish-window') s = finishStep(s, 'commit');
+    else throw new Error(`unexpected phase in strike driver: ${s.phase}`);
+  }
+  return s;
+}
+
+describe('combat integration: finishing methods through the real state machine', () => {
+  it('a head-strike campaign drives a fight to a KO win for the player', () => {
+    // Fragile-chinned, porous-defense opponent so head pressure opens a KO window
+    // and a commit lands. seed 'integration-strike-ko' resolves to a round-1 KO.
+    const player = { ...ARCHETYPES.brawler, striking: 99 };
+    const opp = {
+      id: 'g',
+      name: 'Glass',
+      archetype: 'brawler' as const,
+      statLine: { ...ARCHETYPES.brawler, chin: 20, strikingDef: 20 },
+    };
+    const s0 = startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: player, opponent: opp });
+    const end = driveStrikeFightToEnd(s0, { kind: 'strike', target: 'head', tactic: 'pressure' });
+
+    expect(end.phase).toBe('finished');
+    expect(end.outcome).not.toBeNull();
+    expect(end.outcome!.winner).toBe('player');
+    expect(end.outcome!.method).toBe('KO');
+  });
+
+  it('a winning wrestle opens a ground window that a Ground & Pound closes as a KO', () => {
+    // Player: wrestler with huge takedowns. Opponent: weak takedownDef (so the shot
+    // lands and dominance > 0) and a glass chin (chin:1 → ROCKED_HEAD_DMG=1) so the
+    // first GnP step crosses the rocked threshold → TKO scored as method 'KO'.
+    const player = { ...ARCHETYPES.wrestler, takedowns: 99 };
+    const opp = {
+      id: 'o',
+      name: 'Opp',
+      archetype: 'striker' as const,
+      statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
+    };
+    const s0 = startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp });
+
+    // Open the window through resolveRound (NOT a hand-built ground-window state).
+    const opened = resolveRound(s0, { kind: 'wrestle' });
+    expect(opened.phase).toBe('ground-window');
+    expect(opened.window).not.toBeNull();
+    expect(opened.window!.side).toBe('player');
+    expect(opened.window!.method).toBe('ground');
+    expect(opened.round).toBe(1); // round NOT advanced by opening the window
+
+    const finished = groundStep(opened, 'ground-and-pound');
+    expect(finished.phase).toBe('finished');
+    expect(finished.outcome).not.toBeNull();
+    expect(finished.outcome!.winner).toBe('player');
+    expect(finished.outcome!.method).toBe('KO');
+  });
+
+  it('a winning wrestle opens a ground window that a Submission closes as a tap', () => {
+    // Player: grappler (high submissions) with huge takedowns. Opponent: weak
+    // takedownDef (shot lands) and porous submissionDef so the tap read clamps high;
+    // seed 'sub-win-0' rolls under the tap probability → submission win.
+    const player = { ...ARCHETYPES.grappler, takedowns: 99 };
+    const opp = {
+      id: 'o',
+      name: 'Opp',
+      archetype: 'striker' as const,
+      statLine: { ...ARCHETYPES.striker, takedownDef: 20, submissionDef: 10 },
+    };
+    const s0 = startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: player, opponent: opp });
+
+    const opened = resolveRound(s0, { kind: 'wrestle' });
+    expect(opened.phase).toBe('ground-window');
+    expect(opened.window!.method).toBe('ground');
+
+    const finished = groundStep(opened, 'submission');
+    expect(finished.phase).toBe('finished');
+    expect(finished.outcome).not.toBeNull();
+    expect(finished.outcome!.winner).toBe('player');
+    expect(finished.outcome!.method).toBe('submission');
+  });
+
+  it('the three finishing paths are fully reproducible from their seeds', () => {
+    // 1. Strike KO — same setup as the strike-KO test above.
+    const strikePlayer = { ...ARCHETYPES.brawler, striking: 99 };
+    const strikeOpp = {
+      id: 'g',
+      name: 'Glass',
+      archetype: 'brawler' as const,
+      statLine: { ...ARCHETYPES.brawler, chin: 20, strikingDef: 20 },
+    };
+    const strikeIntent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pressure' };
+    const strikeEndA = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
+    const strikeEndB = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
+    expect(strikeEndA.outcome).not.toBeNull();
+    expect(strikeEndB.outcome).toEqual(strikeEndA.outcome);
+
+    // 2. Ground & Pound — same setup as the GnP test above.
+    const gnpPlayer = { ...ARCHETYPES.wrestler, takedowns: 99 };
+    const gnpOpp = {
+      id: 'o',
+      name: 'Opp',
+      archetype: 'striker' as const,
+      statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
+    };
+    const gnpOpenA = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
+    const gnpOpenB = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
+    const gnpEndA = groundStep(gnpOpenA, 'ground-and-pound');
+    const gnpEndB = groundStep(gnpOpenB, 'ground-and-pound');
+    expect(gnpEndA.outcome).not.toBeNull();
+    expect(gnpEndB.outcome).toEqual(gnpEndA.outcome);
+
+    // 3. Submission — same setup as the submission test above.
+    const subPlayer = { ...ARCHETYPES.grappler, takedowns: 99 };
+    const subOpp = {
+      id: 'o',
+      name: 'Opp',
+      archetype: 'striker' as const,
+      statLine: { ...ARCHETYPES.striker, takedownDef: 20, submissionDef: 10 },
+    };
+    const subOpenA = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
+    const subOpenB = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
+    const subEndA = groundStep(subOpenA, 'submission');
+    const subEndB = groundStep(subOpenB, 'submission');
+    expect(subEndA.outcome).not.toBeNull();
+    expect(subEndB.outcome).toEqual(subEndA.outcome);
   });
 });

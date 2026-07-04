@@ -21,7 +21,7 @@ describe('fight state', () => {
   });
   it('a wrestler AI prefers to wrestle and is deterministic', () => {
     const s = startFight({ seed: 'x', fightNumber: 1, playerStatLine: ARCHETYPES.striker, opponent: OPP });
-    expect(opponentIntent(s).where).toBe('wrestle');
+    expect(opponentIntent(s).kind).toBe('wrestle');
     expect(opponentIntent(s)).toEqual(opponentIntent(s));
   });
 });

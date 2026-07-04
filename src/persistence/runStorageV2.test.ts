@@ -4,19 +4,26 @@ import { startRun, applyDraft, startNextFight, resolveRound, type RunState, type
 import { STAT_IDS, type StatLine } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+// Wrestler stat line: high takedowns (99) to win a wrestle for ground-window; seed 'gw-5' verified.
+const WRESTLER = Object.fromEntries(STAT_IDS.map((s) => [s, s === 'takedowns' ? 99 : 40])) as StatLine;
 function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
-const JAB: RoundIntent = { where: 'strike', target: 'head', approach: 'technical' };
+const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
 function midFight(): RunState {
   const started = startNextFight(preFight());
   return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
 }
-// seed 'fw-0' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
+// seed 'fw-4' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
 function finishWindowRun(): RunState {
-  let run = startNextFight(applyDraft(startRun('fw-0'), { name: 'A', statLine: LINE }));
+  let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE }));
   let f = run.fight as FightState;
   while (f.phase === 'in-round') f = resolveRound(f, JAB);
   run = { ...run, fight: f };
   return run;
+}
+// seed 'gw-5' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
+function groundWindowRun(): RunState {
+  const run = startNextFight(applyDraft(startRun('gw-5'), { name: 'A', statLine: WRESTLER }));
+  return { ...run, fight: resolveRound(run.fight as FightState, { kind: 'wrestle' }) };
 }
 function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
@@ -128,6 +135,51 @@ describe('runStorageV2', () => {
     expect((run.fight as FightState).phase).toBe('finish-window');
     save({ run, bestReign: 0 });
     expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('rejects a finish-window fight with a ground-method window (phase↔payload invariant)', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real ground-window run (no false reject)', () => {
+    const run = groundWindowRun();
+    expect((run.fight as FightState).phase).toBe('ground-window');
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('rejects a ground-window fight with a null window (phase↔payload invariant), and clears the key', () => {
+    const run = groundWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: null } });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a ground-window fight with a KO-method window (phase↔payload invariant)', () => {
+    const run = groundWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'player', method: 'KO', stepsLeft: 3 } } });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a ground-window fight whose window is opponent-side (player-top-control invariant)', () => {
+    const run = groundWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a persisted window with out-of-range or non-integer stepsLeft', () => {
+    for (const bad of [0, -1, 4, 2.5]) {
+      const run = finishWindowRun();
+      store({ ...run, fight: { ...(run.fight as FightState), window: { ...((run.fight as FightState).window!), stepsLeft: bad } } });
+      expect(load().run).toBeNull();
+    }
+  });
+  it('accepts a persisted window with an in-range integer stepsLeft', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { ...((run.fight as FightState).window!), stepsLeft: 2 } } });
+    expect(load().run).not.toBeNull();
   });
 
   it('rejects a non-drafting run with a null fighter (pre-fight), and clears the key', () => {

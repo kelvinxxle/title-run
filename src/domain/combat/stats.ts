@@ -27,5 +27,5 @@ export function isStatId(value: unknown): value is StatId {
   return typeof value === 'string' && (STAT_IDS as readonly string[]).includes(value);
 }
 
-export const PHASE_OFFENSE = { strike: 'striking', wrestle: 'takedowns', grapple: 'submissions' } as const;
-export const PHASE_DEFENSE = { strike: 'strikingDef', wrestle: 'takedownDef', grapple: 'submissionDef' } as const;
+export const PHASE_OFFENSE = { strike: 'striking', wrestle: 'takedowns' } as const;
+export const PHASE_DEFENSE = { strike: 'strikingDef', wrestle: 'takedownDef' } as const;

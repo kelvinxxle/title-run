@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import {
-  WHERES, TARGETS, APPROACHES, INTENT_LABELS, PHASE_OFFENSE, STAT_LABELS,
-  type Where, type Target, type Approach, type RoundIntent, type StatLine,
+  STRIKE_TACTICS, TARGETS, KIND_LABELS, STRIKE_TACTIC_LABELS, TARGET_LABELS,
+  PHASE_OFFENSE, STAT_LABELS,
+  type Target, type StrikeTactic, type RoundIntent, type StatLine,
 } from '../domain/combat';
 
 interface Props { statLine: StatLine; onCommit: (intent: RoundIntent) => void; disabled?: boolean; }
+
+type Kind = 'strike' | 'wrestle';
+const KINDS: readonly Kind[] = ['strike', 'wrestle'] as const;
 
 function Segmented<T extends string>(
   { group, options, value, labels, onSelect }:
@@ -31,29 +35,51 @@ function Segmented<T extends string>(
 }
 
 export default function IntentPanelV2({ statLine, onCommit, disabled = false }: Props) {
-  const [where, setWhere] = useState<Where>('strike');
+  const [kind, setKind] = useState<Kind>('strike');
   const [target, setTarget] = useState<Target>('head');
-  const [approach, setApproach] = useState<Approach>('technical');
+  const [tactic, setTactic] = useState<StrikeTactic>('pickApart');
 
-  const offenseStat = PHASE_OFFENSE[where];
+  const commit = () => {
+    onCommit(kind === 'strike' ? { kind: 'strike', target, tactic } : { kind: 'wrestle' });
+  };
 
   return (
     <div data-testid="intent-panel-v2" className="w-full flex flex-col gap-sm">
-      <Segmented group="where" options={WHERES} value={where} labels={INTENT_LABELS.where} onSelect={setWhere} />
-      <p className="font-mono text-xs text-on-surface-variant">
-        {STAT_LABELS[offenseStat]} <span className="text-on-surface">{statLine[offenseStat]}</span>
-      </p>
-      <Segmented group="target" options={TARGETS} value={target} labels={INTENT_LABELS.target} onSelect={setTarget} />
-      <Segmented group="approach" options={APPROACHES} value={approach} labels={INTENT_LABELS.approach} onSelect={setApproach} />
-      <button
-        type="button"
-        data-testid="intent-commit"
-        disabled={disabled}
-        onClick={() => onCommit({ where, target, approach })}
-        className="w-full h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide disabled:opacity-50"
-      >
-        Attack
-      </button>
+      <Segmented group="kind" options={KINDS} value={kind} labels={KIND_LABELS} onSelect={setKind} />
+
+      {kind === 'strike' ? (
+        <>
+          <p className="font-mono text-xs text-on-surface-variant">
+            {STAT_LABELS[PHASE_OFFENSE.strike]} <span className="text-on-surface">{statLine[PHASE_OFFENSE.strike]}</span>
+          </p>
+          <Segmented group="target" options={TARGETS} value={target} labels={TARGET_LABELS} onSelect={setTarget} />
+          <Segmented group="tactic" options={STRIKE_TACTICS} value={tactic} labels={STRIKE_TACTIC_LABELS} onSelect={setTactic} />
+          <button
+            type="button"
+            data-testid="intent-commit"
+            disabled={disabled}
+            onClick={commit}
+            className="w-full h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide disabled:opacity-50"
+          >
+            Attack
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="font-mono text-xs text-on-surface-variant">
+            {STAT_LABELS[PHASE_OFFENSE.wrestle]} <span className="text-on-surface">{statLine[PHASE_OFFENSE.wrestle]}</span>
+          </p>
+          <button
+            type="button"
+            data-testid="intent-commit"
+            disabled={disabled}
+            onClick={commit}
+            className="w-full h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide disabled:opacity-50"
+          >
+            Shoot for the takedown
+          </button>
+        </>
+      )}
     </div>
   );
 }

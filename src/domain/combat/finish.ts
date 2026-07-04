@@ -1,5 +1,5 @@
 import type { FightState, FinishWindow } from './fightState';
-import type { RoundIntent } from './intents';
+import type { RoundIntent, GroundPlan } from './intents';
 import type { StatLine } from './stats';
 import { isGassed, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
@@ -10,14 +10,52 @@ export const COMMIT_P = 0.7;
 export const MEASURE_P = 0.35;
 export const INITIAL_STEPS = 3;
 const FINISH_STAMINA_COST = 15;
-/** submissionDef below this → vulnerable to grapple reads */
+/** submissionDef below this → vulnerable to takedown-to-submission reads */
 const LOW_SUB_DEF = 55;
+
+// ── Ground game constants (Task 2 interim; retune in Task 5) ──────────────────
+/** Floor on ground-and-pound head damage per step. */
+const GP_MIN = 8;
+/** Scales the raw striking/takedown advantage into ground-and-pound damage. */
+const GP_FACTOR = 0.7;
+/** Base tap probability before the submissions-vs-defense read. */
+const SUB_BASE = 0.5;
+/** Per-point weight on (submissions − submissionDef) for the tap read. */
+const SUB_SCALE = 0.01;
+/** Stamina cost paid by the finisher on a failed submission attempt. */
+const GROUND_STAMINA_COST = 12;
 
 // ── ROCKED_HEAD_DMG ───────────────────────────────────────────────────────────
 /** Head-damage threshold to be "rocked". Scales directly with chin:
  *  higher chin ⇒ higher threshold ⇒ harder to rock. */
 export function ROCKED_HEAD_DMG(chin: number): number {
-  return Math.round(chin * 0.56);
+  // Clamp to a floor of 1: a threshold that rounds to 0 would let 0 head damage
+  // "rock" a fighter, making the damage-path finish window impossible to reason
+  // about. Load-bearing only if k drops below ~0.5; at the current k it is a guard.
+  return Math.max(1, Math.round(chin * 0.56));
+}
+
+// ── Shared ground math ────────────────────────────────────────────────────────
+/** Ground-and-pound head damage for one step: `attacker` posts up on `defender`.
+ *  Used by BOTH the player ground window (groundStep) and the opponent takedown
+ *  follow-up (resolveRound) so the two sides share one formula, not a copy. */
+export function groundAndPoundDamage(attacker: StatLine, defender: StatLine): number {
+  const raw = (0.5 * attacker.striking + 0.5 * attacker.takedowns) - 0.5 * defender.strikingDef;
+  return Math.max(GP_MIN, Math.round(raw * GP_FACTOR));
+}
+
+/** Submission tap probability for one step, clamped to [0.05, 0.95]. Shared by
+ *  both sides' ground game so the read is identical whoever is finishing. */
+export function submissionTapProbability(attacker: StatLine, defender: StatLine): number {
+  return Math.max(
+    0.05,
+    Math.min(0.95, SUB_BASE + (attacker.submissions - defender.submissionDef) * SUB_SCALE),
+  );
+}
+
+/** submissionDef below LOW_SUB_DEF → the ground AI reads a submission over GnP. */
+export function chooseGroundPlan(defenderStatLine: StatLine): GroundPlan {
+  return defenderStatLine.submissionDef < LOW_SUB_DEF ? 'submission' : 'ground-and-pound';
 }
 
 // ── FinishChoice ──────────────────────────────────────────────────────────────
@@ -48,8 +86,7 @@ export interface ResolvedContext {
  *
  * Trigger logic (evaluated in order):
  *   1. Damage path: headDamage ≥ ROCKED_HEAD_DMG(chin) → KO window.
- *   2. Read path: clean counter vs pressure, grapple vs low submissionDef,
- *      or gassed opponent → KO or submission window.
+ *   2. Read path: clean counter vs pressure, or gassed opponent → KO window.
  *
  * `side` = the side ABOUT TO FINISH (the one who landed the trigger).
  */
@@ -86,19 +123,17 @@ export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
 
   // ── 2. Read path ──────────────────────────────────────────────────────────
   // Clean counter that beat a pressure
-  if (playerIntent.approach === 'counter' && opponentIntent.approach === 'pressure' && dominance > 0) {
+  if (
+    playerIntent.kind === 'strike' && playerIntent.tactic === 'counter' &&
+    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'pressure' && dominance > 0
+  ) {
     return { side: 'player', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
-  if (opponentIntent.approach === 'counter' && playerIntent.approach === 'pressure' && dominance < 0) {
+  if (
+    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'counter' &&
+    playerIntent.kind === 'strike' && playerIntent.tactic === 'pressure' && dominance < 0
+  ) {
     return { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS };
-  }
-
-  // Grapple submission attempt vs low submissionDef
-  if (playerIntent.where === 'grapple' && opponentStatLine.submissionDef < LOW_SUB_DEF && dominance > 0) {
-    return { side: 'player', method: 'submission', stepsLeft: INITIAL_STEPS };
-  }
-  if (opponentIntent.where === 'grapple' && playerStatLine.submissionDef < LOW_SUB_DEF && dominance < 0) {
-    return { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS };
   }
 
   // Gassed opponent
@@ -120,6 +155,9 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     throw new Error('finishStep requires state.phase === "finish-window"');
   }
   const win = state.window!;
+  if (win.method === 'ground') {
+    throw new Error('finishStep cannot resolve a ground-method window (ground windows resolve via groundStep)');
+  }
   // Derive a stable step index from steps consumed: 0 on first call, +1 each
   const stepIndex = INITIAL_STEPS - win.stepsLeft;
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#finish${stepIndex}`);
@@ -128,14 +166,16 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
   const p = choice === 'commit' ? COMMIT_P : MEASURE_P;
 
   if (roll < p) {
-    // SUCCESS → fight finished
+    // SUCCESS → fight finished. A finish window is only ever KO/submission;
+    // 'ground' windows resolve through groundStep, never here.
+    const method = win.method;   // narrowed to 'KO' | 'submission' by the guard above
     return {
       ...state,
       phase: 'finished',
       window: null,
       outcome: {
         winner: win.side,
-        method: win.method,
+        method,
         round: state.round,
       },
     };
@@ -191,4 +231,86 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
     ...state,
     window: { ...win, stepsLeft: newStepsLeft },
   };
+}
+
+// ── groundStep (Task 2) ─────────────────────────────────────────────────────
+/** Resolve one decision in a player ground window (Ground & Pound or Submission).
+ *  Requires state.phase === 'ground-window'. Throws otherwise. Mirrors finishStep's
+ *  terminal/advance pattern (TKO/tap → finished; otherwise close window + advance,
+ *  handing off to scoreFight on the last round). */
+export function groundStep(state: FightState, plan: GroundPlan): FightState {
+  if (state.phase !== 'ground-window') {
+    throw new Error('groundStep requires state.phase === "ground-window"');
+  }
+  const win = state.window!;
+  if (win.method !== 'ground' || win.side !== 'player') {
+    throw new Error('groundStep requires a player-side ground window');
+  }
+  // The ground window is intentionally a SINGLE decision: every branch below either
+  // finishes the fight or advances the round, so stepsLeft is never decremented here.
+  const stepIndex = INITIAL_STEPS - win.stepsLeft;
+  const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#ground${stepIndex}`);
+
+  const finisher = win.side; // Task 2: always 'player', but keep it side-driven.
+  const attacker = finisher === 'player' ? state.player : state.opponent;
+  const defender = finisher === 'player' ? state.opponent : state.player;
+
+  const newRound = state.round + 1;
+  const isOver = newRound > state.rounds;
+
+  if (plan === 'ground-and-pound') {
+    const gpDmg = groundAndPoundDamage(attacker.statLine, defender.statLine);
+    const preHead = defender.headDamage;
+    const postHead = preHead + gpDmg;
+    const rocked = ROCKED_HEAD_DMG(defender.statLine.chin);
+
+    // Apply head damage to the defender, preserving each fighter's concrete type.
+    const withDamage: FightState = finisher === 'player'
+      ? { ...state, opponent: { ...state.opponent, headDamage: postHead } }
+      : { ...state, player: { ...state.player, headDamage: postHead } };
+
+    if (preHead < rocked && postHead >= rocked) {
+      // TKO
+      return {
+        ...withDamage,
+        phase: 'finished',
+        window: null,
+        outcome: { winner: finisher, method: 'KO', round: state.round },
+      };
+    }
+
+    // No finish: close window, advance round (or hand off to a decision if last round).
+    const advanced: FightState = {
+      ...withDamage,
+      phase: isOver ? 'finished' : 'in-round',
+      window: null,
+      round: isOver ? state.round : newRound,
+    };
+    return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;
+  }
+
+  // plan === 'submission'
+  const p = submissionTapProbability(attacker.statLine, defender.statLine);
+  const roll = rng();
+  if (roll < p) {
+    return {
+      ...state,
+      phase: 'finished',
+      window: null,
+      outcome: { winner: finisher, method: 'submission', round: state.round },
+    };
+  }
+
+  // Failed tap: finisher pays stamina, close window, advance round (mirror finishStep failure).
+  const drain = (s: number): number => Math.max(0, Math.min(STAMINA_MAX, s - GROUND_STAMINA_COST));
+  const withDrain: FightState = finisher === 'player'
+    ? { ...state, player: { ...state.player, stamina: drain(state.player.stamina) } }
+    : { ...state, opponent: { ...state.opponent, stamina: drain(state.opponent.stamina) } };
+  const advanced: FightState = {
+    ...withDrain,
+    phase: isOver ? 'finished' : 'in-round',
+    window: null,
+    round: isOver ? state.round : newRound,
+  };
+  return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;
 }

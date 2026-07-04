@@ -1,8 +1,9 @@
-import { type FightState, type RoundIntent, type FinishChoice } from '../domain/combat';
+import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan } from '../domain/combat';
 import { healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import IntentPanelV2 from '../components/IntentPanelV2';
 import FinishSequencePanel from '../components/FinishSequencePanel';
+import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
 
 interface Props {
@@ -10,10 +11,11 @@ interface Props {
   playerName: string;
   onIntent: (intent: RoundIntent) => void;
   onFinishStep: (choice: FinishChoice) => void;
+  onGroundStep: (plan: GroundPlan) => void;
   onContinue: () => void;
 }
 
-export default function FightView({ fightState, playerName, onIntent, onFinishStep, onContinue }: Props) {
+export default function FightView({ fightState, playerName, onIntent, onFinishStep, onGroundStep, onContinue }: Props) {
   const { player, opponent, phase, window: win, outcome } = fightState;
   return (
     <section
@@ -34,6 +36,9 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
       )}
       {phase === 'finish-window' && win && (
         <FinishSequencePanel window={win} onChoice={onFinishStep} />
+      )}
+      {phase === 'ground-window' && win && (
+        <GroundPanel window={win} onGround={onGroundStep} />
       )}
       {phase === 'finished' && outcome && (
         <div className="w-full flex flex-col items-center gap-sm">

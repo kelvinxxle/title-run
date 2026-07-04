@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  startFight, resolveRound, finishStep, generateOpponent,
+  startFight, resolveRound, finishStep, groundStep, generateOpponent,
   buildStatLine, getFighter,
 } from './index';
 import type { FightState } from './fightState';
-import type { RoundIntent, Where } from './intents';
+import type { RoundIntent, StrikeTactic, GroundPlan } from './intents';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -26,32 +26,34 @@ import type { RoundIntent, Where } from './intents';
 
 const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 
-const WHERES: readonly Where[] = ['strike', 'wrestle', 'grapple'];
-const OFF = { strike: 'striking', wrestle: 'takedowns', grapple: 'submissions' } as const;
-const DEF = { strike: 'strikingDef', wrestle: 'takedownDef', grapple: 'submissionDef' } as const;
-
 function goodIntent(s: FightState): RoundIntent {
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
-  // Attack the phase where our edge over their defense is largest.
-  let best: Where = 'strike';
-  let bestEdge = -Infinity;
-  for (const w of WHERES) {
-    const edge = me[OFF[w]] - opp[DEF[w]];
-    if (edge > bestEdge) { bestEdge = edge; best = w; }
+  // Shoot the takedown when the opponent's takedownDef is the weak point — i.e. our
+  // takedown edge beats our striking edge and is genuinely positive.
+  const strikeEdge  = me.striking  - opp.strikingDef;
+  const wrestleEdge = me.takedowns - opp.takedownDef;
+  if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
+    return { kind: 'wrestle' };
   }
-  // Manage stamina: swarm a gassed opponent, press while fresh, otherwise
-  // fight technically, and drop to a low-cost counter when running low.
-  let approach: RoundIntent['approach'];
-  if (s.opponent.stamina < 25) approach = 'pressure';
-  else if (s.player.stamina > 45) approach = 'pressure';
-  else if (s.player.stamina < 30) approach = 'counter';
-  else approach = 'technical';
-  return { where: best, target: 'head', approach };
+  // Otherwise strike and read the moment: pressure a hurt/gassed opponent, press while
+  // fresh, drop to a low-cost counter when running low, pick apart when even.
+  let tactic: StrikeTactic;
+  if (s.opponent.stamina < 25) tactic = 'pressure';
+  else if (s.player.stamina > 45) tactic = 'pressure';
+  else if (s.player.stamina < 30) tactic = 'counter';
+  else tactic = 'pickApart';
+  return { kind: 'strike', target: 'head', tactic };
 }
 
 function carelessIntent(): RoundIntent {
-  return { where: 'strike', target: 'head', approach: 'pressure' };
+  return { kind: 'strike', target: 'head', tactic: 'pressure' };
+}
+
+// Good play in a ground window: hunt the tap when the opponent's submission
+// defense is soft, otherwise pound from top control.
+function goodGroundPlan(s: FightState): GroundPlan {
+  return s.opponent.statLine.submissionDef < 55 ? 'submission' : 'ground-and-pound';
 }
 
 function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
@@ -61,6 +63,9 @@ function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
     if (guard++ > 300) throw new Error('fight did not terminate');
     if (s.phase === 'in-round') {
       s = resolveRound(s, policy === 'good' ? goodIntent(s) : carelessIntent());
+    } else if (s.phase === 'ground-window') {
+      // Only good play wrestles, so only good play reaches a player ground window.
+      s = groundStep(s, goodGroundPlan(s));
     } else {
       const window = s.window!;
       // Good play seizes its own windows and defends composed when hunted;
@@ -106,18 +111,18 @@ describe('combat balance bands', () => {
   it('BAND 1 — finishes are attainable: good play finishes >= 25% of all fights', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    expect(totalFinishRate).toBeGreaterThanOrEqual(0.25);
+    expect(totalFinishRate).toBeGreaterThanOrEqual(0.30);
   });
 
   it('BAND 2 — early decisions matter: careless is genuinely punished, good play dominates', () => {
-    expect(careless[1].winRate).toBeLessThanOrEqual(0.80);        // reckless play loses meaningfully even at fight 1
+    expect(careless[1].winRate).toBeLessThanOrEqual(0.72);        // reckless play loses meaningfully even at fight 1
     expect(good[1].winRate).toBeGreaterThan(0.8);                 // good play wins the large majority
-    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.15); // good beats careless by >= 15 points
+    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.20); // good beats careless by >= 20 points
   });
 
   it('BAND 3 — no wall: late fights stay winnable with good play', () => {
-    expect(good[9].winRate).toBeGreaterThanOrEqual(0.4);
-    expect(good[10].winRate).toBeGreaterThanOrEqual(0.4);
+    expect(good[9].winRate).toBeGreaterThanOrEqual(0.45);
+    expect(good[10].winRate).toBeGreaterThanOrEqual(0.45);
     expect(good[9].winRate).toBeGreaterThan(0);
     expect(good[10].winRate).toBeGreaterThan(0);
   });

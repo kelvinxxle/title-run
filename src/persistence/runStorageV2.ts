@@ -1,5 +1,5 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
 export const SCHEMA_VERSION = 2;
@@ -9,8 +9,9 @@ export interface LoadedState { run: RunState | null; bestReign: number | null; }
 function defaults(): LoadedState { return { run: null, bestReign: null }; }
 
 const KNOWN_PHASES: RunPhase[] = ['drafting', 'pre-fight', 'fighting', 'run-over'];
-const FIGHT_PHASES = ['in-round', 'finish-window', 'finished'];
+const FIGHT_PHASES = ['in-round', 'finish-window', 'ground-window', 'finished'];
 const FINISH_METHODS = ['KO', 'submission'];
+const WINDOW_METHODS = ['KO', 'submission', 'ground'];
 const OUTCOME_METHODS = ['KO', 'submission', 'decision'];
 const SIDES = ['player', 'opponent'];
 
@@ -48,8 +49,8 @@ function isValidFightState(x: unknown): boolean {
   if (win !== null) {
     if (!isObject(win)) return false;
     if (!SIDES.includes(win['side'] as string)) return false;
-    if (!FINISH_METHODS.includes(win['method'] as string)) return false;
-    if (!Number.isFinite(win['stepsLeft'])) return false;
+    if (!WINDOW_METHODS.includes(win['method'] as string)) return false;
+    if (!Number.isInteger(win['stepsLeft']) || (win['stepsLeft'] as number) < 1 || (win['stepsLeft'] as number) > INITIAL_STEPS) return false;
   }
   const out = x['outcome'];
   if (out !== null) {
@@ -61,11 +62,13 @@ function isValidFightState(x: unknown): boolean {
   if (!Array.isArray(x['log'])) return false;
   // Phase ↔ payload invariant (matches the resolve/finish engine contract):
   //   in-round      → window null AND outcome null
-  //   finish-window → window non-null AND outcome null
+  //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission)
+  //   ground-window → window non-null AND window.method === 'ground' AND window.side === 'player' AND outcome null
   //   finished      → window null AND outcome non-null
   const phase = x['phase'] as string;
   if (phase === 'in-round' && (win !== null || out !== null)) return false;
-  if (phase === 'finish-window' && (win === null || out !== null)) return false;
+  if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string))) return false;
+  if (phase === 'ground-window' && (win === null || (win as Record<string, unknown>)['method'] !== 'ground' || (win as Record<string, unknown>)['side'] !== 'player' || out !== null)) return false;
   if (phase === 'finished' && (win !== null || out === null)) return false;
   return true;
 }
