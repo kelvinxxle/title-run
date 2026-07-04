@@ -255,7 +255,7 @@ describe('M14: corner + game-plan', () => {
     const opponent = generateOpponent(seed, 1);
     const s0 = startFight({ seed, fightNumber: 1, playerStatLine: PLAYER, opponent });
     expect(s0.gamePlan).toBeNull();
-
+    expect(s0.lastReport).toBeNull(); // startFight must not pre-populate lastReport
     const intent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
     const result = resolveRound(s0, intent);
 
