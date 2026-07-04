@@ -39,22 +39,23 @@ describe('ChampionshipHubScreen (v2)', () => {
   });
 
   it('seeds opponent avatars by opponent name so same-named opponents have identical avatars', () => {
-    const o4 = generateOpponent('209', 4);
-    const o7 = generateOpponent('209', 7);
-    expect(o4.name).toBe(o7.name);
-    expect(o4.archetype).toBe(o7.archetype);
+    // seeds 's0' and 's4' both pick the same Tier-5 fighter at fight 5 (verified deterministic)
+    const o5a = generateOpponent('s0', 5);
+    const o5b = generateOpponent('s4', 5);
+    expect(o5a.name).toBe(o5b.name);
+    expect(o5a.archetype).toBe(o5b.archetype);
 
-    const mk = (fightNumber: number): RunState => ({
-      seed: '209', phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
+    const mk = (seed: string, fightNumber: number): RunState => ({
+      seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
       fightNumber, record: { wins: fightNumber - 1, losses: 0 }, isChampion: false, defenses: 0, fight: null,
     });
 
-    const r4 = render(<ChampionshipHubScreen run={mk(4)} onStartRun={noop} onEnterFight={noop} />);
-    const opp4 = within(r4.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
-    r4.unmount();
-    const r7 = render(<ChampionshipHubScreen run={mk(7)} onStartRun={noop} onEnterFight={noop} />);
-    const opp7 = within(r7.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
-    expect(opp4).toBe(opp7);
+    const r5a = render(<ChampionshipHubScreen run={mk('s0', 5)} onStartRun={noop} onEnterFight={noop} />);
+    const oppA = within(r5a.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    r5a.unmount();
+    const r5b = render(<ChampionshipHubScreen run={mk('s4', 5)} onStartRun={noop} onEnterFight={noop} />);
+    const oppB = within(r5b.container.querySelector('[data-testid="next-opponent"]') as HTMLElement).getByTestId('fighter-avatar').outerHTML;
+    expect(oppA).toBe(oppB);
   });
 
   it('seeds opponent avatars by opponent name so different names produce different avatars', () => {

@@ -20,9 +20,10 @@ function finishWindowRun(): RunState {
   run = { ...run, fight: f };
   return run;
 }
-// seed 'gw-5' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
+// seed 'gw-0' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
+// (seed updated in T2 — real opponent system changed the fight dynamics; 'gw-0' verified deterministic)
 function groundWindowRun(): RunState {
-  const run = startNextFight(applyDraft(startRun('gw-5'), { name: 'A', statLine: WRESTLER }));
+  const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
   return { ...run, fight: resolveRound(run.fight as FightState, { kind: 'wrestle' }) };
 }
 function store(run: unknown): void {
