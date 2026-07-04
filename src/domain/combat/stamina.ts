@@ -6,8 +6,12 @@ export const GAS_THRESHOLD = 25;
 
 const STRIKE_BASE = 10;
 const STRIKE_TACTIC_MULT: Record<StrikeTactic, number> = { pressure: 1.6, pickApart: 1.0, counter: 0.6 };
-/** A takedown shoot is a whole-body commitment — meaningfully pricier than any single strike. */
-const WRESTLE_COST = 22;
+/** A takedown shoot is a whole-body commitment — meaningfully pricier than any single strike.
+ *  The neutral pre-redesign cost was 16 (technical/1.0 row: round(16 * 1.0)); shipped at 17 —
+ *  the least value that keeps all four balance bands green AND satisfies the pre-existing
+ *  stamina.test invariant staminaCost(wrestle) > staminaCost(strike('pressure')) (pressure = 16).
+ *  M10-authorized balance knob. */
+const WRESTLE_COST = 17;
 
 export function startingStamina(_statLine: StatLine): number { return STAMINA_MAX; }
 
