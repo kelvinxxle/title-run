@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { clamp01, healthPct, staminaPct, roundLabel } from './fightDisplay';
+import { bodyPct, clamp01, gasState, headState, healthPct, staminaPct, roundLabel } from './fightDisplay';
 import { STAT_IDS, type Fighter2, type FightState, type StatLine } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 60])) as StatLine;
@@ -17,6 +17,24 @@ describe('fightDisplay', () => {
     expect(healthPct(f)).toBe(1);
     expect(healthPct({ ...f, headDamage: 25 })).toBeCloseTo(0.5, 5);
     expect(healthPct({ ...f, headDamage: 999 })).toBe(0);
+  });
+  it('bodyPct is 1 at zero body damage and clamps at zero', () => {
+    const f = fighter();
+    expect(bodyPct(f)).toBe(1);
+    expect(bodyPct({ ...f, bodyDamage: 25 })).toBeCloseTo(0.5, 5);
+    expect(bodyPct({ ...f, bodyDamage: 50 })).toBe(0);
+    expect(bodyPct({ ...f, bodyDamage: 999 })).toBe(0);
+  });
+  it('headState tracks fresh, hurt, and rocked thresholds', () => {
+    const f = fighter(); // chin 50 => rocked at 28, hurt at >= 16.8
+    expect(headState(f)).toBe('fresh');
+    expect(headState({ ...f, headDamage: 16 })).toBe('fresh');
+    expect(headState({ ...f, headDamage: 17 })).toBe('hurt');
+    expect(headState({ ...f, headDamage: 28 })).toBe('rocked');
+  });
+  it('gasState flips to low below the gassed threshold', () => {
+    expect(gasState(25)).toBe('ok');
+    expect(gasState(24)).toBe('low');
   });
   it('staminaPct scales stamina against STAMINA_MAX', () => {
     expect(staminaPct(fighter({ stamina: 100 }))).toBe(1);
