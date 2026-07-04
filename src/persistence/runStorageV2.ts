@@ -1,19 +1,20 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS, INITIAL_STEPS } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS, GAME_PLANS } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface LoadedState { run: RunState | null; bestReign: number | null; }
 
 function defaults(): LoadedState { return { run: null, bestReign: null }; }
 
 const KNOWN_PHASES: RunPhase[] = ['drafting', 'pre-fight', 'fighting', 'run-over'];
-const FIGHT_PHASES = ['in-round', 'finish-window', 'ground-window', 'finished'];
+const FIGHT_PHASES = ['in-round', 'corner', 'finish-window', 'ground-window', 'finished'];
 const FINISH_METHODS = ['KO', 'submission'];
 const WINDOW_METHODS = ['KO', 'submission', 'ground'];
 const OUTCOME_METHODS = ['KO', 'submission', 'decision'];
 const SIDES = ['player', 'opponent'];
+const ROUND_REPORT_WINNERS = ['player', 'opponent', 'draw'];
 
 function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null;
@@ -33,6 +34,37 @@ function isValidFighter2(x: unknown): boolean {
     Number.isFinite(x['stamina']) &&
     Number.isFinite(x['roundScore'])
   );
+}
+
+function isValidRoundReport(x: unknown): boolean {
+  if (x === null) return true;
+  if (!isObject(x)) return false;
+  return (
+    Number.isFinite(x['round']) &&
+    typeof x['headline'] === 'string' &&
+    typeof x['detail'] === 'string' &&
+    ROUND_REPORT_WINNERS.includes(x['winner'] as string) &&
+    Number.isFinite(x['playerHeadDelta']) &&
+    Number.isFinite(x['playerBodyDelta']) &&
+    Number.isFinite(x['opponentHeadDelta']) &&
+    Number.isFinite(x['opponentBodyDelta'])
+  );
+}
+
+function normalizeLegacyFightState(x: unknown): unknown {
+  if (!isObject(x)) return x;
+  return {
+    ...x,
+    gamePlan: x['gamePlan'] ?? null,
+    lastReport: x['lastReport'] ?? null,
+  };
+}
+
+function normalizeLegacyRun(run: unknown): unknown {
+  if (!isObject(run)) return run;
+  return run['fight'] !== null
+    ? { ...run, fight: normalizeLegacyFightState(run['fight']) }
+    : run;
 }
 
 function isValidFightState(x: unknown): boolean {
@@ -60,13 +92,18 @@ function isValidFightState(x: unknown): boolean {
     if (!Number.isFinite(out['round'])) return false;
   }
   if (!Array.isArray(x['log'])) return false;
+  const gamePlan = x['gamePlan'];
+  if (!(gamePlan === null || (typeof gamePlan === 'string' && (GAME_PLANS as readonly string[]).includes(gamePlan)))) return false;
+  if (!isValidRoundReport(x['lastReport'])) return false;
   // Phase ↔ payload invariant (matches the resolve/finish engine contract):
   //   in-round      → window null AND outcome null
+  //   corner        → window null AND outcome null
   //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission)
   //   ground-window → window non-null AND window.method === 'ground' AND window.side === 'player' AND outcome null
   //   finished      → window null AND outcome non-null
   const phase = x['phase'] as string;
   if (phase === 'in-round' && (win !== null || out !== null)) return false;
+  if (phase === 'corner' && (win !== null || out !== null)) return false;
   if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string))) return false;
   if (phase === 'ground-window' && (win === null || (win as Record<string, unknown>)['method'] !== 'ground' || (win as Record<string, unknown>)['side'] !== 'player' || out !== null)) return false;
   if (phase === 'finished' && (win !== null || out === null)) return false;
@@ -111,11 +148,12 @@ export function load(): LoadedState {
   if (raw === null) return defaults();
   try {
     const parsed = JSON.parse(raw) as { version?: unknown; run?: unknown; bestReign?: unknown };
-    if (parsed.version !== SCHEMA_VERSION || !isValidRun(parsed.run)) { clearKey(); return defaults(); }
+    const normalizedRun = normalizeLegacyRun(parsed.run);
+    if (parsed.version !== SCHEMA_VERSION || !isValidRun(normalizedRun)) { clearKey(); return defaults(); }
     const bestReign =
       typeof parsed.bestReign === 'number' && Number.isInteger(parsed.bestReign) && parsed.bestReign >= 0
         ? parsed.bestReign : null;
-    return { run: parsed.run as RunState | null, bestReign };
+    return { run: normalizedRun as RunState | null, bestReign };
   } catch { clearKey(); return defaults(); }
 }
 
