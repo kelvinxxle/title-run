@@ -6,7 +6,7 @@ import { intentPhase } from './intents';
 import { PHASE_OFFENSE, PHASE_DEFENSE } from './stats';
 import { staminaCost, recovery, effortMultiplier, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
-import { detectWindow } from './finish';
+import { detectWindow, INITIAL_STEPS } from './finish';
 
 // ── Tuning constants (adjust in Task 5) ──────────────────────────────────────
 const IQ_FACTOR      = 0.1;
@@ -94,6 +94,45 @@ export function resolveRound(state: FightState, playerIntent: RoundIntent): Figh
     playerAttackScore - oppAttackScore +
     (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR +
     seededSwing;
+
+  // ── Ground window (Task 2) ──────────────────────────────────────────────────
+  // A winning PLAYER wrestle opens a ground window instead of dealing exchange
+  // damage. The player then chooses Ground & Pound or Submission via groundStep.
+  // This is an early branch: no exchange damage, round is NOT advanced. The
+  // opponent-winning wrestle path stays interim (head damage) until Task 3.
+  if (dominance > 0 && playerIntent.kind === 'wrestle') {
+    const groundMargin = Math.floor(Math.abs(dominance) / 10);
+    const groundLog: RoundLogEntry = {
+      round: state.round,
+      playerIntent,
+      opponentIntent: oppIntent,
+      winner: 'player',
+      dominance,
+    };
+    return {
+      ...state,
+      // round NOT advanced — the ground sequence resolves this moment
+      phase: 'ground-window',
+      window: { side: 'player', method: 'ground', stepsLeft: INITIAL_STEPS },
+      player: {
+        ...state.player,
+        // no exchange damage on the ground-window open
+        stamina: clampStamina(
+          state.player.stamina - staminaCost(playerIntent)
+            + recovery(state.player.statLine) - bodyRecoveryPenalty(state.player.bodyDamage)
+        ),
+        roundScore: state.player.roundScore + 1 + groundMargin,
+      },
+      opponent: {
+        ...state.opponent,
+        stamina: clampStamina(
+          state.opponent.stamina - staminaCost(oppIntent)
+            + recovery(state.opponent.statLine) - bodyRecoveryPenalty(state.opponent.bodyDamage)
+        ),
+      },
+      log: [...state.log, groundLog],
+    };
+  }
 
   // Damage to the round loser. Damage type = winner's target if the winner struck,
   // else 'head' (interim: a winning wrestle just deals head damage until Task 2's

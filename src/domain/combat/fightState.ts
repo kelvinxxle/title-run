@@ -15,11 +15,11 @@ export interface Fighter2 {
   roundScore: number;
 }
 
-export type FightPhase = 'in-round' | 'finish-window' | 'finished';
+export type FightPhase = 'in-round' | 'finish-window' | 'ground-window' | 'finished';
 
 export interface FinishWindow {
   side: 'player' | 'opponent';
-  method: 'KO' | 'submission';
+  method: 'KO' | 'submission' | 'ground';
   stepsLeft: number;
 }
 

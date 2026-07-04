@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep,
-  type RunState, type RoundIntent, type FinishChoice, type DraftedFighter,
+  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep, groundStep,
+  type RunState, type RoundIntent, type FinishChoice, type GroundPlan, type DraftedFighter,
 } from './domain/combat';
 import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
@@ -36,6 +36,11 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     setRun((r) => {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'finish-window') return r;
       return { ...r, fight: finishStep(r.fight, choice) };
+    });
+  const handleGroundStep = (plan: GroundPlan) =>
+    setRun((r) => {
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'ground-window') return r;
+      return { ...r, fight: groundStep(r.fight, plan) };
     });
   const handleContinue = () =>
     setRun((r) => {
@@ -79,6 +84,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
         playerName={run.fighter.name}
         onIntent={handleIntent}
         onFinishStep={handleFinishStep}
+        onGroundStep={handleGroundStep}
         onContinue={handleContinue}
       />
     );

@@ -13,7 +13,7 @@ const base = (over: Partial<FightState> = {}): FightState => ({
 describe('FightView', () => {
   it('in-round: shows the intent panel and forwards a committed intent', () => {
     const onIntent = vi.fn();
-    render(<FightView fightState={base()} playerName="Me" onIntent={onIntent} onFinishStep={vi.fn()} onContinue={vi.fn()} />);
+    render(<FightView fightState={base()} playerName="Me" onIntent={onIntent} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
     expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('intent-commit'));
     expect(onIntent).toHaveBeenCalledWith({ kind:'strike', target:'head', tactic:'pickApart' });
@@ -23,16 +23,25 @@ describe('FightView', () => {
   it('finish-window: shows the finish panel and forwards a choice', () => {
     const onFinishStep = vi.fn();
     const st = base({ phase:'finish-window', window:{ side:'player', method:'KO', stepsLeft:3 } });
-    render(<FightView fightState={st} playerName="Me" onIntent={vi.fn()} onFinishStep={onFinishStep} onContinue={vi.fn()} />);
+    render(<FightView fightState={st} playerName="Me" onIntent={vi.fn()} onFinishStep={onFinishStep} onGroundStep={vi.fn()} onContinue={vi.fn()} />);
     expect(screen.getByTestId('finish-panel')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('finish-commit'));
     expect(onFinishStep).toHaveBeenCalledWith('commit');
   });
 
+  it('ground-window: shows the ground panel and forwards a plan', () => {
+    const onGroundStep = vi.fn();
+    const st = base({ phase:'ground-window', window:{ side:'player', method:'ground', stepsLeft:3 } });
+    render(<FightView fightState={st} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={onGroundStep} onContinue={vi.fn()} />);
+    expect(screen.getByTestId('ground-panel')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('ground-sub'));
+    expect(onGroundStep).toHaveBeenCalledWith('submission');
+  });
+
   it('finished: shows the outcome and Continue', () => {
     const onContinue = vi.fn();
     const st = base({ phase:'finished', outcome:{ winner:'player', method:'KO', round:2 } });
-    render(<FightView fightState={st} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onContinue={onContinue} />);
+    render(<FightView fightState={st} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onContinue={onContinue} />);
     expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('fight-continue'));
     expect(onContinue).toHaveBeenCalled();

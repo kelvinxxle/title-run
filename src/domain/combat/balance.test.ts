@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  startFight, resolveRound, finishStep, generateOpponent,
+  startFight, resolveRound, finishStep, groundStep, generateOpponent,
   buildStatLine, getFighter,
 } from './index';
 import type { FightState } from './fightState';
-import type { RoundIntent, StrikeTactic } from './intents';
+import type { RoundIntent, StrikeTactic, GroundPlan } from './intents';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -50,6 +50,12 @@ function carelessIntent(): RoundIntent {
   return { kind: 'strike', target: 'head', tactic: 'pressure' };
 }
 
+// Good play in a ground window: hunt the tap when the opponent's submission
+// defense is soft, otherwise pound from top control.
+function goodGroundPlan(s: FightState): GroundPlan {
+  return s.opponent.statLine.submissionDef < 55 ? 'submission' : 'ground-and-pound';
+}
+
 function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
   let s = init;
   let guard = 0;
@@ -57,6 +63,9 @@ function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
     if (guard++ > 300) throw new Error('fight did not terminate');
     if (s.phase === 'in-round') {
       s = resolveRound(s, policy === 'good' ? goodIntent(s) : carelessIntent());
+    } else if (s.phase === 'ground-window') {
+      // Only good play wrestles, so only good play reaches a player ground window.
+      s = groundStep(s, goodGroundPlan(s));
     } else {
       const window = s.window!;
       // Good play seizes its own windows and defends composed when hunted;
