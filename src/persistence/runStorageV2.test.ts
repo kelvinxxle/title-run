@@ -208,4 +208,24 @@ describe('runStorageV2', () => {
     save({ run: pre, bestReign: 4 });
     expect(load()).toEqual({ run: pre, bestReign: 4 });
   });
+
+  it('rejects a pre-fight run with fightNumber: 0 (not a positive integer)', () => {
+    store({ ...preFight(), fightNumber: 0 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: -1 (not a positive integer)', () => {
+    store({ ...preFight(), fightNumber: -1 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: 2.5 (not an integer)', () => {
+    store({ ...preFight(), fightNumber: 2.5 });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a pre-fight run with fightNumber: NaN (not finite)', () => {
+    store({ ...preFight(), fightNumber: NaN });
+    expect(load().run).toBeNull();
+  });
 });

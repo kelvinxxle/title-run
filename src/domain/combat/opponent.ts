@@ -25,6 +25,9 @@ export const TIERS: readonly (readonly Fighter[])[] = [0, 1, 2, 3, 4].map(t =>
 );
 
 export function generateOpponent(seed: string, fightNumber: number): Opponent {
+  if (!Number.isInteger(fightNumber) || fightNumber < 1) {
+    throw new Error(`generateOpponent: fightNumber must be a positive integer, got ${fightNumber}`);
+  }
   // Fights 1-4 → tiers 1-4 (0-indexed: 0-3); fight 5+ → tier 5 (index 4)
   const tierIndex = fightNumber <= 4 ? fightNumber - 1 : 4;
   const tier = TIERS[tierIndex];

@@ -119,4 +119,16 @@ describe('T2 — real-fighter tiered ladder', () => {
       expect(computedSet).toEqual(planSet);
     }
   });
+
+  it('throws a clear error with /positive integer/ for fightNumber: 0', () => {
+    expect(() => generateOpponent('seed', 0)).toThrow(/positive integer/);
+  });
+
+  it('throws a clear error with /positive integer/ for fightNumber: -1', () => {
+    expect(() => generateOpponent('seed', -1)).toThrow(/positive integer/);
+  });
+
+  it('throws a clear error with /positive integer/ for fightNumber: 2.5', () => {
+    expect(() => generateOpponent('seed', 2.5)).toThrow(/positive integer/);
+  });
 });
