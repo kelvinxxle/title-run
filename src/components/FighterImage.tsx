@@ -18,10 +18,11 @@ export default function FighterImage({
   size = 48,
   variant = 'portrait',
 }: FighterImageProps): JSX.Element {
-  const [errored, setErrored] = useState(false);
+  const [failedId, setFailedId] = useState<string | undefined>(undefined);
   const avatarSeed = seed ?? fighterId ?? name;
+  const showAvatar = !fighterId || failedId === fighterId;
 
-  if (!fighterId || errored) {
+  if (showAvatar) {
     if (variant === 'hero') {
       return (
         <div className="absolute inset-0 flex items-center justify-center bg-surface-container">
@@ -40,7 +41,7 @@ export default function FighterImage({
         data-testid="fighter-photo"
         src={src}
         alt={name}
-        onError={() => setErrored(true)}
+        onError={() => setFailedId(fighterId)}
         className="absolute inset-0 h-full w-full object-cover object-top"
       />
     );
@@ -53,7 +54,7 @@ export default function FighterImage({
       alt={name}
       width={size}
       height={size}
-      onError={() => setErrored(true)}
+      onError={() => setFailedId(fighterId)}
       className="rounded object-cover"
       style={{ width: size, height: size }}
     />
