@@ -86,8 +86,7 @@ export interface ResolvedContext {
  *
  * Trigger logic (evaluated in order):
  *   1. Damage path: headDamage ≥ ROCKED_HEAD_DMG(chin) → KO window.
- *   2. Read path: clean counter vs pressure, takedown vs low submissionDef,
- *      or gassed opponent → KO or submission window.
+ *   2. Read path: clean counter vs pressure, or gassed opponent → KO window.
  *
  * `side` = the side ABOUT TO FINISH (the one who landed the trigger).
  */
@@ -135,14 +134,6 @@ export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
     playerIntent.kind === 'strike' && playerIntent.tactic === 'pressure' && dominance < 0
   ) {
     return { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS };
-  }
-
-  // Takedown (wrestle) that exposes a low submission defense
-  if (playerIntent.kind === 'wrestle' && opponentStatLine.submissionDef < LOW_SUB_DEF && dominance > 0) {
-    return { side: 'player', method: 'submission', stepsLeft: INITIAL_STEPS };
-  }
-  if (opponentIntent.kind === 'wrestle' && playerStatLine.submissionDef < LOW_SUB_DEF && dominance < 0) {
-    return { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS };
   }
 
   // Gassed opponent
