@@ -36,12 +36,14 @@ export default function FighterHealthCard({
       className={`flex-1 bg-surface-container ${accent} p-md flex flex-col gap-xs`}
     >
       <div className="flex items-start justify-between gap-xs">
-        <div className="flex items-center gap-xs">
-          {avatarSeed && archetype && (
+        {avatarSeed && archetype ? (
+          <div className="flex items-center gap-xs">
             <FighterAvatar seed={avatarSeed} archetype={archetype} name={name} size={40} />
-          )}
+            <h3 className="font-display text-2xl uppercase leading-tight text-on-surface">{name}</h3>
+          </div>
+        ) : (
           <h3 className="font-display text-2xl uppercase leading-tight text-on-surface">{name}</h3>
-        </div>
+        )}
         <span className={`font-mono text-[10px] uppercase tracking-widest ${badgeColor}`}>
           {badge}
         </span>
