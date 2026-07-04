@@ -89,6 +89,10 @@ function isValidRun(run: unknown): run is RunState | null {
     if (!isValidStatLine(f['statLine'])) return false;
   }
   if (r['fight'] !== null && !isValidFightState(r['fight'])) return false;
+  // Phase ↔ fighter invariant: 'drafting' is the only fighterless phase; every other
+  // phase must carry a drafted fighter (the non-null branch above already validated it).
+  if (r['phase'] === 'drafting' && r['fighter'] !== null) return false;
+  if (r['phase'] !== 'drafting' && r['fighter'] === null) return false;
   // Phase invariant: an active fight must have a valid fighter + fight that matches the run.
   if (r['phase'] === 'fighting') {
     if (r['fighter'] === null || r['fight'] === null) return false;

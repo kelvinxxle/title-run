@@ -129,4 +129,30 @@ describe('runStorageV2', () => {
     save({ run, bestReign: 0 });
     expect(load()).toEqual({ run, bestReign: 0 });
   });
+
+  it('rejects a non-drafting run with a null fighter (pre-fight), and clears the key', () => {
+    store({ ...preFight(), phase: 'pre-fight', fighter: null });
+    expect(load().run).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('rejects a run-over run with a null fighter', () => {
+    store({ ...preFight(), phase: 'run-over', fighter: null });
+    expect(load().run).toBeNull();
+  });
+
+  it('rejects a drafting run that already has a fighter', () => {
+    store({ ...preFight(), phase: 'drafting' });
+    expect(load().run).toBeNull();
+  });
+
+  it('round-trips a real drafting run and a real pre-fight run (no false reject)', () => {
+    const drafting = startRun('seed-1');
+    save({ run: drafting, bestReign: null });
+    expect(load()).toEqual({ run: drafting, bestReign: null });
+
+    const pre = preFight();
+    save({ run: pre, bestReign: 4 });
+    expect(load()).toEqual({ run: pre, bestReign: 4 });
+  });
 });
