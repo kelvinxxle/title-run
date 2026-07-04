@@ -15,7 +15,7 @@
 - The player's CUSTOM fighter has NO stable id → always uses the fallback (below). Same for the 2 fictional gatekeepers.
 
 ## 2. Image source (fetched NOW, so it works immediately)
-- **38 of 40** roster fighters are real → each has a **verified, recognizable, freely-licensed lead photo** from Wikipedia (Commons-hosted). Manifest already built + spot-check-verified (disambiguated + accented names confirmed correct): `files/2026-07-04-fighter-image-manifest.json` (id → {title, orig URL, thumb URL}).
+- **38 of 40** roster fighters are real → each has a **verified, recognizable, freely-licensed lead photo** from Wikipedia (Commons-hosted). Manifest already built + spot-check-verified (disambiguated + accented names confirmed correct): `scripts/fighter-image-manifest.json` (id → {title, orig URL, thumb URL}).
 - **2 fictional gatekeepers** (`journeyman-doe`, `rudy-kane`) have no real photo → fallback.
 - Images are **portrait/press shots** (head-and-shoulders), NOT full-body octagon renders. Honest expectation set with user: real photos look like strong cropped portraits under the gritty treatment; full-body drama comes from user's later Stitch swaps into the same slots.
 - Download the manifest `orig` per fighter → `public/fighters/{id}.jpg`. Total ~5.7 MB (avg 150 KB; only 4 >500 KB). Build MAY `sips -Z 800` any image >500 KB to trim, but not required.
