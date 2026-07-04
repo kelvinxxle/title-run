@@ -45,7 +45,7 @@ describe('fightDisplay', () => {
     const st = (phase: FightState['phase']): FightState => ({
       seed:'s', fightNumber:1, rounds:3, round:2, phase,
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
-      window: null, outcome: null, log: [],
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
     });
     expect(roundLabel(st('in-round'))).toBe('Round 2 of 3');
     expect(roundLabel(st('finish-window'))).toContain('Finish');

@@ -5,7 +5,7 @@ import { ARCHETYPES } from './archetypes';
 import { STAMINA_MAX } from './stamina';
 
 function makeState(overrides: Partial<FightState> = {}): FightState {
-  return {
+  const merged: FightState = {
     seed: 'judge-seed',
     fightNumber: 1,
     rounds: 3,
@@ -30,8 +30,11 @@ function makeState(overrides: Partial<FightState> = {}): FightState {
     window: null,
     outcome: null,
     log: [],
+    gamePlan: null,
+    lastReport: null,
     ...overrides,
-  };
+  } as FightState;
+  return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
 }
 
 describe('judges — scoreFight', () => {

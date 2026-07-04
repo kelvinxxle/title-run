@@ -18,6 +18,7 @@ function finishWindowFight(): FightState {
     player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, roundScore: 1 },
     opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
+    gamePlan: null, lastReport: null,
   };
 }
 function finishedFight(winner: 'player' | 'opponent'): FightState {
@@ -26,6 +27,28 @@ function finishedFight(winner: 'player' | 'opponent'): FightState {
     player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0 },
     opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
+    gamePlan: null, lastReport: null,
+  };
+}
+function cornerFight(): FightState {
+  return {
+    seed: 'corner', fightNumber: 1, rounds: 3, round: 2, phase: 'corner',
+    player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 70, roundScore: 1 },
+    opponent: { statLine: LINE, headDamage: 10, bodyDamage: 3, stamina: 60, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    window: null,
+    outcome: null,
+    log: [],
+    gamePlan: null,
+    lastReport: {
+      round: 1,
+      headline: 'You took the round.',
+      detail: 'You picked him apart at range.',
+      winner: 'player',
+      playerHeadDelta: 0,
+      playerBodyDelta: 0,
+      opponentHeadDelta: 10,
+      opponentBodyDelta: 3,
+    },
   };
 }
 
@@ -77,6 +100,7 @@ describe('App (v2 flow)', () => {
         player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0 },
         opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, roundScore: 0, name: 'Rival', archetype: 'brawler' },
         window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
+        gamePlan: null, lastReport: null,
       },
     };
     save({ run: lost, bestReign: null });
@@ -93,6 +117,15 @@ describe('App (v2 flow)', () => {
     fireEvent.click(screen.getByTestId('finish-commit'));
     const expected = finishStep(fight, 'commit').phase;
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', expected);
+  });
+
+  it('corner choice routes through chooseGamePlan and returns to in-round', () => {
+    save({ run: fightingRun(cornerFight()), bestReign: null });
+    render(<App />);
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'corner');
+    fireEvent.click(screen.getByTestId('gameplan-push-pace'));
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'in-round');
+    expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
   });
 
   it('Continue after a player win settles the fight and returns to the pre-fight Hub', () => {
