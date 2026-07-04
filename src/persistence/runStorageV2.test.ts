@@ -169,6 +169,19 @@ describe('runStorageV2', () => {
     expect(load().run).toBeNull();
   });
 
+  it('rejects a persisted window with out-of-range or non-integer stepsLeft', () => {
+    for (const bad of [0, -1, 4, 2.5]) {
+      const run = finishWindowRun();
+      store({ ...run, fight: { ...(run.fight as FightState), window: { ...((run.fight as FightState).window!), stepsLeft: bad } } });
+      expect(load().run).toBeNull();
+    }
+  });
+  it('accepts a persisted window with an in-range integer stepsLeft', () => {
+    const run = finishWindowRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { ...((run.fight as FightState).window!), stepsLeft: 2 } } });
+    expect(load().run).not.toBeNull();
+  });
+
   it('rejects a non-drafting run with a null fighter (pre-fight), and clears the key', () => {
     store({ ...preFight(), phase: 'pre-fight', fighter: null });
     expect(load().run).toBeNull();

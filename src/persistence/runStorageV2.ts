@@ -1,5 +1,5 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
 export const SCHEMA_VERSION = 2;
@@ -50,7 +50,7 @@ function isValidFightState(x: unknown): boolean {
     if (!isObject(win)) return false;
     if (!SIDES.includes(win['side'] as string)) return false;
     if (!WINDOW_METHODS.includes(win['method'] as string)) return false;
-    if (!Number.isFinite(win['stepsLeft'])) return false;
+    if (!Number.isInteger(win['stepsLeft']) || (win['stepsLeft'] as number) < 1 || (win['stepsLeft'] as number) > INITIAL_STEPS) return false;
   }
   const out = x['outcome'];
   if (out !== null) {
