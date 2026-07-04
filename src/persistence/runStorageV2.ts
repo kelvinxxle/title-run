@@ -1,4 +1,5 @@
 import type { RunState, RunPhase } from '../domain/combat';
+import { STAT_IDS } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
 export const SCHEMA_VERSION = 2;
@@ -8,6 +9,58 @@ export interface LoadedState { run: RunState | null; bestReign: number | null; }
 function defaults(): LoadedState { return { run: null, bestReign: null }; }
 
 const KNOWN_PHASES: RunPhase[] = ['drafting', 'pre-fight', 'fighting', 'run-over'];
+const FIGHT_PHASES = ['in-round', 'finish-window', 'finished'];
+const FINISH_METHODS = ['KO', 'submission'];
+const OUTCOME_METHODS = ['KO', 'submission', 'decision'];
+const SIDES = ['player', 'opponent'];
+
+function isObject(x: unknown): x is Record<string, unknown> {
+  return typeof x === 'object' && x !== null;
+}
+
+function isValidStatLine(x: unknown): boolean {
+  if (!isObject(x)) return false;
+  return STAT_IDS.every((id) => Number.isFinite(x[id]));
+}
+
+function isValidFighter2(x: unknown): boolean {
+  if (!isObject(x)) return false;
+  if (!isValidStatLine(x['statLine'])) return false;
+  return (
+    Number.isFinite(x['headDamage']) &&
+    Number.isFinite(x['bodyDamage']) &&
+    Number.isFinite(x['stamina']) &&
+    Number.isFinite(x['roundScore'])
+  );
+}
+
+function isValidFightState(x: unknown): boolean {
+  if (!isObject(x)) return false;
+  if (typeof x['seed'] !== 'string') return false;
+  if (!Number.isFinite(x['fightNumber']) || !Number.isFinite(x['rounds']) || !Number.isFinite(x['round'])) return false;
+  if (typeof x['phase'] !== 'string' || !FIGHT_PHASES.includes(x['phase'] as string)) return false;
+  if (!isValidFighter2(x['player'])) return false;
+  const opp = x['opponent'];
+  if (!isValidFighter2(opp)) return false;
+  const o = opp as Record<string, unknown>;
+  if (typeof o['name'] !== 'string' || typeof o['archetype'] !== 'string') return false;
+  const win = x['window'];
+  if (win !== null) {
+    if (!isObject(win)) return false;
+    if (!SIDES.includes(win['side'] as string)) return false;
+    if (!FINISH_METHODS.includes(win['method'] as string)) return false;
+    if (!Number.isFinite(win['stepsLeft'])) return false;
+  }
+  const out = x['outcome'];
+  if (out !== null) {
+    if (!isObject(out)) return false;
+    if (!SIDES.includes(out['winner'] as string)) return false;
+    if (!OUTCOME_METHODS.includes(out['method'] as string)) return false;
+    if (!Number.isFinite(out['round'])) return false;
+  }
+  if (!Array.isArray(x['log'])) return false;
+  return true;
+}
 
 function isValidRun(run: unknown): run is RunState | null {
   if (run === null) return true;
@@ -22,12 +75,18 @@ function isValidRun(run: unknown): run is RunState | null {
   const rec = r['record'] as Record<string, unknown>;
   if (!Number.isFinite(rec['wins']) || !Number.isFinite(rec['losses'])) return false;
   if (r['fighter'] !== null) {
-    if (typeof r['fighter'] !== 'object' || r['fighter'] === null) return false;
+    if (!isObject(r['fighter'])) return false;
     const f = r['fighter'] as Record<string, unknown>;
     if (typeof f['name'] !== 'string') return false;
-    if (typeof f['statLine'] !== 'object' || f['statLine'] === null) return false;
+    if (!isValidStatLine(f['statLine'])) return false;
   }
-  if (r['fight'] !== null && (typeof r['fight'] !== 'object' || r['fight'] === null)) return false;
+  if (r['fight'] !== null && !isValidFightState(r['fight'])) return false;
+  // Phase invariant: an active fight must have a valid fighter + fight that matches the run.
+  if (r['phase'] === 'fighting') {
+    if (r['fighter'] === null || r['fight'] === null) return false;
+    const fight = r['fight'] as Record<string, unknown>;
+    if (fight['seed'] !== r['seed'] || fight['fightNumber'] !== r['fightNumber']) return false;
+  }
   return true;
 }
 
