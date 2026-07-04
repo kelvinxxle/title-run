@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STARTER_ROSTER, buildStatLine, rollFighter, getFighter } from './roster';
+import { STARTER_ROSTER, buildStatLine, rollFighter, getFighter, fighterIdByName } from './roster';
 import { ARCHETYPE_IDS } from './archetypes';
 import { STAT_IDS } from './stats';
 import { createRng } from '../rng';
@@ -61,5 +61,18 @@ describe('starter roster', () => {
       excluded = [...excluded, f.id];
     }
     expect(excluded.length).toBe(9);
+  });
+});
+
+describe('fighterIdByName', () => {
+  it('maps an exact roster name to its id', () => {
+    expect(fighterIdByName('Jon Jones')).toBe('jon-jones');
+  });
+  it("handles apostrophes/accents", () => {
+    expect(fighterIdByName("Sean O'Malley")).toBe('sean-omalley');
+    expect(fighterIdByName('José Aldo')).toBe('jose-aldo');
+  });
+  it('returns undefined for a custom (player) name', () => {
+    expect(fighterIdByName('Kid Dynamite McCustom')).toBeUndefined();
   });
 });

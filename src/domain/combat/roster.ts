@@ -69,3 +69,10 @@ export function rollFighter(rng: Rng, excludeIds: readonly string[] = []): Fight
   const pool = STARTER_ROSTER.filter((f) => !excludeIds.includes(f.id));
   return pick(rng, pool.length > 0 ? pool : STARTER_ROSTER);
 }
+
+const _idByName: ReadonlyMap<string, string> = new Map(
+  STARTER_ROSTER.map((f) => [f.name, f.id]),
+);
+export function fighterIdByName(name: string): string | undefined {
+  return _idByName.get(name);
+}
