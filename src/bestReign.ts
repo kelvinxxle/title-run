@@ -1,4 +1,4 @@
-import type { RunState } from './domain';
+import type { RunState } from './domain/combat';
 
 export function isNewRecord(bestReign: number | null, run: RunState): boolean {
   return run.isChampion && (bestReign === null || run.defenses > bestReign);

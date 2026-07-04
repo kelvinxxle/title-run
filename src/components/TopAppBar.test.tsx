@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { runStatusLabel } from './TopAppBar';
-import { startRun, applyDraft, type RunState } from '../domain';
+import { startRun, applyDraft, type RunState } from '../domain/combat';
 
-const PLAYER = { boxing:82, kicks:92, clinch:80, takedowns:98, submissions:97, topControl:88, cardio:90, chin:88, fightIQ:78 };
+const PLAYER = { striking:82, strikingDef:92, takedowns:98, takedownDef:80, submissions:97, submissionDef:88, cardio:90, chin:88, fightIQ:78 };
 const base = (o: Partial<RunState> = {}): RunState => ({ ...applyDraft(startRun('run-42'), { name: 'K', statLine: PLAYER }), ...o });
 
 describe('runStatusLabel', () => {
