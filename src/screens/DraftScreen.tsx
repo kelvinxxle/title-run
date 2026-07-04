@@ -9,7 +9,7 @@ import DraftProgress from '../components/DraftProgress';
 import RolledFighterCard from '../components/RolledFighterCard';
 import SlotStatusChips from '../components/SlotStatusChips';
 import NameFighterForm from '../components/NameFighterForm';
-import FighterAvatar from '../components/FighterAvatar';
+import FighterImage from '../components/FighterImage';
 
 interface DraftScreenProps {
   seed?: string;
@@ -53,10 +53,10 @@ export default function DraftScreen({ seed, onComplete }: DraftScreenProps = {})
             return (
               <>
                 <div className="flex items-center gap-sm">
-                  <FighterAvatar
-                    seed={state.name!}
-                    archetype={archetypeFromStatLine(drafted.statLine)}
+                  <FighterImage
                     name={state.name!}
+                    archetype={archetypeFromStatLine(drafted.statLine)}
+                    seed={state.name!}
                   />
                   <p
                     data-testid="fighter-name"

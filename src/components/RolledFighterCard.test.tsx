@@ -23,11 +23,14 @@ describe('RolledFighterCard', () => {
     expect(screen.getByTestId('filled-stat-submissions')).toBeInTheDocument();
   });
 
-  it('renders a fighter avatar with aria-label matching the fighter name', () => {
+  it('shows a dramatic hero photo keyed by the rolled fighter id + name overlay', () => {
     const state = startDraft('title-run');
     const fighter = getFighter(state.current!.fighterId);
     render(<RolledFighterCard state={state} onKeep={() => {}} />);
-    expect(screen.getByTestId('fighter-avatar')).toBeInTheDocument();
-    expect(screen.getByLabelText(`${fighter.name} portrait`, { exact: true })).toBeInTheDocument();
+    const img = screen.getByTestId('fighter-photo') as HTMLImageElement;
+    expect(img.getAttribute('src')).toMatch(new RegExp(`fighters/${fighter.id}\\.jpg$`));
+    expect(img).toHaveAttribute('alt', fighter.name);
+    expect(screen.getByTestId('draft-hero')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: new RegExp(fighter.name, 'i') })).toBeInTheDocument();
   });
 });
