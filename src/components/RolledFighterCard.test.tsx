@@ -28,6 +28,6 @@ describe('RolledFighterCard', () => {
     const fighter = getFighter(state.current!.fighterId);
     render(<RolledFighterCard state={state} onKeep={() => {}} />);
     expect(screen.getByTestId('fighter-avatar')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: new RegExp(`${fighter.name} portrait`, 'i') })).toBeInTheDocument();
+    expect(screen.getByLabelText(`${fighter.name} portrait`, { exact: true })).toBeInTheDocument();
   });
 });
