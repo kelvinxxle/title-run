@@ -1,6 +1,7 @@
 import type { StatLine } from './stats';
 import { PHASE_OFFENSE } from './stats';
-import type { RoundIntent, StrikeTactic } from './intents';
+import type { GamePlan, RoundIntent, StrikeTactic } from './intents';
+import type { RoundReport } from './report';
 import { startingStamina } from './stamina';
 import { isGassed } from './stamina';
 import { createRng } from '../rng';
@@ -15,7 +16,7 @@ export interface Fighter2 {
   roundScore: number;
 }
 
-export type FightPhase = 'in-round' | 'finish-window' | 'ground-window' | 'finished';
+export type FightPhase = 'in-round' | 'corner' | 'finish-window' | 'ground-window' | 'finished';
 
 export interface FinishWindow {
   side: 'player' | 'opponent';
@@ -55,6 +56,8 @@ export interface FightState {
   window: FinishWindow | null;
   outcome: FightOutcome | null;
   log: RoundLogEntry[];
+  gamePlan: GamePlan | null;
+  lastReport: RoundReport | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,7 +96,16 @@ export function startFight(args: {
     window: null,
     outcome: null,
     log: [],
+    gamePlan: null,
+    lastReport: null,
   };
+}
+
+export function chooseGamePlan(state: FightState, plan: GamePlan): FightState {
+  if (state.phase !== 'corner') {
+    throw new Error(`chooseGamePlan requires state.phase === "corner" (got "${state.phase}")`);
+  }
+  return { ...state, gamePlan: plan, phase: 'in-round' };
 }
 
 // ── Feature A tuning constants (tune in T4) ───────────────────────────────────
