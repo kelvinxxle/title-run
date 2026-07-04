@@ -111,12 +111,6 @@ const CARELESS_CEILING_LATE = 0.42;
  *  Achievable-floor: measured min(gap@9=0.1300, gap@10=0.1833) − 0.03 buffer. */
 const GAP_LATE = 0.10;
 
-/** Monotonic-ladder noise allowance.
- *  Measured max consecutive upward delta = 0.20 (fight 2→3: Tier-2 wrestlers partially
- *  neutralise GSP's wrestling edge while Tier-3 has softer takedownDef; spike is real,
- *  not a balance bug — documented in task-4-report.md). Buffer +0.02 → 0.22. */
-const MONOTONIC_NOISE = 0.22;
-
 describe('combat balance bands', () => {
   const good: Band[] = [];
   const careless: Band[] = [];
@@ -172,9 +166,21 @@ describe('combat balance bands', () => {
   });
 
   it('BAND 6 — difficulty-monotonic: win-rate is non-increasing as fightNumber rises (within noise)', () => {
-    // MONOTONIC_NOISE=0.22; max observed consecutive upward delta=0.20 (fight 2→3) + 0.02 buffer.
+    // All transitions EXCEPT the documented fight 2→3 matchup dip must be non-increasing
+    // (or within a tight 0.10 noise buffer for sim variance).
+    const TRANSITION_NOISE = 0.10;
     for (let n = 1; n <= 9; n++) {
-      expect(good[n + 1].winRate).toBeLessThanOrEqual(good[n].winRate + MONOTONIC_NOISE);
+      if (n === 2) continue; // fight 2→3 is the documented exception — asserted separately below
+      expect(good[n + 1].winRate, `good fight ${n}→${n+1}`).toBeLessThanOrEqual(good[n].winRate + TRANSITION_NOISE);
+      expect(careless[n + 1].winRate, `careless fight ${n}→${n+1}`).toBeLessThanOrEqual(careless[n].winRate + TRANSITION_NOISE);
     }
+    // Fight 2→3 structural dip (intentional): Tier-2 strikers frustrate GSP's wrestling edge
+    // (higher takedownDef) while Tier-3 grapplers have softer takedownDef GSP dominates.
+    // Bounded so a real regression still catches.
+    // Measured M12 T4: good delta=+0.200, careless delta=+0.354.
+    const DIPTIER2TO3_GOOD = 0.25;     // measured +0.200 + 0.05 buffer
+    const DIPTIER2TO3_CARELESS = 0.40; // measured +0.354 + ~0.05 buffer
+    expect(good[3].winRate - good[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_GOOD);
+    expect(careless[3].winRate - careless[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_CARELESS);
   });
 });
