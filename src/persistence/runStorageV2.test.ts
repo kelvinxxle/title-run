@@ -244,4 +244,39 @@ describe('runStorageV2', () => {
     store({ ...preFight(), fightNumber: NaN });
     expect(load().run).toBeNull();
   });
+
+  // ── Task 8: schema v4 — exchange + legDamage ──────────────────────────────
+
+  it('round-trips a mid-fight run at exchange 2', () => {
+    const run = midFight();
+    // midFight() produces exchange=2 (one resolveExchange from exchange=1)
+    expect((run.fight as FightState).exchange).toBe(2);
+    expect((run.fight as FightState).player.legDamage).toBe(0);
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('rejects an out-of-range exchange (0, 4, 2.5)', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    for (const bad of [0, 4, 2.5]) {
+      store({ ...run, fight: { ...fight, exchange: bad } });
+      expect(load().run).toBeNull();
+    }
+  });
+
+  it('rejects a fighter with no legDamage', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    const { legDamage: _ld, ...playerNoLeg } = fight.player;
+    store({ ...run, fight: { ...fight, player: playerNoLeg } });
+    expect(load().run).toBeNull();
+  });
+
+  it('clears a stale v3 blob', () => {
+    const run = midFight();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 3, run, bestReign: 0 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
 });
