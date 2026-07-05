@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bodyPct, clamp01, exchangeLabel, gasState, headState, healthPct, legPct, staminaPct, roundLabel } from './fightDisplay';
-import { STAT_IDS, type Fighter2, type FightState, type StatLine } from './domain/combat';
+import { STAT_IDS, type Fighter2, type FightState, type StatLine, EXCHANGES_PER_ROUND } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 60])) as StatLine;
 const fighter = (over: Partial<Fighter2> = {}): Fighter2 => ({
@@ -69,7 +69,7 @@ describe('fightDisplay', () => {
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
       window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
     });
-    expect(exchangeLabel(st(2))).toBe('Exchange 2 of 3');
-    expect(exchangeLabel(st(1))).toBe('Exchange 1 of 3');
+    expect(exchangeLabel(st(2))).toBe(`Exchange 2 of ${EXCHANGES_PER_ROUND}`);
+    expect(exchangeLabel(st(1))).toBe(`Exchange 1 of ${EXCHANGES_PER_ROUND}`);
   });
 });

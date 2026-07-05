@@ -1,5 +1,5 @@
 import { type FightState, type ExchangeMove, type FinishChoice, type GroundPlan, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND } from '../domain/combat';
-import { bodyPct, exchangeLabel, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
+import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import StrikePanel from '../components/StrikePanel';
 import FinishSequencePanel from '../components/FinishSequencePanel';
@@ -39,9 +39,6 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
       className="p-md flex flex-col gap-md items-center"
     >
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
-      {phase === 'in-round' && (
-        <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{exchangeLabel(fightState)}</p>
-      )}
       <div className="w-full flex gap-sm">
         <FighterHealthCard
           side="player"
