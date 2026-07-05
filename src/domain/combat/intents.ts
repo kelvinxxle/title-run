@@ -3,6 +3,8 @@ export type GroundPlan   = 'ground-and-pound' | 'submission';
 export type Target = 'head' | 'body';
 export type Phase = 'strike' | 'wrestle';
 
+import type { StrikeId } from './strikes';
+
 export type RoundIntent =
   | { kind: 'strike'; target: Target; tactic: StrikeTactic }
   | { kind: 'wrestle' };
@@ -37,3 +39,20 @@ export const GAME_PLAN_BLURBS: Record<GamePlan,string> = {
   'stay-disciplined': 'Tighten up and counter — protect the lead.',
   'catch-breath': 'Recover and reset — give ground this round.',
 };
+
+export type ExchangeMove =
+  | { kind: 'strike'; strike: StrikeId }
+  | { kind: 'takedown' };
+
+export const MOVE_KIND_LABELS: Record<'strike' | 'takedown', string> = {
+  strike: 'Strike',
+  takedown: 'Takedown',
+};
+
+export function movePhase(m: ExchangeMove): Phase {
+  return m.kind === 'strike' ? 'strike' : 'wrestle';
+}
+
+export function isTakedown(m: ExchangeMove): m is Extract<ExchangeMove, { kind: 'takedown' }> {
+  return m.kind === 'takedown';
+}
