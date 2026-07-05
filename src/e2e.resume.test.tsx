@@ -20,7 +20,7 @@ function midFightRun(): RunState {
 }
 
 // A drafted, in-progress run whose active fight is parked in a real 'ground-window'
-// (opened by a winning wrestle through resolveRound). Seed/fightNumber on the fight
+// (opened by a winning wrestle through resolveExchange). Seed/fightNumber on the fight
 // match the run so it satisfies runStorageV2's 'fighting' + 'ground-window' invariants.
 const GROUND_SEED = 'resume-ground-seed';
 const GRAPPLER: StatLine = { ...ARCHETYPES.wrestler, takedowns: 99 };

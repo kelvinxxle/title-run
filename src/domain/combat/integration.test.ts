@@ -94,10 +94,10 @@ describe('combat integration: full run', () => {
 });
 
 // ── Combat decision-space integration ──────────────────────────────────────────
-// These tests drive the REAL state machine (resolveRound → finish/ground → step)
+// These tests drive the REAL state machine (resolveExchange → finish/ground → step)
 // end-to-end for each finishing method, proving the strike/wrestle/ground redesign
 // flows through concrete outcomes. They deliberately open every window through
-// resolveRound (not by hand-constructing a window state), which is the distinct
+// resolveExchange (not by hand-constructing a window state), which is the distinct
 // value over finish.test.ts's unit-level groundStep tests.
 
 /** Drives an in-round fight to a terminal state under a fixed strike policy,
@@ -148,7 +148,7 @@ describe('combat integration: finishing methods through the real state machine',
     };
     const s0 = startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp });
 
-    // Open the window through resolveRound (NOT a hand-built ground-window state).
+    // Open the window through resolveExchange (NOT a hand-built ground-window state).
     const opened = resolveExchange(s0, { kind: 'takedown' });
     expect(opened.phase).toBe('ground-window');
     expect(opened.window).not.toBeNull();

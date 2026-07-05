@@ -40,7 +40,7 @@ export function ROCKED_HEAD_DMG(chin: number): number {
 // ── Shared ground math ────────────────────────────────────────────────────────
 /** Ground-and-pound head damage for one step: `attacker` posts up on `defender`.
  *  Used by BOTH the player ground window (groundStep) and the opponent takedown
- *  follow-up (resolveRound) so the two sides share one formula, not a copy. */
+ *  follow-up (resolveExchange) so the two sides share one formula, not a copy. */
 export function groundAndPoundDamage(attacker: StatLine, defender: StatLine): number {
   const raw = (0.5 * attacker.striking + 0.5 * attacker.takedowns) - 0.5 * defender.strikingDef;
   return Math.max(GP_MIN, Math.round(raw * GP_FACTOR));
@@ -65,7 +65,7 @@ export type FinishChoice = 'commit' | 'measure' | 'hold';
 export const FINISH_CHOICES: readonly FinishChoice[] = ['commit', 'measure', 'hold'] as const;
 
 // ── detectWindow ─────────────────────────────────────────────────────────────
-/** Context produced by resolveRound after damage + stamina are settled. */
+/** Context produced by resolveExchange after damage + stamina are settled. */
 export interface ResolvedContext {
   /** Head damage BEFORE this round's exchange was applied. */
   prePlayerHeadDamage: number;

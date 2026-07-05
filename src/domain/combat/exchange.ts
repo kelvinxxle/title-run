@@ -149,7 +149,18 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     dominance,
   };
 
-  /** Advance to the next round (or finish the fight) applying the round-boundary stamina. */
+  /**
+   * Advance to the next round (or finish the fight) applying the round-boundary stamina.
+   *
+   * Recovery economy note: this function is called ONLY for normal last-beat strike rounds
+   * and for the opponent-takedown no-rock path below. Rounds that cash out through an
+   * interim takedown/finish WINDOW (player takedown → ground-window → groundStep; any
+   * finish-window → finishStep) advance to the next round via finish.ts's own inline
+   * round-advance WITHOUT re-applying this recovery. This diverges from M14's resolveRound,
+   * which applied recovery at window-open; M15 does not — window-resolved rounds forgo it.
+   * This is intentional and gate-locked: T7 validated this economy empirically across 300
+   * seeds; M16's full ground tree will revisit the timing.
+   */
   function crossRoundBoundary(p: Fighter2, o: Opp): FightState {
     const pRb = clampStamina(
       p.stamina + recovery(state.player.statLine) - bodyRecoveryPenalty(p.bodyDamage) + plan.staminaDelta,
@@ -172,6 +183,8 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - pCost), roundScore: state.player.roundScore + 1 + margin };
     const o: Opp = { ...state.opponent, stamina: clampStamina(state.opponent.stamina - oCost) };
     const report = makeReport(state.round, 'player', dominance, playerMove, oppMove, state, p, o);
+    // Round is suspended here (frozen at current exchange); cashes out via groundStep
+    // without round-boundary recovery (interim M15 economy; revisit in M16).
     return {
       ...state,
       phase: 'ground-window',
