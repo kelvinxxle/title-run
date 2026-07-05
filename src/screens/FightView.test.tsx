@@ -6,8 +6,8 @@ import type { FightState } from '../domain/combat';
 const base = (over: Partial<FightState> = {}): FightState => {
   const merged: FightState = {
     seed: 's', fightNumber: 1, rounds: 3, round: 1, phase: 'in-round',
-    player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0 },
-    opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' },
+    player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0 },
+    opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' },
     window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ...over,
   } as FightState;
   return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
@@ -90,8 +90,8 @@ describe('FightView', () => {
   });
 
   it('seeds opponent avatars by opponent name so same opponent name produces same avatar', () => {
-    const st1 = base({ fightNumber: 1, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
-    const st2 = base({ fightNumber: 5, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
+    const st1 = base({ fightNumber: 1, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' } });
+    const st2 = base({ fightNumber: 5, opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' } });
 
     const r1 = render(<FightView fightState={st1} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
     const opp1Avatars = r1.container.querySelectorAll('[data-testid="fighter-avatar"]');
@@ -106,8 +106,8 @@ describe('FightView', () => {
   });
 
   it('seeds opponent avatars by opponent name so different names produce different avatars', () => {
-    const st1 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Rival', archetype:'Boxer' } });
-    const st2 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, roundScore:0, name:'Other', archetype:'Boxer' } });
+    const st1 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' } });
+    const st2 = base({ opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Other', archetype:'Boxer' } });
 
     const r1 = render(<FightView fightState={st1} playerName="Me" onIntent={vi.fn()} onFinishStep={vi.fn()} onGroundStep={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
     const opp1Avatars = r1.container.querySelectorAll('[data-testid="fighter-avatar"]');
@@ -127,7 +127,7 @@ describe('FightView', () => {
     const fightState = base({
       opponent: {
         statLine: { striking:88, strikingDef:84, takedowns:86, takedownDef:88, submissions:76, submissionDef:80, cardio:84, chin:82, fightIQ:94 },
-        headDamage:0, bodyDamage:0, stamina:100, roundScore:0,
+        headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0,
         name: 'Jon Jones', archetype: 'allrounder',
       },
     });

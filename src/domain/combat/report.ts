@@ -1,11 +1,12 @@
-import type { RoundIntent } from './intents';
+import type { ExchangeMove } from './intents';
+import { STRIKES } from './strikes';
 
 export interface RoundReportInput {
   round: number;
   winner: 'player' | 'opponent' | 'draw';
   dominance: number;
-  playerIntent: RoundIntent;
-  opponentIntent: RoundIntent;
+  playerIntent: ExchangeMove;
+  opponentIntent: ExchangeMove;
   playerHeadDelta: number;
   playerBodyDelta: number;
   opponentHeadDelta: number;
@@ -44,16 +45,16 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
     headline = "You're ROCKED — hang on!";
   } else if (
     winner === 'player'
-    && playerIntent.kind === 'strike' && playerIntent.tactic === 'counter'
-    && opponentIntent.kind === 'strike' && opponentIntent.tactic === 'pressure'
+    && playerIntent.kind === 'strike' && STRIKES[playerIntent.strike].speed >= 0.7
+    && opponentIntent.kind === 'strike' && STRIKES[opponentIntent.strike].koWeight >= 1.0
   ) {
-    headline = 'Perfect counter — you read him cold.';
+    headline = 'Perfect timing — you read him cold.';
   } else if (
     winner === 'opponent'
-    && opponentIntent.kind === 'strike' && opponentIntent.tactic === 'counter'
-    && playerIntent.kind === 'strike' && playerIntent.tactic === 'pressure'
+    && opponentIntent.kind === 'strike' && STRIKES[opponentIntent.strike].speed >= 0.7
+    && playerIntent.kind === 'strike' && STRIKES[playerIntent.strike].koWeight >= 1.0
   ) {
-    headline = 'He read you cold.';
+    headline = 'He timed you cold.';
   } else if (winner === 'player' && dominance >= 15) {
     headline = 'You lit him up.';
   } else if (winner === 'player') {

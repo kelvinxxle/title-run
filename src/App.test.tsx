@@ -14,27 +14,27 @@ function fightingRun(fight: FightState): RunState {
 }
 function finishWindowFight(): FightState {
   return {
-    seed: 'fw', fightNumber: 1, rounds: 3, round: 2, phase: 'finish-window',
-    player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, roundScore: 1 },
-    opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    seed: 'fw', fightNumber: 1, rounds: 3, round: 2, exchange: 1, phase: 'finish-window',
+    player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 1 },
+    opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
     gamePlan: null, lastReport: null,
   };
 }
 function finishedFight(winner: 'player' | 'opponent'): FightState {
   return {
-    seed: 'done', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
-    player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0 },
-    opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    seed: 'done', fightNumber: 1, rounds: 3, round: 3, exchange: 1, phase: 'finished',
+    player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0 },
+    opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
     gamePlan: null, lastReport: null,
   };
 }
 function cornerFight(): FightState {
   return {
-    seed: 'corner', fightNumber: 1, rounds: 3, round: 2, phase: 'corner',
-    player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 70, roundScore: 1 },
-    opponent: { statLine: LINE, headDamage: 10, bodyDamage: 3, stamina: 60, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+    seed: 'corner', fightNumber: 1, rounds: 3, round: 2, exchange: 1, phase: 'corner',
+    player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 70, legDamage: 0, roundScore: 1 },
+    opponent: { statLine: LINE, headDamage: 10, bodyDamage: 3, stamina: 60, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null,
     outcome: null,
     log: [],
@@ -84,10 +84,17 @@ describe('App (v2 flow)', () => {
     render(<App />);
     const view = screen.getByTestId('fight-view');
     const before = view.getAttribute('data-round');
-    fireEvent.click(screen.getByTestId('intent-commit'));
-    const after = screen.getByTestId('fight-view');
-    // either the round advanced or a finish window / finish opened — the view changed
-    const changed = after.getAttribute('data-round') !== before || after.getAttribute('data-phase') !== 'in-round';
+    // One beat only advances the exchange counter; after a full round
+    // (EXCHANGES_PER_ROUND beats) the round advances or a finish/ground window opens.
+    // Drive beats until the view leaves round-1 in-round.
+    let changed = false;
+    for (let i = 0; i < 3 && !changed; i++) {
+      const btn = screen.queryByTestId('intent-commit');
+      if (!btn) { changed = true; break; } // phase left in-round → the panel is gone
+      fireEvent.click(btn);
+      const v = screen.getByTestId('fight-view');
+      changed = v.getAttribute('data-round') !== before || v.getAttribute('data-phase') !== 'in-round';
+    }
     expect(changed).toBe(true);
   });
 
@@ -96,9 +103,9 @@ describe('App (v2 flow)', () => {
       seed: 'x', phase: 'run-over', fighter: { name: 'Ace', statLine: LINE },
       fightNumber: 2, record: { wins: 1, losses: 1 }, isChampion: false, defenses: 0,
       fight: {
-        seed: 'x', fightNumber: 2, rounds: 3, round: 3, phase: 'finished',
-        player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0 },
-        opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+        seed: 'x', fightNumber: 2, rounds: 3, round: 3, exchange: 1, phase: 'finished',
+        player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0 },
+        opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
         window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
         gamePlan: null, lastReport: null,
       },

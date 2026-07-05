@@ -5,8 +5,8 @@ const base: RoundReportInput = {
   round: 1,
   winner: 'player',
   dominance: 20,
-  playerIntent: { kind: 'strike', target: 'head', tactic: 'pickApart' },
-  opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+  playerIntent: { kind: 'strike', strike: 'powerPunch' },
+  opponentIntent: { kind: 'strike', strike: 'powerPunch' },
   playerHeadDelta: 0,
   playerBodyDelta: 0,
   opponentHeadDelta: 10,
@@ -40,30 +40,30 @@ describe('buildRoundReport', () => {
     expect(report.detail).toBe("You're sucking wind.");
   });
 
-  it('calls out a perfect player counter over opponent pressure', () => {
+  it('calls out a perfect player timing read over an opponent commit', () => {
     const report = buildRoundReport({
       ...base,
       winner: 'player',
       dominance: 7,
-      playerIntent: { kind: 'strike', target: 'head', tactic: 'counter' },
-      opponentIntent: { kind: 'strike', target: 'body', tactic: 'pressure' },
+      playerIntent: { kind: 'strike', strike: 'jab' },
+      opponentIntent: { kind: 'strike', strike: 'powerPunch' },
       opponentGassed: true,
     });
 
-    expect(report.headline).toBe('Perfect counter — you read him cold.');
+    expect(report.headline).toBe('Perfect timing — you read him cold.');
     expect(report.detail).toBe("He's sucking wind.");
   });
 
-  it('calls out when the opponent counters player pressure', () => {
+  it('calls out when the opponent times the player commit', () => {
     const report = buildRoundReport({
       ...base,
       winner: 'opponent',
       dominance: -7,
-      playerIntent: { kind: 'strike', target: 'body', tactic: 'pressure' },
-      opponentIntent: { kind: 'strike', target: 'head', tactic: 'counter' },
+      playerIntent: { kind: 'strike', strike: 'powerPunch' },
+      opponentIntent: { kind: 'strike', strike: 'jab' },
     });
 
-    expect(report.headline).toBe('He read you cold.');
+    expect(report.headline).toBe('He timed you cold.');
     expect(report.detail).toBe('You picked him apart at range.');
   });
 

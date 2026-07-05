@@ -5,7 +5,7 @@ import {
   startNextFight,
   settleFight,
   startFight,
-  resolveRound,
+  resolveExchange,
   finishStep,
   groundStep,
   buildStatLine,
@@ -13,13 +13,13 @@ import {
   ARCHETYPES,
   type FightState,
   type RunState,
-  type RoundIntent,
+  type ExchangeMove,
 } from './index';
 
 // A deterministic "always technical head strike" policy — enough to drive a
 // fight to a terminal state (finish or decision) without any Math.random.
-function drivePlayerIntent(): RoundIntent {
-  return { kind: 'strike', target: 'head', tactic: 'pickApart' };
+function drivePlayerIntent(): ExchangeMove {
+  return { kind: 'strike', strike: 'jab' };
 }
 
 function continueFromCorner(state: FightState): FightState {
@@ -32,7 +32,7 @@ function playFightToEnd(initial: FightState): FightState {
   while (state.phase !== 'finished') {
     if (guard++ > 200) throw new Error('fight did not terminate');
     if (state.phase === 'in-round') {
-      state = resolveRound(state, drivePlayerIntent());
+      state = resolveExchange(state, drivePlayerIntent());
     } else if (state.phase === 'corner') {
       state = continueFromCorner(state);
     } else if (state.phase === 'ground-window') {
@@ -102,12 +102,12 @@ describe('combat integration: full run', () => {
 
 /** Drives an in-round fight to a terminal state under a fixed strike policy,
  *  committing every finish window. Only reachable phases are in-round + finish-window. */
-function driveStrikeFightToEnd(initial: FightState, intent: RoundIntent): FightState {
+function driveStrikeFightToEnd(initial: FightState, intent: ExchangeMove): FightState {
   let s = initial;
   let guard = 0;
   while (s.phase !== 'finished') {
     if (guard++ > 200) throw new Error('strike fight did not terminate');
-    if (s.phase === 'in-round') s = resolveRound(s, intent);
+    if (s.phase === 'in-round') s = resolveExchange(s, intent);
     else if (s.phase === 'corner') s = continueFromCorner(s);
     else if (s.phase === 'finish-window') s = finishStep(s, 'commit');
     else throw new Error(`unexpected phase in strike driver: ${s.phase}`);
@@ -127,7 +127,7 @@ describe('combat integration: finishing methods through the real state machine',
       statLine: { ...ARCHETYPES.brawler, chin: 20, strikingDef: 20 },
     };
     const s0 = startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: player, opponent: opp });
-    const end = driveStrikeFightToEnd(s0, { kind: 'strike', target: 'head', tactic: 'pressure' });
+    const end = driveStrikeFightToEnd(s0, { kind: 'strike', strike: 'powerPunch' });
 
     expect(end.phase).toBe('finished');
     expect(end.outcome).not.toBeNull();
@@ -149,7 +149,7 @@ describe('combat integration: finishing methods through the real state machine',
     const s0 = startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp });
 
     // Open the window through resolveRound (NOT a hand-built ground-window state).
-    const opened = resolveRound(s0, { kind: 'wrestle' });
+    const opened = resolveExchange(s0, { kind: 'takedown' });
     expect(opened.phase).toBe('ground-window');
     expect(opened.window).not.toBeNull();
     expect(opened.window!.side).toBe('player');
@@ -176,7 +176,7 @@ describe('combat integration: finishing methods through the real state machine',
     };
     const s0 = startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: player, opponent: opp });
 
-    const opened = resolveRound(s0, { kind: 'wrestle' });
+    const opened = resolveExchange(s0, { kind: 'takedown' });
     expect(opened.phase).toBe('ground-window');
     expect(opened.window!.method).toBe('ground');
 
@@ -196,7 +196,7 @@ describe('combat integration: finishing methods through the real state machine',
       archetype: 'brawler' as const,
       statLine: { ...ARCHETYPES.brawler, chin: 20, strikingDef: 20 },
     };
-    const strikeIntent: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pressure' };
+    const strikeIntent: ExchangeMove = { kind: 'strike', strike: 'powerPunch' };
     const strikeEndA = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
     const strikeEndB = driveStrikeFightToEnd(startFight({ seed: 'integration-strike-ko', fightNumber: 1, playerStatLine: strikePlayer, opponent: strikeOpp }), strikeIntent);
     expect(strikeEndA.outcome).not.toBeNull();
@@ -210,8 +210,8 @@ describe('combat integration: finishing methods through the real state machine',
       archetype: 'striker' as const,
       statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
     };
-    const gnpOpenA = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
-    const gnpOpenB = resolveRound(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'wrestle' });
+    const gnpOpenA = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown' });
+    const gnpOpenB = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown' });
     const gnpEndA = groundStep(gnpOpenA, 'ground-and-pound');
     const gnpEndB = groundStep(gnpOpenB, 'ground-and-pound');
     expect(gnpEndA.outcome).not.toBeNull();
@@ -225,8 +225,8 @@ describe('combat integration: finishing methods through the real state machine',
       archetype: 'striker' as const,
       statLine: { ...ARCHETYPES.striker, takedownDef: 20, submissionDef: 10 },
     };
-    const subOpenA = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
-    const subOpenB = resolveRound(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'wrestle' });
+    const subOpenA = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown' });
+    const subOpenB = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown' });
     const subEndA = groundStep(subOpenA, 'submission');
     const subEndB = groundStep(subOpenB, 'submission');
     expect(subEndA.outcome).not.toBeNull();

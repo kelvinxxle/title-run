@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep, groundStep, chooseGamePlan,
-  type RunState, type RoundIntent, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
+  startRun, applyDraft, startNextFight, settleFight, resolveExchange, finishStep, groundStep, chooseGamePlan,
+  type RunState, type RoundIntent, type ExchangeMove, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
 } from './domain/combat';
 import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
@@ -27,10 +27,19 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     setRun((r) => (r ? applyDraft(r, { name: d.name, statLine: d.statLine }) : r));
   const handleEnterFight = () => setRun((r) => (r ? startNextFight(r) : r));
 
+  // Interim adapter: the FightView panel still speaks the RoundIntent vocabulary
+  // (target + tactic). Map it onto the M15 strike palette until Task 10 rewires
+  // the panel to pick palette moves directly.
+  const toExchangeMove = (intent: RoundIntent): ExchangeMove => {
+    if (intent.kind === 'wrestle') return { kind: 'takedown' };
+    if (intent.target === 'body') return { kind: 'strike', strike: 'bodyKick' };
+    return { kind: 'strike', strike: intent.tactic === 'pressure' ? 'powerPunch' : 'jab' };
+  };
+
   const handleIntent = (intent: RoundIntent) =>
     setRun((r) => {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'in-round') return r;
-      return { ...r, fight: resolveRound(r.fight, intent) };
+      return { ...r, fight: resolveExchange(r.fight, toExchangeMove(intent)) };
     });
   const handleFinishStep = (choice: FinishChoice) =>
     setRun((r) => {

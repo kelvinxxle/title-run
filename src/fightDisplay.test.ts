@@ -5,7 +5,7 @@ import { STAT_IDS, type Fighter2, type FightState, type StatLine } from './domai
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 60])) as StatLine;
 const fighter = (over: Partial<Fighter2> = {}): Fighter2 => ({
   statLine: { ...LINE, chin: 50 },
-  headDamage: 0, bodyDamage: 0, stamina: 100, roundScore: 0, ...over,
+  headDamage: 0, bodyDamage: 0, legDamage: 0, stamina: 100, roundScore: 0, ...over,
 });
 
 describe('fightDisplay', () => {
@@ -43,7 +43,7 @@ describe('fightDisplay', () => {
   it('roundLabel reflects phase', () => {
     const base = fighter();
     const st = (phase: FightState['phase']): FightState => ({
-      seed:'s', fightNumber:1, rounds:3, round:2, phase,
+      seed:'s', fightNumber:1, rounds:3, round:2, exchange:1, phase,
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
       window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
     });

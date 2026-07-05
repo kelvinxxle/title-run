@@ -1,5 +1,6 @@
 import type { FightState, FinishWindow } from './fightState';
-import type { RoundIntent, GroundPlan } from './intents';
+import type { ExchangeMove, GroundPlan } from './intents';
+import { STRIKES } from './strikes';
 import type { StatLine } from './stats';
 import { isGassed, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
@@ -77,8 +78,8 @@ export interface ResolvedContext {
   opponentStatLine: StatLine;
   /** Signed dominance from the exchange (>0 = player won). */
   dominance: number;
-  playerIntent: RoundIntent;
-  opponentIntent: RoundIntent;
+  playerIntent: ExchangeMove;
+  opponentIntent: ExchangeMove;
 }
 
 /**
@@ -123,17 +124,15 @@ export function detectWindow(ctx: ResolvedContext): FinishWindow | null {
   }
 
   // ── 2. Read path ──────────────────────────────────────────────────────────
-  // Clean counter that beat a pressure
-  if (
-    playerIntent.kind === 'strike' && playerIntent.tactic === 'counter' &&
-    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'pressure' && dominance > 0
-  ) {
+  // Timing read: a fast strike (speed >= 0.7) that beats a high-commit strike
+  // (koWeight >= 1.0) opens a KO window for the side that won the exchange.
+  const fastBeatsCommit = (fast: ExchangeMove, slow: ExchangeMove): boolean =>
+    fast.kind === 'strike' && slow.kind === 'strike' &&
+    STRIKES[fast.strike].speed >= 0.7 && STRIKES[slow.strike].koWeight >= 1.0;
+  if (fastBeatsCommit(playerIntent, opponentIntent) && dominance > 0) {
     return { side: 'player', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
-  if (
-    opponentIntent.kind === 'strike' && opponentIntent.tactic === 'counter' &&
-    playerIntent.kind === 'strike' && playerIntent.tactic === 'pressure' && dominance < 0
-  ) {
+  if (fastBeatsCommit(opponentIntent, playerIntent) && dominance < 0) {
     return { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS };
   }
 
@@ -192,6 +191,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
       phase: isOver ? 'finished' : 'corner',
       window: null,
       round: isOver ? state.round : newRound,
+      exchange: isOver ? state.exchange : 1,
       player: {
         ...state.player,
         stamina: win.side === 'player'
@@ -225,6 +225,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
       phase: 'corner',
       window: null,
       round: newRound,
+      exchange: 1,
     };
   }
 
@@ -276,8 +277,8 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
         round: state.round,
         winner: finisher,
         dominance: 10,
-        playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
-        opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+        playerIntent: { kind: 'strike', strike: 'powerPunch' },
+        opponentIntent: { kind: 'strike', strike: 'powerPunch' },
         playerHeadDelta: 0,
         playerBodyDelta: 0,
         opponentHeadDelta: gpDmg,
@@ -301,8 +302,8 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
       round: state.round,
       winner: finisher,
       dominance: 10,
-      playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
-      opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+      playerIntent: { kind: 'strike', strike: 'powerPunch' },
+      opponentIntent: { kind: 'strike', strike: 'powerPunch' },
       playerHeadDelta: 0,
       playerBodyDelta: 0,
       opponentHeadDelta: gpDmg,
@@ -317,6 +318,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
       phase: isOver ? 'finished' : 'corner',
       window: null,
       round: isOver ? state.round : newRound,
+      exchange: isOver ? state.exchange : 1,
       lastReport,
     };
     return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;
@@ -343,8 +345,8 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     round: state.round,
     winner: 'draw',
     dominance: 0,
-    playerIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
-    opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+    playerIntent: { kind: 'strike', strike: 'powerPunch' },
+    opponentIntent: { kind: 'strike', strike: 'powerPunch' },
     playerHeadDelta: 0,
     playerBodyDelta: 0,
     opponentHeadDelta: 0,
@@ -359,6 +361,7 @@ export function groundStep(state: FightState, plan: GroundPlan): FightState {
     phase: isOver ? 'finished' : 'corner',
     window: null,
     round: isOver ? state.round : newRound,
+    exchange: isOver ? state.exchange : 1,
     lastReport: subFailReport,
   };
   return isOver ? { ...advanced, outcome: scoreFight(advanced) } : advanced;

@@ -16,8 +16,8 @@ describe('MomentumBar', () => {
 
   it('colors pips by winner', () => {
     const log = [
-      { round: 1, winner: 'player' as const, playerIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pressure' as const }, opponentIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pressure' as const }, dominance: 5 },
-      { round: 2, winner: 'opponent' as const, playerIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pressure' as const }, opponentIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pressure' as const }, dominance: -5 },
+      { round: 1, exchange: 1 as const, winner: 'player' as const, playerIntent: { kind: 'strike' as const, strike: 'powerPunch' as const }, opponentIntent: { kind: 'strike' as const, strike: 'powerPunch' as const }, dominance: 5 },
+      { round: 2, exchange: 1 as const, winner: 'opponent' as const, playerIntent: { kind: 'strike' as const, strike: 'powerPunch' as const }, opponentIntent: { kind: 'strike' as const, strike: 'powerPunch' as const }, dominance: -5 },
     ];
     const { container } = render(<MomentumBar log={log} rounds={3} />);
     const pips = container.querySelectorAll('[data-winner]');

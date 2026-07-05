@@ -13,6 +13,7 @@ export interface Fighter2 {
   statLine: StatLine;
   headDamage: number;
   bodyDamage: number;
+  legDamage: number;
   stamina: number;
   roundScore: number;
 }
@@ -75,6 +76,7 @@ function makeFighter(statLine: StatLine): Fighter2 {
     statLine,
     headDamage: 0,
     bodyDamage: 0,
+    legDamage: 0,
     stamina: startingStamina(statLine),
     roundScore: 0,
   };
