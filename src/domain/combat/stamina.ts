@@ -30,3 +30,9 @@ export function effortMultiplier(stamina: number): number {
   const t = Math.max(0, Math.min(1, stamina / STAMINA_MAX));
   return 0.6 + 0.4 * t; // 1.0 fresh → 0.6 empty
 }
+
+const MOBILITY_FLOOR = 0.7;
+const MOBILITY_PER_DMG = 0.006; // ~0.30 lost by ~50 leg damage
+export function mobilityMultiplier(legDamage: number): number {
+  return Math.max(MOBILITY_FLOOR, 1 - Math.max(0, legDamage) * MOBILITY_PER_DMG);
+}

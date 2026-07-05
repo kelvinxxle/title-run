@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { FightState } from './fightState';
 import { startFight } from './fightState';
-import { resolveRound } from './resolve';
+import { resolveExchange } from './exchange';
 import { detectWindow, finishStep, groundStep, ROCKED_HEAD_DMG } from './finish';
 import type { ResolvedContext } from './finish';
 import { ARCHETYPES } from './archetypes';
@@ -19,9 +19,10 @@ function makeWindowState(overrides: Partial<FightState> = {}): FightState {
     fightNumber: 1,
     rounds: 3,
     round: 1,
+    exchange: 1,
     phase: 'finish-window',
-    player: { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0 },
-    opponent: { statLine: ARCHETYPES.brawler, headDamage: 50, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' },
+    player: { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0 },
+    opponent: { statLine: ARCHETYPES.brawler, headDamage: 50, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 3 },
     outcome: null,
     log: [],
@@ -36,7 +37,7 @@ describe('finish flow', () => {
   it('a rocked opponent opens a finish window, and commit can end it', () => {
     let s = startFight({ seed: 'ko-seed', fightNumber: 1, playerStatLine: { ...ARCHETYPES.brawler, striking: 99 }, opponent: GLASS });
     for (let i = 0; i < 3 && s.phase === 'in-round'; i++) {
-      s = resolveRound(s, { kind: 'strike', target: 'head', tactic: 'pressure' });
+      s = resolveExchange(s, { kind: 'strike', strike: 'powerPunch' });
     }
     expect(s.phase).toBe('finish-window');
     expect(s.window?.side).toBe('player');
@@ -73,8 +74,8 @@ describe('finish flow', () => {
       playerStatLine: { ...ARCHETYPES.brawler, chin: 20 },
       opponentStatLine: { ...ARCHETYPES.striker, striking: 99 },
       dominance: -10,
-      playerIntent:   { kind: 'strike', target: 'head', tactic: 'pressure' },
-      opponentIntent: { kind: 'strike', target: 'head', tactic: 'pressure' },
+      playerIntent:   { kind: 'strike', strike: 'powerPunch' },
+      opponentIntent: { kind: 'strike', strike: 'powerPunch' },
     };
     const win = detectWindow(ctx);
     expect(win?.side).toBe('opponent');
@@ -92,8 +93,8 @@ describe('finish flow', () => {
     playerStatLine: { ...ARCHETYPES.striker, chin: 50 },
     opponentStatLine: { ...ARCHETYPES.striker, chin: 50 },
     dominance: 0,
-    playerIntent:   { kind: 'strike', target: 'head', tactic: 'pickApart' },
-    opponentIntent: { kind: 'strike', target: 'head', tactic: 'pickApart' },
+    playerIntent:   { kind: 'strike', strike: 'jab' },
+    opponentIntent: { kind: 'strike', strike: 'jab' },
     ...over,
   });
 
@@ -155,9 +156,10 @@ function makeGroundWindowState(overrides: Partial<FightState> = {}): FightState 
     fightNumber: 1,
     rounds: 3,
     round: 1,
+    exchange: 1,
     phase: 'ground-window',
-    player: { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0 },
-    opponent: { statLine: ARCHETYPES.brawler, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' },
+    player: { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0 },
+    opponent: { statLine: ARCHETYPES.brawler, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'brawler' },
     window: { side: 'player', method: 'ground', stepsLeft: 3 },
     outcome: null,
     log: [],
@@ -184,7 +186,7 @@ describe('ground window (Task 2)', () => {
     const player = { ...ARCHETYPES.wrestler, takedowns: 99 };
     const opp = { id: 'o', name: 'Opp', archetype: 'striker' as const, statLine: { ...ARCHETYPES.striker, takedownDef: 20 } };
     const s0 = startFight({ seed: 'ground-probe-0', fightNumber: 1, playerStatLine: player, opponent: opp });
-    const s1 = resolveRound(s0, { kind: 'wrestle' });
+    const s1 = resolveExchange(s0, { kind: 'takedown' });
     expect(s1.phase).toBe('ground-window');
     expect(s1.window?.side).toBe('player');
     expect(s1.window?.method).toBe('ground');
@@ -206,7 +208,7 @@ describe('ground window (Task 2)', () => {
 
   it('ground-and-pound that rocks a fragile-chin opponent scores a TKO (KO)', () => {
     // chin=1 → ROCKED_HEAD_DMG=1, so any GnP damage crosses the threshold from 0.
-    const opp = { statLine: { ...ARCHETYPES.brawler, chin: 1 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' };
+    const opp = { statLine: { ...ARCHETYPES.brawler, chin: 1 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'brawler' };
     const s = makeGroundWindowState({ opponent: opp });
     expect(ROCKED_HEAD_DMG(1)).toBe(1);
     const res = groundStep(s, 'ground-and-pound');
@@ -218,7 +220,7 @@ describe('ground window (Task 2)', () => {
 
   it('ground-and-pound that does not rock closes the window and advances the round', () => {
     // Tough chin so the GnP damage stays below the rocked threshold → no TKO.
-    const opp = { statLine: { ...ARCHETYPES.brawler, chin: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' };
+    const opp = { statLine: { ...ARCHETYPES.brawler, chin: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'brawler' };
     const s = makeGroundWindowState({ opponent: opp });
     const res = groundStep(s, 'ground-and-pound');
     expect(res.phase).toBe('corner');
@@ -230,8 +232,8 @@ describe('ground window (Task 2)', () => {
   it('submission against a weak submission defense (committing seed) taps the opponent', () => {
     // grappler player (submissions 84) vs submissionDef 10 → p clamps to 0.95;
     // seed 'ground-sub' rolls 0.5149 < 0.95 → success.
-    const player = { statLine: ARCHETYPES.grappler, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0 };
-    const opp = { statLine: { ...ARCHETYPES.brawler, submissionDef: 10 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'brawler' };
+    const player = { statLine: ARCHETYPES.grappler, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0 };
+    const opp = { statLine: { ...ARCHETYPES.brawler, submissionDef: 10 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'brawler' };
     const s = makeGroundWindowState({ seed: 'ground-sub', player, opponent: opp });
     const res = groundStep(s, 'submission');
     expect(res.phase).toBe('finished');
@@ -242,8 +244,8 @@ describe('ground window (Task 2)', () => {
   it('submission against a strong submission defense fails and advances the round', () => {
     // striker player (submissions 40) vs submissionDef 99 → p clamps to 0.05;
     // seed 'ground-nofin' rolls 0.7451 >= 0.05 → no tap, round advances.
-    const player = { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0 };
-    const opp = { statLine: { ...ARCHETYPES.grappler, submissionDef: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'grappler' };
+    const player = { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0 };
+    const opp = { statLine: { ...ARCHETYPES.grappler, submissionDef: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'grappler' };
     const s = makeGroundWindowState({ seed: 'ground-nofin', player, opponent: opp });
     const res = groundStep(s, 'submission');
     expect(res.phase).toBe('corner');
@@ -254,8 +256,8 @@ describe('ground window (Task 2)', () => {
   });
 
   it('a failed ground finish on the final round yields a decision outcome', () => {
-    const player = { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0 };
-    const opp = { statLine: { ...ARCHETYPES.grappler, submissionDef: 99, chin: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, roundScore: 0, name: 'Opp', archetype: 'grappler' };
+    const player = { statLine: ARCHETYPES.striker, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0 };
+    const opp = { statLine: { ...ARCHETYPES.grappler, submissionDef: 99, chin: 99 }, headDamage: 0, bodyDamage: 0, stamina: STAMINA_MAX, legDamage: 0, roundScore: 0, name: 'Opp', archetype: 'grappler' };
     const s = makeGroundWindowState({ seed: 'ground-nofin', rounds: 1, player, opponent: opp });
     const res = groundStep(s, 'submission');
     expect(res.phase).toBe('finished');
@@ -338,7 +340,7 @@ describe('M14 fix: groundStep lastReport', () => {
       headDamage: 0,
       bodyDamage: 0,
       stamina: STAMINA_MAX,
-      roundScore: 0,
+      legDamage: 0, roundScore: 0,
       name: 'Opp',
       archetype: 'brawler' as const,
     };

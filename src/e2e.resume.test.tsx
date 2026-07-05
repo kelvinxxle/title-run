@@ -3,24 +3,24 @@ import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import App from './App';
 import { save, load } from './persistence/runStorageV2';
 import {
-  startRun, applyDraft, startNextFight, startFight, resolveRound, groundStep,
+  startRun, applyDraft, startNextFight, startFight, resolveExchange, groundStep,
   ARCHETYPES,
-  STAT_IDS, type RunState, type StatLine, type RoundIntent,
+  STAT_IDS, type RunState, type StatLine, type ExchangeMove,
 } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
-const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
+const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
 
 function midFightRun(): RunState {
   let run: RunState = applyDraft(startRun('resume-seed'), { name: 'Tester', statLine: LINE });
   run = startNextFight(run);
   // advance one round while still in-round (pick-apart/head is low-pressure — no early finish here)
-  if (run.fight && run.fight.phase === 'in-round') run = { ...run, fight: resolveRound(run.fight, JAB) };
+  if (run.fight && run.fight.phase === 'in-round') run = { ...run, fight: resolveExchange(run.fight, JAB) };
   return run;
 }
 
 // A drafted, in-progress run whose active fight is parked in a real 'ground-window'
-// (opened by a winning wrestle through resolveRound). Seed/fightNumber on the fight
+// (opened by a winning wrestle through resolveExchange). Seed/fightNumber on the fight
 // match the run so it satisfies runStorageV2's 'fighting' + 'ground-window' invariants.
 const GROUND_SEED = 'resume-ground-seed';
 const GRAPPLER: StatLine = { ...ARCHETYPES.wrestler, takedowns: 99 };
@@ -33,7 +33,7 @@ function groundWindowRun(): RunState {
     statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
   };
   const f0 = startFight({ seed: GROUND_SEED, fightNumber: 1, playerStatLine: GRAPPLER, opponent: opp });
-  const parked = resolveRound(f0, { kind: 'wrestle' });
+  const parked = resolveExchange(f0, { kind: 'takedown' });
   // guard: this must genuinely be a valid ground-window per the persistence invariant
   if (parked.phase !== 'ground-window' || parked.window?.method !== 'ground' || parked.outcome !== null) {
     throw new Error('expected a parked ground-window fight');

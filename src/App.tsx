@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, resolveRound, finishStep, groundStep, chooseGamePlan,
-  type RunState, type RoundIntent, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
+  startRun, applyDraft, startNextFight, settleFight, resolveExchange, finishStep, groundStep, chooseGamePlan,
+  type RunState, type ExchangeMove, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
 } from './domain/combat';
 import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
@@ -27,10 +27,10 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     setRun((r) => (r ? applyDraft(r, { name: d.name, statLine: d.statLine }) : r));
   const handleEnterFight = () => setRun((r) => (r ? startNextFight(r) : r));
 
-  const handleIntent = (intent: RoundIntent) =>
+  const handleMove = (move: ExchangeMove) =>
     setRun((r) => {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'in-round') return r;
-      return { ...r, fight: resolveRound(r.fight, intent) };
+      return { ...r, fight: resolveExchange(r.fight, move) };
     });
   const handleFinishStep = (choice: FinishChoice) =>
     setRun((r) => {
@@ -87,7 +87,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
       <FightView
         fightState={run.fight}
         playerName={run.fighter.name}
-        onIntent={handleIntent}
+        onMove={handleMove}
         onFinishStep={handleFinishStep}
         onGroundStep={handleGroundStep}
         onChooseGamePlan={handleChooseGamePlan}

@@ -3,7 +3,9 @@ import {
   STRIKE_TACTICS, GROUND_PLANS, TARGETS,
   KIND_LABELS, STRIKE_TACTIC_LABELS, GROUND_PLAN_LABELS, TARGET_LABELS,
   isStrike, intentPhase,
+  movePhase, isTakedown, MOVE_KIND_LABELS,
   type RoundIntent,
+  type ExchangeMove,
 } from './intents';
 
 describe('round intents', () => {
@@ -35,5 +37,22 @@ describe('round intents', () => {
     for (const t of STRIKE_TACTICS) expect(STRIKE_TACTIC_LABELS[t]).toBeTruthy();
     for (const g of GROUND_PLANS) expect(GROUND_PLAN_LABELS[g]).toBeTruthy();
     for (const t of TARGETS) expect(TARGET_LABELS[t]).toBeTruthy();
+  });
+});
+
+describe('ExchangeMove', () => {
+  it('maps strike moves to the strike phase', () => {
+    const m: ExchangeMove = { kind: 'strike', strike: 'jab' };
+    expect(movePhase(m)).toBe('strike');
+    expect(isTakedown(m)).toBe(false);
+  });
+  it('maps takedown moves to the wrestle phase', () => {
+    const m: ExchangeMove = { kind: 'takedown' };
+    expect(movePhase(m)).toBe('wrestle');
+    expect(isTakedown(m)).toBe(true);
+  });
+  it('labels both move kinds', () => {
+    expect(MOVE_KIND_LABELS.strike.length).toBeGreaterThan(0);
+    expect(MOVE_KIND_LABELS.takedown.length).toBeGreaterThan(0);
   });
 });

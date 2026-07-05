@@ -18,9 +18,10 @@ describe('CornerScreen', () => {
   const log = [
     {
       round: 1,
+      exchange: 1 as const,
       winner: 'player' as const,
-      playerIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pickApart' as const },
-      opponentIntent: { kind: 'strike' as const, target: 'head' as const, tactic: 'pressure' as const },
+      playerIntent: { kind: 'strike' as const, strike: 'jab' as const },
+      opponentIntent: { kind: 'strike' as const, strike: 'powerPunch' as const },
       dominance: 8,
     },
   ];

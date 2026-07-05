@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { staminaCost, recovery, isGassed, effortMultiplier, STAMINA_MAX } from './stamina';
+import { staminaCost, recovery, isGassed, effortMultiplier, mobilityMultiplier, STAMINA_MAX } from './stamina';
 import type { RoundIntent, StrikeTactic } from './intents';
 import { ARCHETYPES } from './archetypes';
 
@@ -23,4 +23,10 @@ describe('stamina economy', () => {
     expect(effortMultiplier(0)).toBeLessThan(1);
     expect(effortMultiplier(0)).toBeGreaterThanOrEqual(0.6);
   });
+});
+
+describe('mobilityMultiplier', () => {
+  it('is 1.0 with no leg damage', () => { expect(mobilityMultiplier(0)).toBe(1); });
+  it('decreases as leg damage rises', () => { expect(mobilityMultiplier(40)).toBeLessThan(mobilityMultiplier(10)); });
+  it('never drops below the 0.7 floor', () => { expect(mobilityMultiplier(1000)).toBeGreaterThanOrEqual(0.7); });
 });

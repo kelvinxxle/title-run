@@ -1,6 +1,7 @@
 import type { StatLine } from './stats';
 import { PHASE_OFFENSE } from './stats';
-import type { GamePlan, RoundIntent, StrikeTactic } from './intents';
+import type { GamePlan, ExchangeMove } from './intents';
+import { STRIKES, type StrikeId } from './strikes';
 import type { RoundReport } from './report';
 import { startingStamina } from './stamina';
 import { isGassed } from './stamina';
@@ -12,6 +13,7 @@ export interface Fighter2 {
   statLine: StatLine;
   headDamage: number;
   bodyDamage: number;
+  legDamage: number;
   stamina: number;
   roundScore: number;
 }
@@ -32,8 +34,9 @@ export interface FightOutcome {
 
 export interface RoundLogEntry {
   round: number;
-  playerIntent: RoundIntent;
-  opponentIntent: RoundIntent;
+  exchange: number;
+  playerIntent: ExchangeMove;
+  opponentIntent: ExchangeMove;
   winner: 'player' | 'opponent' | 'draw';
   dominance: number;
 }
@@ -50,6 +53,8 @@ export interface FightState {
   fightNumber: number;
   rounds: number;
   round: number;
+  /** 1-based beat index within the current round (1..EXCHANGES_PER_ROUND). Reset to 1 on entering a corner. */
+  exchange: number;
   phase: FightPhase;
   player: Fighter2;
   opponent: Fighter2 & { name: string; archetype: string };
@@ -71,6 +76,7 @@ function makeFighter(statLine: StatLine): Fighter2 {
     statLine,
     headDamage: 0,
     bodyDamage: 0,
+    legDamage: 0,
     stamina: startingStamina(statLine),
     roundScore: 0,
   };
@@ -90,6 +96,7 @@ export function startFight(args: {
     fightNumber,
     rounds: roundsForFight(fightNumber),
     round: 1,
+    exchange: 1,
     phase: 'in-round',
     player: makeFighter(playerStatLine),
     opponent: { ...makeFighter(opponent.statLine), name: opponent.name, archetype: opponent.archetype },
@@ -105,7 +112,7 @@ export function chooseGamePlan(state: FightState, plan: GamePlan): FightState {
   if (state.phase !== 'corner') {
     throw new Error(`chooseGamePlan requires state.phase === "corner" (got "${state.phase}")`);
   }
-  return { ...state, gamePlan: plan, phase: 'in-round' };
+  return { ...state, gamePlan: plan, phase: 'in-round', exchange: 1 };
 }
 
 // ── Feature A tuning constants (tune in T4) ───────────────────────────────────
@@ -120,17 +127,21 @@ const ADAPTIVE_IQ_MID = 60;
 /** Hard cap on total counter-chance from the adaptive gate. */
 const ADAPTIVE_CAP = 0.65;
 
+/** A strike at or above this koWeight is a head-hunting power strike (powerPunch/elbow). */
+const HEAD_HUNT_KOWEIGHT = 1.0;
+
 /**
- * Fraction of the last `n` log entries where the player used strike/pressure.
+ * Fraction of the last `n` log entries where the player threw a head-hunting power
+ * strike (`kind === 'strike'` and `STRIKES[strike].koWeight >= HEAD_HUNT_KOWEIGHT`).
  * Returns 0 whenever the log has fewer than `n` entries (not enough data to read).
  */
 export function computePredictability(log: RoundLogEntry[], n: number): number {
   if (log.length < n) return 0;
   const recent = log.slice(-n);
-  const pressureCount = recent.filter(
-    e => e.playerIntent.kind === 'strike' && e.playerIntent.tactic === 'pressure',
+  const headHunts = recent.filter(
+    (e) => e.playerIntent.kind === 'strike' && STRIKES[e.playerIntent.strike].koWeight >= HEAD_HUNT_KOWEIGHT,
   ).length;
-  return pressureCount / recent.length;
+  return headHunts / recent.length;
 }
 
 /**
@@ -144,47 +155,32 @@ export function adaptiveCounterChance(fightIQ: number, predictability: number): 
 
 // ── Opponent AI ───────────────────────────────────────────────────────────────
 
-export function opponentIntent(state: FightState): RoundIntent {
-  const rng = createRng(`${state.seed}#f${state.fightNumber}#ai${state.round}`);
+export function opponentMove(state: FightState): ExchangeMove {
+  const rng = createRng(`${state.seed}#f${state.fightNumber}#ai${state.round}#x${state.exchange}`);
 
-  // Draw all RNG values upfront for uniform consumption regardless of branch.
+  // Draw both RNG values upfront for uniform consumption regardless of branch.
   const roll = rng();
-  const tacticIdx = rng();
+  const pick = rng();
 
   // Choose kind by the opponent's better edge over the player's matching defense.
   const strikeEdge = state.opponent.statLine[PHASE_OFFENSE.strike] - state.player.statLine.strikingDef;
   const wrestleEdge = state.opponent.statLine[PHASE_OFFENSE.wrestle] - state.player.statLine.takedownDef;
+  if (wrestleEdge > strikeEdge) return { kind: 'takedown' };
 
-  if (wrestleEdge > strikeEdge) {
-    return { kind: 'wrestle' };
-  }
+  // Gassed player: dig the body/legs to compound the gas.
+  if (isGassed(state.player.stamina)) return { kind: 'strike', strike: 'bodyKick' };
 
-  // Striking: target body when the player is gassed, else head.
-  const target = isGassed(state.player.stamina) ? 'body' : 'head';
-
-  // Feature A: high-IQ opponents read the player's recent pressure history.
-  // Gate reuses the existing upfront `roll` (no extra RNG draw) to minimise
-  // determinism churn.  opponentIntent is called BEFORE this round's log entry
-  // is pushed, so state.log contains only past rounds — fair-play preserved.
+  // Adaptive read (M12): punish predictable head-hunting with a fast counter jab.
+  // opponentMove is called BEFORE this beat's log entry is pushed, so state.log
+  // contains only past beats — fair-play preserved.
   const predictability = computePredictability(state.log, ADAPTIVE_N);
-  const counterChance  = adaptiveCounterChance(state.opponent.statLine.fightIQ, predictability);
-  if (roll < counterChance) {
-    return { kind: 'strike', target, tactic: 'counter' };
-  }
+  const counterChance = adaptiveCounterChance(state.opponent.statLine.fightIQ, predictability);
+  if (roll < counterChance) return { kind: 'strike', strike: 'jab' };
 
-  // Choose tactic biased by fightNumber (higher → more aggressive).
-  // fightNumber 1-4: favour pickApart/counter; 5+: favour pressure.
-  // Fallback ordering preserves the pre-redesign distribution (technical ≡ pickApart).
-  const TACTIC_FALLBACK: readonly StrikeTactic[] = ['pressure', 'pickApart', 'counter'];
-  const aggression = Math.min(1, (state.fightNumber - 1) / 4); // 0..1
-  let tactic: StrikeTactic;
-  if (roll < aggression * 0.6) {
-    tactic = 'pressure';
-  } else if (roll < 0.5 + aggression * 0.2) {
-    tactic = 'pickApart';
-  } else {
-    tactic = TACTIC_FALLBACK[Math.floor(tacticIdx * TACTIC_FALLBACK.length)];
-  }
+  // Aggression bias by fightNumber: later fights swing more power.
+  const aggression = Math.min(1, (state.fightNumber - 1) / 4);
+  if (roll < aggression * 0.5) return { kind: 'strike', strike: 'powerPunch' };
 
-  return { kind: 'strike', target, tactic };
+  const MIX: readonly StrikeId[] = ['jab', 'elbow', 'bodyKick', 'legKick'];
+  return { kind: 'strike', strike: MIX[Math.floor(pick * MIX.length)] };
 }

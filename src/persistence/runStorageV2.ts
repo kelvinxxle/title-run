@@ -1,8 +1,8 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS, INITIAL_STEPS, GAME_PLANS } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS, GAME_PLANS, EXCHANGES_PER_ROUND } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface LoadedState { run: RunState | null; bestReign: number | null; }
 
@@ -31,6 +31,7 @@ function isValidFighter2(x: unknown): boolean {
   return (
     Number.isFinite(x['headDamage']) &&
     Number.isFinite(x['bodyDamage']) &&
+    Number.isFinite(x['legDamage']) &&
     Number.isFinite(x['stamina']) &&
     Number.isFinite(x['roundScore'])
   );
@@ -71,6 +72,7 @@ function isValidFightState(x: unknown): boolean {
   if (!isObject(x)) return false;
   if (typeof x['seed'] !== 'string') return false;
   if (!Number.isFinite(x['fightNumber']) || !Number.isFinite(x['rounds']) || !Number.isFinite(x['round'])) return false;
+  if (!Number.isInteger(x['exchange']) || (x['exchange'] as number) < 1 || (x['exchange'] as number) > EXCHANGES_PER_ROUND) return false;
   if (typeof x['phase'] !== 'string' || !FIGHT_PHASES.includes(x['phase'] as string)) return false;
   if (!isValidFighter2(x['player'])) return false;
   const opp = x['opponent'];

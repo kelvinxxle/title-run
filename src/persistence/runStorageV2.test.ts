@@ -1,26 +1,26 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { load, save, STORAGE_KEY, SCHEMA_VERSION } from './runStorageV2';
-import { startRun, applyDraft, startNextFight, resolveRound, type RunState, type RoundIntent, type FightState } from '../domain/combat';
+import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState } from '../domain/combat';
 import { STAT_IDS, type StatLine } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
 // Wrestler stat line: high takedowns (99) to win a wrestle for ground-window; seed 'gw-5' verified.
 const WRESTLER = Object.fromEntries(STAT_IDS.map((s) => [s, s === 'takedowns' ? 99 : 40])) as StatLine;
 function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
-const JAB: RoundIntent = { kind: 'strike', target: 'head', tactic: 'pickApart' };
+const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
 function continueFromCorner(fight: FightState): FightState {
   return fight.phase === 'corner' ? { ...fight, phase: 'in-round', gamePlan: null } : fight;
 }
 function midFight(): RunState {
   const started = startNextFight(preFight());
-  return { ...started, fight: resolveRound(started.fight as FightState, JAB) };
+  return { ...started, fight: resolveExchange(started.fight as FightState, JAB) };
 }
 // seed 'fw-4' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
 function finishWindowRun(): RunState {
   let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE }));
   let f = run.fight as FightState;
   while (f.phase === 'in-round' || f.phase === 'corner') {
-    f = f.phase === 'corner' ? continueFromCorner(f) : resolveRound(f, JAB);
+    f = f.phase === 'corner' ? continueFromCorner(f) : resolveExchange(f, JAB);
   }
   run = { ...run, fight: f };
   return run;
@@ -29,7 +29,7 @@ function finishWindowRun(): RunState {
 // (seed updated in T2 — real opponent system changed the fight dynamics; 'gw-0' verified deterministic)
 function groundWindowRun(): RunState {
   const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
-  return { ...run, fight: resolveRound(run.fight as FightState, { kind: 'wrestle' }) };
+  return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown' }) };
 }
 function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
@@ -97,9 +97,9 @@ describe('runStorageV2', () => {
     expect(load()).toEqual({ run: mid, bestReign: 1 });
 
     const finishedFight: FightState = {
-      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
-      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
-      opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, exchange: 1, phase: 'finished',
+      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
+      opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
       gamePlan: null, lastReport: null,
     };
@@ -129,9 +129,9 @@ describe('runStorageV2', () => {
 
   it('rejects a finished fight with a null outcome (phase↔payload invariant)', () => {
     const finished: FightState = {
-      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, phase: 'finished',
-      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, roundScore: 2 },
-      opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, roundScore: 0, name: 'Rival', archetype: 'brawler' },
+      seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, exchange: 1, phase: 'finished',
+      player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
+      opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
       gamePlan: null, lastReport: null,
     };
@@ -243,5 +243,40 @@ describe('runStorageV2', () => {
   it('rejects a pre-fight run with fightNumber: NaN (not finite)', () => {
     store({ ...preFight(), fightNumber: NaN });
     expect(load().run).toBeNull();
+  });
+
+  // ── Task 8: schema v4 — exchange + legDamage ──────────────────────────────
+
+  it('round-trips a mid-fight run at exchange 2', () => {
+    const run = midFight();
+    // midFight() produces exchange=2 (one resolveExchange from exchange=1)
+    expect((run.fight as FightState).exchange).toBe(2);
+    expect((run.fight as FightState).player.legDamage).toBe(0);
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('rejects an out-of-range exchange (0, 4, 2.5)', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    for (const bad of [0, 4, 2.5]) {
+      store({ ...run, fight: { ...fight, exchange: bad } });
+      expect(load().run).toBeNull();
+    }
+  });
+
+  it('rejects a fighter with no legDamage', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    const { legDamage: _ld, ...playerNoLeg } = fight.player;
+    store({ ...run, fight: { ...fight, player: playerNoLeg } });
+    expect(load().run).toBeNull();
+  });
+
+  it('clears a stale v3 blob', () => {
+    const run = midFight();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 3, run, bestReign: 0 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });
