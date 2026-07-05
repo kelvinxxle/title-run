@@ -74,6 +74,18 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
     detail = "He's sucking wind.";
   } else if (playerGassed) {
     detail = "You're sucking wind.";
+  } else if (
+    winner === 'player'
+    && playerIntent.kind === 'strike'
+    && STRIKES[playerIntent.strike].target === 'legs'
+  ) {
+    detail = "You're chopping his base down.";
+  } else if (
+    winner === 'opponent'
+    && opponentIntent.kind === 'strike'
+    && STRIKES[opponentIntent.strike].target === 'legs'
+  ) {
+    detail = "He's chopping your base down.";
   } else {
     detail = 'You picked him apart at range.';
   }

@@ -98,6 +98,17 @@ describe('buildRoundReport', () => {
     expect(report.headline).toBe('Even round — nobody blinked.');
   });
 
+  it('calls out leg chopping in the detail when the winner kicked the legs', () => {
+    const r = buildRoundReport({
+      round: 1, winner: 'player', dominance: 9,
+      playerIntent: { kind: 'strike', strike: 'legKick' },
+      opponentIntent: { kind: 'strike', strike: 'jab' },
+      playerHeadDelta: 0, playerBodyDelta: 0, opponentHeadDelta: 0, opponentBodyDelta: 0,
+      playerBecameRocked: false, opponentBecameRocked: false, playerGassed: false, opponentGassed: false,
+    });
+    expect(r.detail.toLowerCase()).toContain('base');
+  });
+
   it('returns the same report for the same input every time', () => {
     const input: RoundReportInput = {
       ...base,
