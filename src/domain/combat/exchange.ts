@@ -27,7 +27,11 @@ const BODY_TO_STAMINA = 0.5;
 const BODY_RECOVERY_FACTOR = 0.08;
 /** A takedown shoot is a whole-body commitment — kept at the retired WRESTLE_COST value. */
 const TAKEDOWN_COST = 17;
-const TAKEDOWN_ATK = 1.1;
+// M15 T7 (balance GATE): TAKEDOWN_ATK 1.1→1.25. GSP's elite wrestling (takedowns=90) is the
+// skill lever careless never uses (it only spams powerPunch), so raising takedown offense lifts
+// good's late win rate over Tier-5 champions to BAND-3 (≥0.45) without moving careless, whose
+// predictable head-hunting stays capped by the adaptive counter (BAND 5, ≤0.42). See balance.test.ts.
+const TAKEDOWN_ATK = 1.25;
 /** Shooting for a takedown leaves you open to strikes on the way in (<1). */
 const TAKEDOWN_VS_STRIKE_DEF = 0.9;
 

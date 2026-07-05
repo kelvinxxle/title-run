@@ -20,7 +20,7 @@ import type { ExchangeMove, GroundPlan, GamePlan } from './intents';
 //    window (including while being finished).
 //
 // We measure across fightNumber 1..10 and many deterministic seeds, then assert
-// the four success bands. There is no Math.random anywhere — every draw flows
+// the six success bands. There is no Math.random anywhere — every draw flows
 // through the engine's seeded RNG, so the measured numbers are reproducible.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -112,30 +112,34 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
 }
 
-// ── M15 T4: multi-exchange engine + strike palette (policies rewritten to ExchangeMove) ──
-// Measured across 300 seeds, fightNumbers 1..10 (3 exchanges/round, palette AI):
-//   fight  1: good wR=0.8867 fR=0.8667 | careless wR=0.3900 fR=0.2367 | gap=0.4967
-//   fight  2: good wR=0.5067 fR=0.4867 | careless wR=0.3067 fR=0.2833 | gap=0.2000
-//   fight  3: good wR=0.8300 fR=0.8267 | careless wR=0.6167 fR=0.5600 | gap=0.2133
-//   fight  4: good wR=0.7033 fR=0.6000 | careless wR=0.5200 fR=0.4200 | gap=0.1833
-//   fight  5: good wR=0.3900 fR=0.3867 | careless wR=0.3433 fR=0.3400 | gap=0.0467
-//   fight  6: good wR=0.4300 fR=0.4167 | careless wR=0.3067 fR=0.3033 | gap=0.1233
-//   fight  7: good wR=0.3900 fR=0.3867 | careless wR=0.3300 fR=0.3300 | gap=0.0600
-//   fight  8: good wR=0.3367 fR=0.3267 | careless wR=0.2867 fR=0.2800 | gap=0.0500
-//   fight  9: good wR=0.3600 fR=0.3567 | careless wR=0.3167 fR=0.3100 | gap=0.0433
-//   fight 10: good wR=0.4300 fR=0.4267 | careless wR=0.2867 fR=0.2833 | gap=0.1433
-//   AGG good finishRate = 0.5080
-// Bands below are ACHIEVABLE FLOORS around these measurements (Task 7 will co-tune
-// the palette constants and retighten the separation bands).
+// ── M15 T7: BANDs re-derived on the multi-exchange engine + strike palette ──
+// Measured across 300 seeds, fightNumbers 1..10 (EXCHANGES_PER_ROUND=3, palette AI,
+// TAKEDOWN_ATK=1.25 — GSP's elite wrestling threads Tier-5 champions):
+//   fight  1: good wR=0.9967 fR=0.9700 | careless wR=0.3900 fR=0.2367 | gap=0.6067
+//   fight  2: good wR=0.7333 fR=0.7133 | careless wR=0.3067 fR=0.2900 | gap=0.4267
+//   fight  3: good wR=0.9200 fR=0.9167 | careless wR=0.6167 fR=0.5467 | gap=0.3033
+//   fight  4: good wR=0.7267 fR=0.6067 | careless wR=0.5200 fR=0.3967 | gap=0.2067
+//   fight  5: good wR=0.5733 fR=0.5700 | careless wR=0.3300 fR=0.3267 | gap=0.2433
+//   fight  6: good wR=0.6300 fR=0.6100 | careless wR=0.3033 fR=0.2900 | gap=0.3267
+//   fight  7: good wR=0.5367 fR=0.5333 | careless wR=0.3300 fR=0.3267 | gap=0.2067
+//   fight  8: good wR=0.5567 fR=0.5467 | careless wR=0.2833 fR=0.2800 | gap=0.2733
+//   fight  9: good wR=0.5200 fR=0.5200 | careless wR=0.3167 fR=0.3100 | gap=0.2033
+//   fight 10: good wR=0.5867 fR=0.5833 | careless wR=0.2800 fR=0.2733 | gap=0.3067
+//   AGG good finishRate = 0.6570
+// Every band below asserts the PLAN target (docs/superpowers/plans/2026-07-04-…-plan.md,
+// Task 7). No achievable-floor substitutions were needed — all six clear the plan number.
 
-/** Anti-exploit ceiling: power-punch spam must not reliably win vs Tier-5 (fights 9–10).
- *  Achievable-floor: measured max(careless@9=0.3167, careless@10=0.2867) + ~0.08 buffer. */
+/** BAND 5 — anti-exploit ceiling: power-punch spam must not reliably win vs Tier-5
+ *  (fights 9–10). Plan target 0.42; measured careless@9=0.3167, careless@10=0.2800. */
 const CARELESS_CEILING_LATE = 0.42;
 
-/** Skill-separation floor: good adaptive play must beat careless at fights 9–10.
- *  Achievable-floor: measured min(gap@9=0.0433, gap@10=0.1433) − buffer. Thin late-game
- *  separation is a known Task 7 retune target. */
-const GAP_LATE = 0.03;
+/** BAND 3 — no late wall for skill: good adaptive play stays winnable vs champions.
+ *  Plan target 0.45; measured good@9=0.5200, good@10=0.5867. */
+const GOOD_FLOOR_LATE = 0.45;
+
+/** BAND 6 — difficulty ramps: winRate[n+1] ≤ winRate[n] + this buffer, n=1..9,
+ *  except the single documented fight 2→3 matchup dip. Plan target 0.12. */
+const RAMP_BUFFER = 0.12;
 
 describe('combat balance bands', () => {
   const good: Band[] = [];
@@ -145,67 +149,54 @@ describe('combat balance bands', () => {
     careless[fn] = simulate(fn, 'careless');
   }
 
-  it('BAND 1 — finishes are attainable: good play finishes >= 40% of all fights', () => {
+  it('BAND 1 — finishes happen: aggregate good finish rate >= 0.30', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    // Tightened 0.30 → 0.40 (M12 T4): measured aggregate finishRate=0.4680; comfortable margin.
-    expect(totalFinishRate).toBeGreaterThanOrEqual(0.40);
+    // Plan target 0.30; measured aggregate finishRate=0.6570.
+    expect(totalFinishRate).toBeGreaterThanOrEqual(0.30);
   });
 
-  it('BAND 2 — early decisions matter: careless is genuinely punished, good play dominates', () => {
-    // measured careless@1=0.6933; margin 0.027 — kept at 0.72 (too thin to tighten safely)
+  it('BAND 2 — early carelessness is punished + skill matters', () => {
+    // Plan target: careless@1 ≤ 0.72 (measured 0.3900) AND good−careless gap@1 ≥ 0.20
+    // (measured 0.6067). Head-hunting from beat one is a losing game plan.
     expect(careless[1].winRate).toBeLessThanOrEqual(0.72);
-    // Tightened for the palette engine: measured good@1=0.8867 (achievable floor 0.85).
-    expect(good[1].winRate).toBeGreaterThan(0.85);
-    // gap@1=0.4967 comfortably clears 0.25.
-    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.25);
+    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.20);
   });
 
-  it('BAND 3 — no wall: late fights stay winnable with good play', () => {
-    // Achievable-floor for the palette engine: measured good@9=0.3600, good@10=0.4300.
-    // GSP takedowns=90 threads Tier-5 champions via wrestling even vs Jon Jones (fightIQ=94).
-    expect(good[9].winRate).toBeGreaterThanOrEqual(0.30);
-    expect(good[10].winRate).toBeGreaterThanOrEqual(0.30);
-    expect(good[9].winRate).toBeGreaterThan(0);
-    expect(good[10].winRate).toBeGreaterThan(0);
+  it('BAND 3 — no late wall for skill: good win rate at fights 9 and 10 >= 0.45', () => {
+    // Plan target 0.45; measured good@9=0.5200, good@10=0.5867. GSP's takedowns=90
+    // thread Tier-5 champions via the ground game (finish or gas-and-pound).
+    expect(good[9].winRate).toBeGreaterThanOrEqual(GOOD_FLOOR_LATE);
+    expect(good[10].winRate).toBeGreaterThanOrEqual(GOOD_FLOOR_LATE);
   });
 
-  it('BAND 4 — no runaway: difficulty rises with fightNumber (no snowball to 100%)', () => {
-    const early = (good[1].winRate + good[2].winRate) / 2;
-    const late = (good[9].winRate + good[10].winRate) / 2;
-    expect(late).toBeLessThanOrEqual(early);   // late fights are not easier than early
-    expect(late).toBeLessThan(0.9);            // late fights remain a real challenge
+  it('BAND 4 — skill dominates every fight: good win rate > careless for fights 1–10', () => {
+    for (let n = 1; n <= 10; n++) {
+      expect(good[n].winRate, `fight ${n}`).toBeGreaterThan(careless[n].winRate);
+    }
   });
 
-  it('BAND 5a — anti-exploit: pressure-spam cannot reliably win vs Tier-5 champions', () => {
-    // CARELESS_CEILING_LATE=0.42 (achievable-floor, measured M12 T4).
-    // Directly encodes the Feature A guarantee: high-IQ Tier-5 opponents punish predictability.
+  it('BAND 5 — head-hunt exploit is dead: careless win rate at fights 9 and 10 <= 0.42', () => {
+    // Plan target 0.42; measured careless@9=0.3167, careless@10=0.2800. The adaptive AI
+    // + fast counter reads punish predictable powerPunch spam.
     expect(careless[9].winRate).toBeLessThanOrEqual(CARELESS_CEILING_LATE);
     expect(careless[10].winRate).toBeLessThanOrEqual(CARELESS_CEILING_LATE);
   });
 
-  it('BAND 5b — skill separation late: good adaptive play beats pure pressure by >= GAP_LATE', () => {
-    // GAP_LATE=0.10 (achievable-floor: measured min gap 0.1300 − 0.03 buffer).
-    // Allrounders/champions read and counter predictable pressure — skill separates.
-    expect(good[9].winRate - careless[9].winRate).toBeGreaterThanOrEqual(GAP_LATE);
-    expect(good[10].winRate - careless[10].winRate).toBeGreaterThanOrEqual(GAP_LATE);
-  });
-
-  it('BAND 6 — difficulty-monotonic: win-rate is non-increasing as fightNumber rises (within noise)', () => {
-    // All transitions EXCEPT the documented fight 2→3 matchup dip must be non-increasing
-    // (or within a tight 0.10 noise buffer for sim variance).
-    const TRANSITION_NOISE = 0.10;
+  it('BAND 6 — difficulty ramps (monotone-ish): winRate[n+1] <= winRate[n] + 0.12', () => {
+    // Every transition EXCEPT the documented fight 2→3 dip stays within the ramp buffer.
     for (let n = 1; n <= 9; n++) {
-      if (n === 2) continue; // fight 2→3 is the documented exception — asserted separately below
-      expect(good[n + 1].winRate, `good fight ${n}→${n+1}`).toBeLessThanOrEqual(good[n].winRate + TRANSITION_NOISE);
-      expect(careless[n + 1].winRate, `careless fight ${n}→${n+1}`).toBeLessThanOrEqual(careless[n].winRate + TRANSITION_NOISE);
+      if (n === 2) continue; // fight 2→3 is the documented exception — asserted separately below.
+      expect(good[n + 1].winRate, `good fight ${n}→${n + 1}`).toBeLessThanOrEqual(good[n].winRate + RAMP_BUFFER);
+      expect(careless[n + 1].winRate, `careless fight ${n}→${n + 1}`).toBeLessThanOrEqual(careless[n].winRate + RAMP_BUFFER);
     }
-    // Fight 2→3 structural dip (intentional): Tier-2 strikers frustrate GSP's wrestling edge
-    // (higher takedownDef) while Tier-3 grapplers have softer takedownDef GSP dominates.
-    // Bounded so a real regression still catches.
-    // Measured M15 T4: good delta=+0.3233, careless delta=+0.3100.
-    const DIPTIER2TO3_GOOD = 0.37;     // measured +0.3233 + ~0.05 buffer
-    const DIPTIER2TO3_CARELESS = 0.40; // measured +0.3100 + ~0.09 buffer
+    // Documented fight 2→3 dip (intentional): the fight-2 draw is a Tier-2 striker with a
+    // high takedownDef that frustrates GSP's wrestling, while the fight-3 Tier-3 grapplers
+    // have soft takedownDef GSP dominates — so win rate jumps 2→3, then resumes falling.
+    // Measured T7: good delta=+0.1867, careless delta=+0.3100. Bounded so a real regression
+    // still trips this assertion.
+    const DIPTIER2TO3_GOOD = 0.24;     // measured +0.1867 + ~0.05 buffer
+    const DIPTIER2TO3_CARELESS = 0.36; // measured +0.3100 + ~0.05 buffer
     expect(good[3].winRate - good[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_GOOD);
     expect(careless[3].winRate - careless[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_CARELESS);
   });
