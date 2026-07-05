@@ -147,4 +147,29 @@ describe('resolveExchange', () => {
     // player dominates → opponent takes body damage; body damage also bites stamina
     expect(s.opponent.bodyDamage).toBeGreaterThan(0);
   });
+
+  it("work-body plan redirects the player's winning HEAD strike to the body (forceBodyTarget)", () => {
+    // 'work-body' has atkMult/defMult 1.0 (identical dominance whether or not it's set), so a
+    // control run with no plan is the exact baseline: same seed/stats/move ⇒ same |dominance| ⇒
+    // same dmg. Player throws a HEAD strike (powerPunch) and dominates. Without the plan the dmg
+    // lands on the head; with 'work-body' it must land on the BODY instead (and drain stamina).
+    const bomber: StatLine = { ...P, striking: 99 };
+    const glass = { id: 'o', name: 'Glass', archetype: 'striker' as const, statLine: { ...O, striking: 10, strikingDef: 5, chin: 600 } };
+    const powerPunch: ExchangeMove = { kind: 'strike', strike: 'powerPunch' };
+    const base = startFight({ seed: 'work-body-seed', fightNumber: 1, playerStatLine: bomber, opponent: glass });
+
+    const control = resolveExchange(base, powerPunch);                       // no plan → head
+    const planned = resolveExchange({ ...base, gamePlan: 'work-body' }, powerPunch); // plan → body
+
+    // Baseline sanity: without the plan the head strike lands on the head.
+    expect(control.opponent.headDamage).toBeGreaterThan(0);
+    expect(control.opponent.bodyDamage).toBe(0);
+
+    // With work-body: the SAME damage lands on the body, head is untouched, stamina drops by
+    // the body-to-stamina amount (0.5 * dmg) on top of the opponent's own per-beat move cost.
+    expect(planned.opponent.bodyDamage).toBe(control.opponent.headDamage);
+    expect(planned.opponent.headDamage).toBe(0);
+    expect(control.opponent.stamina - planned.opponent.stamina)
+      .toBe(Math.round(planned.opponent.bodyDamage * 0.5)); // BODY_TO_STAMINA = 0.5
+  });
 });

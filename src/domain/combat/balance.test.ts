@@ -118,20 +118,23 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
 //   fight  1: good wR=0.9967 fR=0.9700 | careless wR=0.3900 fR=0.2367 | gap=0.6067
 //   fight  2: good wR=0.7333 fR=0.7133 | careless wR=0.3067 fR=0.2900 | gap=0.4267
 //   fight  3: good wR=0.9200 fR=0.9167 | careless wR=0.6167 fR=0.5467 | gap=0.3033
-//   fight  4: good wR=0.7267 fR=0.6067 | careless wR=0.5200 fR=0.3967 | gap=0.2067
+//   fight  4: good wR=0.7300 fR=0.6100 | careless wR=0.5200 fR=0.3967 | gap=0.2100
 //   fight  5: good wR=0.5733 fR=0.5700 | careless wR=0.3300 fR=0.3267 | gap=0.2433
 //   fight  6: good wR=0.6300 fR=0.6100 | careless wR=0.3033 fR=0.2900 | gap=0.3267
 //   fight  7: good wR=0.5367 fR=0.5333 | careless wR=0.3300 fR=0.3267 | gap=0.2067
-//   fight  8: good wR=0.5567 fR=0.5467 | careless wR=0.2833 fR=0.2800 | gap=0.2733
+//   fight  8: good wR=0.5600 fR=0.5500 | careless wR=0.2833 fR=0.2800 | gap=0.2767
 //   fight  9: good wR=0.5200 fR=0.5200 | careless wR=0.3167 fR=0.3100 | gap=0.2033
-//   fight 10: good wR=0.5867 fR=0.5833 | careless wR=0.2800 fR=0.2733 | gap=0.3067
-//   AGG good finishRate = 0.6570
+//   fight 10: good wR=0.5833 fR=0.5800 | careless wR=0.2800 fR=0.2733 | gap=0.3033
+//   AGG good finishRate = 0.6573
 // Every band below asserts the PLAN target (docs/superpowers/plans/2026-07-04-…-plan.md,
 // Task 7). No achievable-floor substitutions were needed — all six clear the plan number.
+// M15 gate-fix (forceBodyTarget honored): work-body now redirects good's winning non-body
+// beats to the body — a small live-economy shift (fights 4/8/10 moved ≤0.004; all six bands
+// still clear their plan targets). Table above re-measured across the same 300 seeds.
 
 /** BAND 1 — finishes happen: aggregate good finish rate derived floor.
- *  Derived floor: measured 0.6570 − ~0.10 buffer. Plan floor 0.30 (well above). */
-const AGG_FINISH_FLOOR = 0.55; // derived floor: measured 0.6570 − 0.10 buffer
+ *  Derived floor: measured 0.6573 − ~0.10 buffer. Plan floor 0.30 (well above). */
+const AGG_FINISH_FLOOR = 0.55; // derived floor: measured 0.6573 − 0.10 buffer
 
 /** BAND 2 — skill gap at fight 1: good−careless win-rate gap derived floor.
  *  Derived floor: measured 0.6067 − ~0.15 buffer. Plan floor 0.20 (well above). */
@@ -146,7 +149,7 @@ const FIGHT1_GOOD_WINRATE_FLOOR = 0.90; // derived floor: measured 0.9967 − ~0
 const CARELESS_CEILING_LATE = 0.42;
 
 /** BAND 3 — no late wall for skill: good adaptive play stays winnable vs champions.
- *  Plan target 0.45; measured good@9=0.5200, good@10=0.5867. */
+ *  Plan target 0.45; measured good@9=0.5200, good@10=0.5833. */
 const GOOD_FLOOR_LATE = 0.45;
 
 /** BAND 6 — difficulty ramps: winRate[n+1] ≤ winRate[n] + this buffer, n=1..9,
@@ -164,7 +167,7 @@ describe('combat balance bands', () => {
   it('BAND 1 — finishes happen: aggregate good finish rate >= 0.55', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    // Derived floor: measured 0.6570 − ~0.10 buffer. Plan floor 0.30 (well above).
+    // Derived floor: measured 0.6573 − ~0.10 buffer. Plan floor 0.30 (well above).
     expect(totalFinishRate).toBeGreaterThanOrEqual(AGG_FINISH_FLOOR);
   });
 
@@ -178,7 +181,7 @@ describe('combat balance bands', () => {
   });
 
   it('BAND 3 — no late wall for skill: good win rate at fights 9 and 10 >= 0.45', () => {
-    // Plan target 0.45; measured good@9=0.5200, good@10=0.5867. GSP's takedowns=90
+    // Plan target 0.45; measured good@9=0.5200, good@10=0.5833. GSP's takedowns=90
     // thread Tier-5 champions via the ground game (finish or gas-and-pound).
     expect(good[9].winRate).toBeGreaterThanOrEqual(GOOD_FLOOR_LATE);
     expect(good[10].winRate).toBeGreaterThanOrEqual(GOOD_FLOOR_LATE);

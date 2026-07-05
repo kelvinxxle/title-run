@@ -255,7 +255,9 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
   const o: Opp = { ...state.opponent };
 
   if (dominance > 0) {
-    if (target === 'body') { o.bodyDamage += dmg; o.stamina -= Math.round(dmg * BODY_TO_STAMINA); }
+    // work-body corner plan (forceBodyTarget) redirects the player's landed damage to the body
+    // regardless of the thrown strike's own target — trade a head-KO now for gas erosion later.
+    if (plan.forceBodyTarget || target === 'body') { o.bodyDamage += dmg; o.stamina -= Math.round(dmg * BODY_TO_STAMINA); }
     else if (target === 'legs') { o.legDamage += dmg; }
     else { o.headDamage += dmg; }
     p.roundScore += 1 + margin;
