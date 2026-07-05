@@ -64,7 +64,7 @@
      - else if `exchange < EXCHANGES_PER_ROUND` → stay `'in-round'`, `exchange + 1`, damage/stamina/score accrued, `lastReport` set. **No round advance, no recovery.**
      - else (**last beat of the round**) → **round boundary:** apply `+recovery(statLine) - bodyRecoveryPenalty(bodyDamage) + planEffect.staminaDelta` to BOTH fighters' stamina, then:
        - if `round < rounds` → `phase:'corner'`, `round + 1`, `exchange:1`, `gamePlan:null`, `outcome:null`.
-       - else → `phase:'finished'`, `outcome: scoreFight(finalState)`, `round` unchanged, `exchange:1`.
+       - else → `phase:'finished'`, `outcome: scoreFight(finalState)`, `round` unchanged, `exchange` unchanged (frozen at EXCHANGES_PER_ROUND).
 
 **Invariant (tested):** `exchange` is `1` in `'corner'` and at `startFight`; it ranges `1..EXCHANGES_PER_ROUND` while `'in-round'`; it is **frozen at its current beat value** in a mid-round `'finish-window'`/`'ground-window'` and in the terminal `'finished'` state (a mid-round rock can finish the fight at beat 2). So only the transition **into `'corner'`** resets `exchange` to `1`.
 

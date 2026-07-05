@@ -43,6 +43,35 @@ describe('resolveExchange', () => {
     expect(s.gamePlan).toBeNull();
   });
 
+  it('freezes exchange at EXCHANGES_PER_ROUND on a decision finish (does not reset to 1)', () => {
+    // Drive a full fight to the final bell by DECISION with no finish/ground window:
+    //  • legKick has speed 0.5 (<0.7) and koWeight 0.0, so NEITHER read path can ever fire
+    //    (player-side needs a fast winner; opponent-side needs the player's move koWeight ≥ 1.0).
+    //  • 600 chins keep ROCKED (≈336) unreachable → no damage-path window.
+    //  • balanced weak strikers + cardio 99 keep both fighters well above the gas threshold → no
+    //    gassed window. So the fight can ONLY terminate at the final bell, by decision.
+    const durable: StatLine = { ...P, striking: 40, strikingDef: 80, chin: 600, cardio: 99, takedownDef: 99 };
+    const toughOpp = { id: 'o', name: 'Foe', archetype: 'striker' as const, statLine: { ...O, striking: 40, strikingDef: 80, chin: 600, cardio: 99, takedowns: 5 } };
+    const legKick: ExchangeMove = { kind: 'strike', strike: 'legKick' };
+    let s: FightState = startFight({ seed: 'decision-seed', fightNumber: 1, playerStatLine: durable, opponent: toughOpp });
+    let guard = 0;
+    while (s.phase !== 'finished') {
+      if (guard++ > 100) throw new Error('decision fight did not terminate');
+      if (s.phase === 'in-round') {
+        s = resolveExchange(s, legKick);
+      } else if (s.phase === 'corner') {
+        s = { ...s, phase: 'in-round' as const, gamePlan: null };
+      } else {
+        throw new Error(`unexpected non-decision window in this fight: ${s.phase}`);
+      }
+    }
+    expect(s.outcome?.method).toBe('decision');
+    // The terminal transition is a decision finish inside crossRoundBoundary: it must FREEZE
+    // exchange at its final beat value (EXCHANGES_PER_ROUND), never reset to 1. Only the
+    // transition into 'corner' resets exchange to 1.
+    expect(s.exchange).toBe(EXCHANGES_PER_ROUND);
+  });
+
   it('is deterministic (same seed + same moves ⇒ identical state)', () => {
     const a = resolveExchange(resolveExchange(fresh(), jab), jab);
     const b = resolveExchange(resolveExchange(fresh(), jab), jab);

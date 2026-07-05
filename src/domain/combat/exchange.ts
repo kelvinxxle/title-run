@@ -172,7 +172,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const o2: Opp = { ...o, stamina: oRb };
     const base = { ...state, player: p2, opponent: o2, log: [...state.log, logEntry] };
     if (state.round >= state.rounds) {
-      const finalBase: FightState = { ...base, exchange: 1, phase: 'finished', window: null, gamePlan: null, outcome: null };
+      const finalBase: FightState = { ...base, exchange: state.exchange, phase: 'finished', window: null, gamePlan: null, outcome: null };
       return { ...finalBase, outcome: scoreFight(finalBase) };
     }
     return { ...base, exchange: 1, round: state.round + 1, phase: 'corner', window: null, gamePlan: null, outcome: null };
