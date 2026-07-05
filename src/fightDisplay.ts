@@ -1,4 +1,4 @@
-import { STAMINA_MAX, type Fighter2, type FightState } from './domain/combat';
+import { STAMINA_MAX, type Fighter2, type FightState, EXCHANGES_PER_ROUND } from './domain/combat';
 import { ROCKED_HEAD_DMG } from './domain/combat/finish';
 import { isGassed } from './domain/combat/stamina';
 
@@ -37,4 +37,15 @@ export function roundLabel(state: FightState): string {
   if (state.phase === 'ground-window') return `Top control · Round ${state.round}`;
   if (state.phase === 'corner') return `Corner · After round ${state.round - 1}`;
   return `Round ${state.round} of ${state.rounds}`;
+}
+
+// Display cap for leg damage; NOT a balance knob — do not use in engine math
+const LEG_MAX = 60;
+
+export function legPct(fighter: Fighter2): number {
+  return clamp01(fighter.legDamage / LEG_MAX);
+}
+
+export function exchangeLabel(state: FightState): string {
+  return `Exchange ${state.exchange} of ${EXCHANGES_PER_ROUND}`;
 }

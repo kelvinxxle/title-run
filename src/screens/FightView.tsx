@@ -1,7 +1,7 @@
-import { type FightState, type RoundIntent, type FinishChoice, type GroundPlan, type GamePlan, archetypeFromStatLine, fighterIdByName } from '../domain/combat';
-import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
+import { type FightState, type ExchangeMove, type FinishChoice, type GroundPlan, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND } from '../domain/combat';
+import { bodyPct, exchangeLabel, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
-import IntentPanelV2 from '../components/IntentPanelV2';
+import StrikePanel from '../components/StrikePanel';
 import FinishSequencePanel from '../components/FinishSequencePanel';
 import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
@@ -11,14 +11,14 @@ import RoundRecap from '../components/RoundRecap';
 interface Props {
   fightState: FightState;
   playerName: string;
-  onIntent: (intent: RoundIntent) => void;
+  onMove: (m: ExchangeMove) => void;
   onFinishStep: (choice: FinishChoice) => void;
   onGroundStep: (plan: GroundPlan) => void;
   onChooseGamePlan: (plan: GamePlan) => void;
   onContinue: () => void;
 }
 
-export default function FightView({ fightState, playerName, onIntent, onFinishStep, onGroundStep, onChooseGamePlan, onContinue }: Props) {
+export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundStep, onChooseGamePlan, onContinue }: Props) {
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
 
   // Damage flash: show deltas from the last resolved round
@@ -33,11 +33,15 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
     <section
       data-testid="fight-view"
       data-round={fightState.round}
+      data-exchange={fightState.exchange}
       data-phase={phase}
       data-player-head={player.headDamage}
       className="p-md flex flex-col gap-md items-center"
     >
       <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
+      {phase === 'in-round' && (
+        <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{exchangeLabel(fightState)}</p>
+      )}
       <div className="w-full flex gap-sm">
         <FighterHealthCard
           side="player"
@@ -69,7 +73,12 @@ export default function FightView({ fightState, playerName, onIntent, onFinishSt
       </div>
 
       {phase === 'in-round' && (
-        <IntentPanelV2 statLine={player.statLine} onCommit={onIntent} />
+        <StrikePanel
+          statLine={player.statLine}
+          exchange={fightState.exchange}
+          exchangesPerRound={EXCHANGES_PER_ROUND}
+          onMove={onMove}
+        />
       )}
       {phase === 'corner' && (
         <CornerScreen

@@ -74,7 +74,26 @@ describe('App (v2 flow)', () => {
     fireEvent.click(screen.getByTestId('enter-fight'));
     const view = screen.getByTestId('fight-view');
     expect(view).toHaveAttribute('data-phase', 'in-round');
-    expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
+    expect(screen.getByTestId('strike-panel')).toBeInTheDocument();
+  });
+
+  it('three strike taps advance exchange 1→2→3 then leave in-round', () => {
+    let run: RunState = applyDraft(startRun('seedC'), { name: 'Ace', statLine: LINE });
+    run = startNextFight(run);
+    save({ run, bestReign: null });
+    render(<App />);
+    const view = screen.getByTestId('fight-view');
+    expect(view).toHaveAttribute('data-exchange', '1');
+    // tap 1: exchange 1 → 2
+    fireEvent.click(screen.getByTestId('strike-jab'));
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-exchange', '2');
+    // tap 2: exchange 2 → 3
+    fireEvent.click(screen.getByTestId('strike-jab'));
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-exchange', '3');
+    // tap 3: last exchange → leaves in-round (corner or finish-window or ground-window)
+    fireEvent.click(screen.getByTestId('strike-jab'));
+    const afterView = screen.getByTestId('fight-view');
+    expect(afterView.getAttribute('data-phase')).not.toBe('in-round');
   });
 
   it('committing an intent advances the fight deterministically', () => {
@@ -89,7 +108,7 @@ describe('App (v2 flow)', () => {
     // Drive beats until the view leaves round-1 in-round.
     let changed = false;
     for (let i = 0; i < 3 && !changed; i++) {
-      const btn = screen.queryByTestId('intent-commit');
+      const btn = screen.queryByTestId('strike-jab');
       if (!btn) { changed = true; break; } // phase left in-round → the panel is gone
       fireEvent.click(btn);
       const v = screen.getByTestId('fight-view');
@@ -132,7 +151,7 @@ describe('App (v2 flow)', () => {
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'corner');
     fireEvent.click(screen.getByTestId('plan-push-pace'));
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-phase', 'in-round');
-    expect(screen.getByTestId('intent-panel-v2')).toBeInTheDocument();
+    expect(screen.getByTestId('strike-panel')).toBeInTheDocument();
   });
 
   it('Continue after a player win settles the fight and returns to the pre-fight Hub', () => {
@@ -149,5 +168,23 @@ describe('App (v2 flow)', () => {
     fireEvent.click(screen.getByTestId('fight-continue'));
     expect(screen.getByTestId('outcome-banner')).toBeInTheDocument();
     expect(screen.getByTestId('start-run')).toBeInTheDocument();
+  });
+
+  it('data-round and data-exchange survive a save→load round-trip', () => {
+    let run: RunState = applyDraft(startRun('seedE'), { name: 'Ace', statLine: LINE });
+    run = startNextFight(run);
+    save({ run, bestReign: null });
+    render(<App />);
+    // Advance to exchange 2
+    fireEvent.click(screen.getByTestId('strike-jab'));
+    const view = screen.getByTestId('fight-view');
+    const savedRound = view.getAttribute('data-round');
+    const savedExchange = view.getAttribute('data-exchange');
+    // The App auto-saves via useEffect; reload from localStorage
+    cleanup();
+    render(<App />);
+    const reloadedView = screen.getByTestId('fight-view');
+    expect(reloadedView).toHaveAttribute('data-round', savedRound);
+    expect(reloadedView).toHaveAttribute('data-exchange', savedExchange);
   });
 });

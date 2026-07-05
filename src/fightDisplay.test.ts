@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bodyPct, clamp01, gasState, headState, healthPct, staminaPct, roundLabel } from './fightDisplay';
+import { bodyPct, clamp01, exchangeLabel, gasState, headState, healthPct, legPct, staminaPct, roundLabel } from './fightDisplay';
 import { STAT_IDS, type Fighter2, type FightState, type StatLine } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 60])) as StatLine;
@@ -50,5 +50,26 @@ describe('fightDisplay', () => {
     expect(roundLabel(st('in-round'))).toBe('Round 2 of 3');
     expect(roundLabel(st('finish-window'))).toContain('Finish');
     expect(roundLabel(st('finished'))).toBe('Fight over');
+  });
+
+  it('legPct is 0 at zero leg damage, monotonic, and clamps at 1', () => {
+    const f = fighter();
+    expect(legPct(f)).toBe(0);
+    expect(legPct({ ...f, legDamage: 30 })).toBeCloseTo(0.5, 5);
+    expect(legPct({ ...f, legDamage: 60 })).toBe(1);
+    expect(legPct({ ...f, legDamage: 999 })).toBe(1);
+    // monotonic: more damage → higher pct
+    expect(legPct({ ...f, legDamage: 20 })).toBeLessThan(legPct({ ...f, legDamage: 40 }));
+  });
+
+  it('exchangeLabel returns e.g. "Exchange 2 of 3" using EXCHANGES_PER_ROUND', () => {
+    const base = fighter();
+    const st = (exchange: number): FightState => ({
+      seed:'s', fightNumber:1, rounds:3, round:2, exchange, phase: 'in-round',
+      player: base, opponent: { ...base, name:'R', archetype:'boxer' },
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
+    });
+    expect(exchangeLabel(st(2))).toBe('Exchange 2 of 3');
+    expect(exchangeLabel(st(1))).toBe('Exchange 1 of 3');
   });
 });
