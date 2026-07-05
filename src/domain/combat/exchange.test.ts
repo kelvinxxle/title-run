@@ -27,14 +27,20 @@ describe('resolveExchange', () => {
   });
 
   it(`goes to the corner only after ${EXCHANGES_PER_ROUND} exchanges, resetting exchange to 1`, () => {
-    let s = fresh();
-    for (let i = 0; i < EXCHANGES_PER_ROUND; i++) s = s.phase === 'in-round' ? resolveExchange(s, jab) : s;
-    // if no finish fired, the last beat advances the round
-    if (s.phase === 'corner') {
-      expect(s.round).toBe(2);
-      expect(s.exchange).toBe(1);
-      expect(s.gamePlan).toBeNull();
-    }
+    // Use a dominant opponent (striking 90 vs player striking 10) so the exchange always
+    // resolves without a player-side finish window. Player uses jab (koWeight 0.4) so the
+    // opponent-side timing-read window can never fire. chins of 600 (ROCKED threshold ≈ 336)
+    // ensure no damage-path window fires within 3 beats. At fightNumber 1 the opponent AI
+    // never chooses powerPunch, keeping the read path closed. No finish window → the third
+    // beat deterministically crosses the round boundary to 'corner'.
+    const weakPlayer: StatLine = { ...P, striking: 10, chin: 600 };
+    const toughOpp = { id: 'o', name: 'Foe', archetype: 'striker' as const, statLine: { ...O, striking: 90, chin: 600, takedowns: 10 } };
+    let s = startFight({ seed: 'corner-seed', fightNumber: 1, playerStatLine: weakPlayer, opponent: toughOpp });
+    for (let i = 0; i < EXCHANGES_PER_ROUND; i++) s = resolveExchange(s, jab);
+    expect(s.phase).toBe('corner');
+    expect(s.round).toBe(2);
+    expect(s.exchange).toBe(1);
+    expect(s.gamePlan).toBeNull();
   });
 
   it('is deterministic (same seed + same moves ⇒ identical state)', () => {
@@ -56,20 +62,25 @@ describe('resolveExchange', () => {
   });
 
   it('a winning takedown opens the player ground-window (interim), freezing the round', () => {
-    const wrestler: StatLine = { ...P, takedowns: 95, striking: 40 };
+    // takedowns: 99 vs takedownDef: 55 → playerAttackScore ≈ 124 − 55 = 69; even with
+    // worst-case oppAttackScore (~11) and seededSwing (−12) dominance > 40 — always positive.
+    const wrestler: StatLine = { ...P, takedowns: 99, striking: 40 };
     const s = startFight({ seed: 'td-seed', fightNumber: 1, playerStatLine: wrestler, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
     const td: ExchangeMove = { kind: 'takedown' };
     const r = resolveExchange(s, td);
-    if (r.phase === 'ground-window') {
-      expect(r.window).toEqual({ side: 'player', method: 'ground', stepsLeft: expect.any(Number) });
-      expect(r.round).toBe(1); // frozen
-    }
+    expect(r.phase).toBe('ground-window');
+    expect(r.window).toEqual({ side: 'player', method: 'ground', stepsLeft: expect.any(Number) });
+    expect(r.round).toBe(1); // frozen
   });
 
   it('leg damage accrues on a winning leg kick and lowers the loser mobility story', () => {
+    // Player striking 99 vs opponent strikingDef 5: playerAttackScore ≫ oppAttackScore
+    // regardless of seededSwing (±12) — dominance always positive, player wins with legKick.
+    const domPlayer: StatLine = { ...P, striking: 99 };
+    const fragileO = { id: 'o', name: 'Foe', archetype: 'striker' as const, statLine: { ...O, striking: 10, strikingDef: 5 } };
     const legKick: ExchangeMove = { kind: 'strike', strike: 'legKick' };
-    const s = resolveExchange(fresh('leg-seed', 1), legKick);
-    expect(s.opponent.legDamage).toBeGreaterThanOrEqual(0);
+    const s = resolveExchange(startFight({ seed: 'leg-seed', fightNumber: 1, playerStatLine: domPlayer, opponent: fragileO }), legKick);
+    expect(s.opponent.legDamage).toBeGreaterThan(0);
     expect(s.player.legDamage).toBe(0);
   });
 
