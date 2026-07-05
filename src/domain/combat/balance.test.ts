@@ -129,6 +129,18 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
 // Every band below asserts the PLAN target (docs/superpowers/plans/2026-07-04-…-plan.md,
 // Task 7). No achievable-floor substitutions were needed — all six clear the plan number.
 
+/** BAND 1 — finishes happen: aggregate good finish rate derived floor.
+ *  Derived floor: measured 0.6570 − ~0.10 buffer. Plan floor 0.30 (well above). */
+const AGG_FINISH_FLOOR = 0.55; // derived floor: measured 0.6570 − 0.10 buffer
+
+/** BAND 2 — skill gap at fight 1: good−careless win-rate gap derived floor.
+ *  Derived floor: measured 0.6067 − ~0.15 buffer. Plan floor 0.20 (well above). */
+const FIGHT1_GAP_FLOOR = 0.45; // derived floor: measured 0.6067 − 0.15 buffer
+
+/** BAND 2 — early dominance guard: good play must dominate fight 1.
+ *  Plan guard; measured good@1 winRate=0.9967. */
+const FIGHT1_GOOD_WINRATE_FLOOR = 0.85; // derived floor: measured 0.9967 − buffer
+
 /** BAND 5 — anti-exploit ceiling: power-punch spam must not reliably win vs Tier-5
  *  (fights 9–10). Plan target 0.42; measured careless@9=0.3167, careless@10=0.2800. */
 const CARELESS_CEILING_LATE = 0.42;
@@ -149,18 +161,20 @@ describe('combat balance bands', () => {
     careless[fn] = simulate(fn, 'careless');
   }
 
-  it('BAND 1 — finishes happen: aggregate good finish rate >= 0.30', () => {
+  it('BAND 1 — finishes happen: aggregate good finish rate >= 0.55', () => {
     const totalFinishRate =
       good.slice(1).reduce((sum, b) => sum + b.finishRate, 0) / 10;
-    // Plan target 0.30; measured aggregate finishRate=0.6570.
-    expect(totalFinishRate).toBeGreaterThanOrEqual(0.30);
+    // Derived floor: measured 0.6570 − ~0.10 buffer. Plan floor 0.30 (well above).
+    expect(totalFinishRate).toBeGreaterThanOrEqual(AGG_FINISH_FLOOR);
   });
 
   it('BAND 2 — early carelessness is punished + skill matters', () => {
-    // Plan target: careless@1 ≤ 0.72 (measured 0.3900) AND good−careless gap@1 ≥ 0.20
-    // (measured 0.6067). Head-hunting from beat one is a losing game plan.
+    // Plan target: careless@1 ≤ 0.72 (measured 0.3900).
+    // Derived floor gap@1 ≥ 0.45 (measured 0.6067 − ~0.15 buffer; plan floor 0.20).
+    // Early-dominance guard: good@1 winRate > 0.85 (measured 0.9967).
     expect(careless[1].winRate).toBeLessThanOrEqual(0.72);
-    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(0.20);
+    expect(good[1].winRate - careless[1].winRate).toBeGreaterThanOrEqual(FIGHT1_GAP_FLOOR);
+    expect(good[1].winRate).toBeGreaterThan(FIGHT1_GOOD_WINRATE_FLOOR);
   });
 
   it('BAND 3 — no late wall for skill: good win rate at fights 9 and 10 >= 0.45', () => {
