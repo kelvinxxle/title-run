@@ -1,17 +1,18 @@
-import { GROUND_PLANS, GROUND_PLAN_LABELS, type GroundPlan, type FinishWindow } from '../domain/combat';
+import { GROUND_PLANS, GROUND_PLAN_LABELS, type GroundAction } from '../domain/combat';
+import type { GroundState } from '../domain/combat';
 
-interface Props { window: FinishWindow; onGround: (plan: GroundPlan) => void; disabled?: boolean; }
+interface Props { ground: GroundState; onGround: (action: GroundAction) => void; disabled?: boolean; }
 
-const PLAN_TESTID: Record<GroundPlan, string> = {
+const PLAN_TESTID: Record<string, string> = {
   'ground-and-pound': 'ground-gnp',
   submission: 'ground-sub',
 };
 
-export default function GroundPanel({ window: win, onGround, disabled = false }: Props) {
+export default function GroundPanel({ ground, onGround, disabled = false }: Props) {
   return (
     <div
       data-testid="ground-panel"
-      data-side={win.side}
+      data-position={ground.position}
       className="w-full p-md flex flex-col gap-sm border-2 border-primary"
     >
       <h3 className="font-display text-2xl uppercase tracking-wide text-primary">TOP CONTROL</h3>
@@ -25,7 +26,7 @@ export default function GroundPanel({ window: win, onGround, disabled = false }:
             type="button"
             data-testid={PLAN_TESTID[plan]}
             disabled={disabled}
-            onClick={() => onGround(plan)}
+            onClick={() => onGround(plan as GroundAction)}
             className="py-md font-display text-lg uppercase bg-surface-container border border-outline disabled:opacity-50"
           >
             {GROUND_PLAN_LABELS[plan]}

@@ -17,3 +17,4 @@ export * from './strikes';
 export * from './ground';
 export * from './takedown';
 export * from './groundEngine';
+export * from './groundResolve';

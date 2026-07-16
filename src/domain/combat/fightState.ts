@@ -8,6 +8,7 @@ import { isGassed } from './stamina';
 import { createRng } from '../rng';
 import { opponentTakedownType } from './takedown';
 import type { ArchetypeId } from './archetypes';
+import type { GroundState } from './ground';
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -20,11 +21,11 @@ export interface Fighter2 {
   roundScore: number;
 }
 
-export type FightPhase = 'in-round' | 'corner' | 'finish-window' | 'ground-window' | 'finished';
+export type FightPhase = 'in-round' | 'corner' | 'finish-window' | 'ground' | 'finished';
 
 export interface FinishWindow {
   side: 'player' | 'opponent';
-  method: 'KO' | 'submission' | 'ground';
+  method: 'KO' | 'submission';
   stepsLeft: number;
 }
 
@@ -65,6 +66,7 @@ export interface FightState {
   log: RoundLogEntry[];
   gamePlan: GamePlan | null;
   lastReport: RoundReport | null;
+  ground: GroundState | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,6 +109,7 @@ export function startFight(args: {
     log: [],
     gamePlan: null,
     lastReport: null,
+    ground: null,
   };
 }
 

@@ -8,7 +8,7 @@ const base = (over: Partial<FightState> = {}): FightState => {
     seed: 's', fightNumber: 1, rounds: 3, round: 1, exchange: 1, phase: 'in-round',
     player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0 },
     opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' },
-    window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ...over,
+    window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null, ...over,
   } as FightState;
   return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
 };
@@ -38,9 +38,9 @@ describe('FightView', () => {
     expect(onFinishStep).toHaveBeenCalledWith('commit');
   });
 
-  it('ground-window: shows the ground panel and forwards a plan', () => {
+  it('ground phase: shows the ground panel and forwards an action', () => {
     const onGroundStep = vi.fn();
-    const st = base({ phase:'ground-window', window:{ side:'player', method:'ground', stepsLeft:3 } });
+    const st = base({ phase: 'ground', ground: { position: 'half-guard' }, window: null });
     render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundStep={onGroundStep} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
     expect(screen.getByTestId('ground-panel')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('ground-sub'));

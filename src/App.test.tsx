@@ -18,7 +18,7 @@ function finishWindowFight(): FightState {
     player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 1 },
     opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
-    gamePlan: null, lastReport: null,
+    gamePlan: null, lastReport: null, ground: null,
   };
 }
 function finishedFight(winner: 'player' | 'opponent'): FightState {
@@ -27,7 +27,7 @@ function finishedFight(winner: 'player' | 'opponent'): FightState {
     player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0 },
     opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
-    gamePlan: null, lastReport: null,
+    gamePlan: null, lastReport: null, ground: null,
   };
 }
 function cornerFight(): FightState {
@@ -39,6 +39,7 @@ function cornerFight(): FightState {
     outcome: null,
     log: [],
     gamePlan: null,
+    ground: null,
     lastReport: {
       round: 1,
       headline: 'You took the round.',
@@ -90,7 +91,7 @@ describe('App (v2 flow)', () => {
     // tap 2: exchange 2 → 3
     fireEvent.click(screen.getByTestId('strike-jab'));
     expect(screen.getByTestId('fight-view')).toHaveAttribute('data-exchange', '3');
-    // tap 3: last exchange → leaves in-round (corner or finish-window or ground-window)
+    // tap 3: last exchange → leaves in-round (corner or finish-window or ground)
     fireEvent.click(screen.getByTestId('strike-jab'));
     const afterView = screen.getByTestId('fight-view');
     expect(afterView.getAttribute('data-phase')).not.toBe('in-round');
@@ -126,7 +127,7 @@ describe('App (v2 flow)', () => {
         player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0 },
         opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
         window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
-        gamePlan: null, lastReport: null,
+        gamePlan: null, lastReport: null, ground: null,
       },
     };
     save({ run: lost, bestReign: null });

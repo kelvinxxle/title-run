@@ -9,12 +9,13 @@ export interface LoadedState { run: RunState | null; bestReign: number | null; }
 function defaults(): LoadedState { return { run: null, bestReign: null }; }
 
 const KNOWN_PHASES: RunPhase[] = ['drafting', 'pre-fight', 'fighting', 'run-over'];
-const FIGHT_PHASES = ['in-round', 'corner', 'finish-window', 'ground-window', 'finished'];
+const FIGHT_PHASES = ['in-round', 'corner', 'finish-window', 'ground', 'finished'];
 const FINISH_METHODS = ['KO', 'submission'];
-const WINDOW_METHODS = ['KO', 'submission', 'ground'];
+const WINDOW_METHODS = ['KO', 'submission'];
 const OUTCOME_METHODS = ['KO', 'submission', 'decision'];
 const SIDES = ['player', 'opponent'];
 const ROUND_REPORT_WINNERS = ['player', 'opponent', 'draw'];
+const GROUND_POSITIONS = ['guard', 'half-guard', 'side-control', 'mount', 'back'];
 
 function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null;
@@ -101,13 +102,18 @@ function isValidFightState(x: unknown): boolean {
   //   in-round      → window null AND outcome null
   //   corner        → window null AND outcome null
   //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission)
-  //   ground-window → window non-null AND window.method === 'ground' AND window.side === 'player' AND outcome null
+  //   ground        → window null AND ground non-null (position in GROUND_POSITIONS) AND outcome null
   //   finished      → window null AND outcome non-null
   const phase = x['phase'] as string;
   if (phase === 'in-round' && (win !== null || out !== null)) return false;
   if (phase === 'corner' && (win !== null || out !== null)) return false;
   if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string))) return false;
-  if (phase === 'ground-window' && (win === null || (win as Record<string, unknown>)['method'] !== 'ground' || (win as Record<string, unknown>)['side'] !== 'player' || out !== null)) return false;
+  if (phase === 'ground') {
+    const gnd = x['ground'];
+    if (win !== null || out !== null) return false;
+    if (!isObject(gnd)) return false;
+    if (!GROUND_POSITIONS.includes((gnd as Record<string, unknown>)['position'] as string)) return false;
+  }
   if (phase === 'finished' && (win !== null || out === null)) return false;
   return true;
 }

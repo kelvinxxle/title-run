@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  startFight, resolveExchange, finishStep, groundStep, generateOpponent,
-  buildStatLine, getFighter, chooseGamePlan,
+  startFight, resolveExchange, finishStep, resolveGround, generateOpponent,
+  buildStatLine, getFighter, chooseGamePlan, POSITION_SUBMISSION,
 } from './index';
 import type { FightState } from './fightState';
-import type { ExchangeMove, GroundPlan, GamePlan } from './intents';
+import type { ExchangeMove, GamePlan } from './intents';
+import type { GroundAction } from './ground';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -58,10 +59,11 @@ function goodGamePlan(s: FightState): GamePlan {
   return 'work-body';
 }
 
-// Good play in a ground window: hunt the tap when the opponent's submission
-// defense is soft, otherwise pound from top control.
-function goodGroundPlan(s: FightState): GroundPlan {
-  return s.opponent.statLine.submissionDef < 55 ? 'submission' : 'ground-and-pound';
+// Interim ground policy: always attempt the submission when position allows, otherwise advance.
+function goodGroundPlan(s: FightState): GroundAction {
+  const pos = s.ground!.position;
+  const canSub = POSITION_SUBMISSION[pos] !== null;
+  return canSub ? 'submission' : 'advance';
 }
 
 function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
@@ -75,9 +77,8 @@ function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
       // Use policy-derived game plan: good play picks strategically, careless always pushes pace
       const plan: GamePlan = policy === 'good' ? goodGamePlan(s) : 'push-pace';
       s = chooseGamePlan(s, plan);
-    } else if (s.phase === 'ground-window') {
-      // Only good play wrestles, so only good play reaches a player ground window.
-      s = groundStep(s, goodGroundPlan(s));
+    } else if (s.phase === 'ground') {
+      s = resolveGround(s, goodGroundPlan(s));
     } else {
       const window = s.window!;
       // Good play seizes its own windows and defends composed when hunted;
