@@ -13,12 +13,12 @@ interface Props {
   playerName: string;
   onMove: (m: ExchangeMove) => void;
   onFinishStep: (choice: FinishChoice) => void;
-  onGroundStep: (plan: GroundAction) => void;
+  onGroundAction: (a: GroundAction) => void;
   onChooseGamePlan: (plan: GamePlan) => void;
   onContinue: () => void;
 }
 
-export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundStep, onChooseGamePlan, onContinue }: Props) {
+export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundAction, onChooseGamePlan, onContinue }: Props) {
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
 
   // Damage flash: show deltas from the last resolved round
@@ -90,7 +90,7 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
         <FinishSequencePanel window={win} onChoice={onFinishStep} />
       )}
       {phase === 'ground' && fightState.ground && (
-        <GroundPanel ground={fightState.ground} onGroundAction={onGroundStep} />
+        <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
       )}
       {phase === 'finished' && outcome && (
         <div className="w-full flex flex-col items-center gap-sm">

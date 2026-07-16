@@ -52,6 +52,18 @@ describe('fightDisplay', () => {
     expect(roundLabel(st('finished'))).toBe('Fight over');
   });
 
+  it('roundLabel labels the ground phase with the current position', () => {
+    const base = fighter();
+    const groundSt: FightState = {
+      seed:'s', fightNumber:1, rounds:3, round:2, exchange:2, phase: 'ground',
+      player: base, opponent: { ...base, name:'R', archetype:'boxer' },
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
+      ground: { position: 'mount' },
+    };
+    expect(roundLabel(groundSt)).toMatch(/Mount/i);
+    expect(roundLabel(groundSt)).toContain('Round 2');
+  });
+
   it('legPct is 0 at zero leg damage, monotonic, and clamps at 1', () => {
     const f = fighter();
     expect(legPct(f)).toBe(0);

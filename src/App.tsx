@@ -37,7 +37,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'finish-window') return r;
       return { ...r, fight: finishStep(r.fight, choice) };
     });
-  const handleGroundStep = (plan: GroundAction) =>
+  const handleGroundAction = (plan: GroundAction) =>
     setRun((r) => {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'ground') return r;
       return { ...r, fight: resolveGround(r.fight, plan) };
@@ -89,7 +89,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
         playerName={run.fighter.name}
         onMove={handleMove}
         onFinishStep={handleFinishStep}
-        onGroundStep={handleGroundStep}
+        onGroundAction={handleGroundAction}
         onChooseGamePlan={handleChooseGamePlan}
         onContinue={handleContinue}
       />
