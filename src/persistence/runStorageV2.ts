@@ -1,8 +1,8 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS, INITIAL_STEPS, GAME_PLANS, EXCHANGES_PER_ROUND } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS, GAME_PLANS, EXCHANGES_PER_ROUND, POSITION_LADDER } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface LoadedState { run: RunState | null; bestReign: number | null; }
 
@@ -15,7 +15,7 @@ const WINDOW_METHODS = ['KO', 'submission'];
 const OUTCOME_METHODS = ['KO', 'submission', 'decision'];
 const SIDES = ['player', 'opponent'];
 const ROUND_REPORT_WINNERS = ['player', 'opponent', 'draw'];
-const GROUND_POSITIONS = ['guard', 'half-guard', 'side-control', 'mount', 'back'];
+const GROUND_POSITIONS = POSITION_LADDER as readonly string[];
 
 function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null;
@@ -98,23 +98,24 @@ function isValidFightState(x: unknown): boolean {
   const gamePlan = x['gamePlan'];
   if (!(gamePlan === null || (typeof gamePlan === 'string' && (GAME_PLANS as readonly string[]).includes(gamePlan)))) return false;
   if (!isValidRoundReport(x['lastReport'])) return false;
-  // Phase ↔ payload invariant (matches the resolve/finish engine contract):
-  //   in-round      → window null AND outcome null
-  //   corner        → window null AND outcome null
-  //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission)
-  //   ground        → window null AND ground non-null (position in GROUND_POSITIONS) AND outcome null
-  //   finished      → window null AND outcome non-null
-  const phase = x['phase'] as string;
-  if (phase === 'in-round' && (win !== null || out !== null)) return false;
-  if (phase === 'corner' && (win !== null || out !== null)) return false;
-  if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string))) return false;
-  if (phase === 'ground') {
-    const gnd = x['ground'];
-    if (win !== null || out !== null) return false;
-    if (!isObject(gnd)) return false;
-    if (!GROUND_POSITIONS.includes((gnd as Record<string, unknown>)['position'] as string)) return false;
+  // Ground field validation
+  const ground = x['ground'];
+  if (ground !== null) {
+    if (!isObject(ground)) return false;
+    if (!GROUND_POSITIONS.includes(ground['position'] as string)) return false;
   }
-  if (phase === 'finished' && (win !== null || out === null)) return false;
+  // Phase ↔ payload invariant (matches the resolve/finish engine contract):
+  //   in-round      → window null AND outcome null AND ground null
+  //   corner        → window null AND outcome null AND ground null
+  //   finish-window → window non-null AND outcome null AND method ∈ FINISH_METHODS (KO/submission) AND ground null
+  //   ground        → window null AND ground non-null (position in GROUND_POSITIONS) AND outcome null
+  //   finished      → window null AND outcome non-null AND ground null
+  const phase = x['phase'] as string;
+  if (phase === 'in-round' && (win !== null || out !== null || ground !== null)) return false;
+  if (phase === 'corner' && (win !== null || out !== null || ground !== null)) return false;
+  if (phase === 'finish-window' && (win === null || out !== null || !FINISH_METHODS.includes((win as Record<string, unknown>)['method'] as string) || ground !== null)) return false;
+  if (phase === 'ground' && (win !== null || out !== null || ground === null)) return false;
+  if (phase === 'finished' && (win !== null || out === null || ground !== null)) return false;
   return true;
 }
 
