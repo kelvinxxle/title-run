@@ -5,6 +5,7 @@ import type { StatLine } from './stats';
 
 const strong: StatLine = { striking: 80, strikingDef: 75, takedowns: 85, takedownDef: 82, submissions: 82, submissionDef: 80, cardio: 78, chin: 70, fightIQ: 78 };
 const weak: StatLine   = { striking: 40, strikingDef: 42, takedowns: 38, takedownDef: 40, submissions: 40, submissionDef: 42, cardio: 45, chin: 50, fightIQ: 44 };
+const moderate: StatLine = { striking: 60, strikingDef: 62, takedowns: 58, takedownDef: 60, submissions: 60, submissionDef: 62, cardio: 60, chin: 60, fightIQ: 60 };
 
 describe('ground math', () => {
   it('G&P scales up with position quality (mount hits harder than guard)', () => {
@@ -16,11 +17,11 @@ describe('ground math', () => {
 
   it('submission probability is 0 in neutral guard, rises with position and a gassed defender, clamped ≤0.95', () => {
     expect(groundSubProbability(strong, weak, 'guard', false)).toBe(0);
-    const dry = groundSubProbability(strong, weak, 'back', false);
-    const gassed = groundSubProbability(strong, weak, 'back', true);
+    const dry = groundSubProbability(moderate, weak, 'half-guard', false);
+    const gassed = groundSubProbability(moderate, weak, 'half-guard', true);
     expect(gassed).toBeGreaterThan(dry);
-    expect(groundSubProbability(strong, weak, 'mount', false))
-      .toBeGreaterThan(groundSubProbability(strong, weak, 'half-guard', false));
+    expect(groundSubProbability(moderate, weak, 'mount', false))
+      .toBeGreaterThan(groundSubProbability(moderate, weak, 'half-guard', false));
     expect(gassed).toBeLessThanOrEqual(0.95);
   });
 

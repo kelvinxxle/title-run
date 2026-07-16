@@ -4,7 +4,7 @@ import { POSITION_QUALITY, POSITION_SUBMISSION } from './ground';
 import { groundAndPoundDamage, submissionTapProbability } from './finish';
 
 export const GNP_POSITION_SCALE = 0.35;
-export const SUB_POSITION_SCALE = 0.01;
+export const SUB_POSITION_SCALE = 0.10;
 export const SUB_GAS_BONUS = 0.10;
 export const ADVANCE_BASE = 0.55;
 export const ADVANCE_SCALE = 0.006;
@@ -33,7 +33,7 @@ export function groundSubProbability(
   const p = submissionTapProbability(attacker, defender)
     + SUB_POSITION_SCALE * POSITION_QUALITY[position]
     + (defenderGassed ? SUB_GAS_BONUS : 0);
-  return clamp(p, 0, 0.95);
+  return clamp(p, 0.05, 0.95);
 }
 
 export function advanceProbability(attacker: StatLine, defender: StatLine): number {
