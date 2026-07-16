@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   startFight, resolveExchange, finishStep, resolveGround, generateOpponent,
-  buildStatLine, getFighter, chooseGamePlan, POSITION_SUBMISSION,
+  buildStatLine, getFighter, chooseGamePlan, POSITION_SUBMISSION, nextPosition,
 } from './index';
 import type { FightState } from './fightState';
 import type { ExchangeMove, GamePlan } from './intents';
@@ -60,29 +60,40 @@ function goodGamePlan(s: FightState): GamePlan {
 }
 
 // Interim ground policy: always attempt the submission when position allows, otherwise advance.
-function goodGroundPlan(s: FightState): GroundAction {
+// Replaced in T8 by tuned goodGround policy (GnP fallback when neither sub nor advance apply).
+function goodGround(s: FightState): GroundAction {
   const pos = s.ground!.position;
-  const canSub = POSITION_SUBMISSION[pos] !== null;
-  return canSub ? 'submission' : 'advance';
+  if (POSITION_SUBMISSION[pos] !== null) return 'submission';
+  if (nextPosition(pos) !== null) return 'advance';
+  return 'ground-and-pound';
 }
 
-function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
+// wrestleSpam standing move: always shoot a double-leg (B7 exploit probe).
+function wrestleSpamMove(): ExchangeMove {
+  return { kind: 'takedown', takedownType: 'double-leg' };
+}
+
+function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'): FightState {
   let s = init;
   let guard = 0;
   while (s.phase !== 'finished') {
     if (guard++ > 300) throw new Error('fight did not terminate');
     if (s.phase === 'in-round') {
-      s = resolveExchange(s, policy === 'good' ? goodIntent(s) : carelessIntent());
+      let move: ExchangeMove;
+      if (policy === 'good') move = goodIntent(s);
+      else if (policy === 'wrestleSpam') move = wrestleSpamMove();
+      else move = carelessIntent();
+      s = resolveExchange(s, move);
     } else if (s.phase === 'corner') {
-      // Use policy-derived game plan: good play picks strategically, careless always pushes pace
+      // Use policy-derived game plan: good play picks strategically, others always pushes pace
       const plan: GamePlan = policy === 'good' ? goodGamePlan(s) : 'push-pace';
       s = chooseGamePlan(s, plan);
     } else if (s.phase === 'ground') {
-      s = resolveGround(s, goodGroundPlan(s));
+      s = resolveGround(s, goodGround(s));
     } else {
       const window = s.window!;
       // Good play seizes its own windows and defends composed when hunted;
-      // careless swings for the fences either way.
+      // careless/wrestleSpam swings for the fences either way.
       const choice = policy === 'good'
         ? (window.side === 'player' ? 'commit' : 'hold')
         : 'commit';
@@ -96,7 +107,7 @@ const SEEDS = 300;
 
 interface Band { winRate: number; finishRate: number; }
 
-function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
+function simulate(fightNumber: number, policy: 'good' | 'careless' | 'wrestleSpam'): Band {
   let wins = 0;
   let finishes = 0;
   for (let i = 0; i < SEEDS; i++) {
@@ -111,6 +122,10 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
     }
   }
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
+}
+
+function aggWinRate(bands: Band[]): number {
+  return bands.slice(1).reduce((sum, b) => sum + b.winRate, 0) / 10;
 }
 
 // ── M15 T7: BANDs re-derived on the multi-exchange engine + strike palette ──
