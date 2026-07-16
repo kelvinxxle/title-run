@@ -160,10 +160,9 @@ describe('combat integration: finishing methods through the real state machine',
     // chin=1 → rocked immediately → finish-window → commit to finish
     const finished = afterGnP.phase === 'finish-window' ? finishStep(afterGnP, 'commit') : afterGnP;
     expect(['finish-window', 'finished']).toContain(afterGnP.phase);
-    if (finished.phase === 'finished') {
-      expect(finished.outcome!.winner).toBe('player');
-      expect(finished.outcome!.method).toBe('KO');
-    }
+    expect(finished.phase).toBe('finished');
+    expect(finished.outcome!.winner).toBe('player');
+    expect(finished.outcome!.method).toBe('KO');
   });
 
   it('a winning wrestle enters the ground phase that a Submission closes as a tap', () => {
@@ -183,11 +182,9 @@ describe('combat integration: finishing methods through the real state machine',
     expect(opened.ground).not.toBeNull();
 
     const result = resolveGround(opened, 'submission');
-    expect(['finished', 'ground', 'in-round', 'corner']).toContain(result.phase);
-    if (result.phase === 'finished') {
-      expect(result.outcome!.winner).toBe('player');
-      expect(result.outcome!.method).toBe('submission');
-    }
+    expect(result.phase).toBe('finished');
+    expect(result.outcome!.winner).toBe('player');
+    expect(result.outcome!.method).toBe('submission');
   });
 
   it('the three finishing paths are fully reproducible from their seeds', () => {
