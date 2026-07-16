@@ -175,10 +175,26 @@ const RAMP_BUFFER = 0.12;
 describe('combat balance bands', () => {
   const good: Band[] = [];
   const careless: Band[] = [];
+  const wrestleSpam: Band[] = [];
   for (let fn = 1; fn <= 10; fn++) {
     good[fn] = simulate(fn, 'good');
     careless[fn] = simulate(fn, 'careless');
+    wrestleSpam[fn] = simulate(fn, 'wrestleSpam');
   }
+
+  // Print the full measured table for inspection and commit body.
+  for (let fn = 1; fn <= 10; fn++) {
+    const g = good[fn]; const c = careless[fn]; const w = wrestleSpam[fn];
+    console.log(
+      `fight ${String(fn).padStart(2)}: ` +
+      `good wR=${g.winRate.toFixed(4)} fR=${g.finishRate.toFixed(4)} | ` +
+      `careless wR=${c.winRate.toFixed(4)} fR=${c.finishRate.toFixed(4)} | ` +
+      `wrestleSpam wR=${w.winRate.toFixed(4)} fR=${w.finishRate.toFixed(4)} | ` +
+      `gap=${(g.winRate - c.winRate).toFixed(4)}`
+    );
+  }
+  console.log(`AGG good finishRate = ${(good.slice(1).reduce((s, b) => s + b.finishRate, 0) / 10).toFixed(4)}`);
+  console.log(`AGG good winRate = ${aggWinRate(good).toFixed(4)}, AGG wrestleSpam winRate = ${aggWinRate(wrestleSpam).toFixed(4)}`);
 
   it('BAND 1 — finishes happen: aggregate good finish rate >= 0.55', () => {
     const totalFinishRate =
@@ -232,5 +248,14 @@ describe('combat balance bands', () => {
     const DIPTIER2TO3_CARELESS = 0.36; // measured +0.3100 + ~0.05 buffer
     expect(good[3].winRate - good[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_GOOD);
     expect(careless[3].winRate - careless[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_CARELESS);
+  });
+
+  it('BAND 7 — ground-spam exploit is dead: wrestleSpam late ceiling and aggregate cap', () => {
+    // B7a: ground spam vs champions is NOT an exploit — same inviolable ceiling as head-hunt spam.
+    // B7b: ground spam does not strictly dominate balanced good play in aggregate.
+    const GROUND_SPAM_CEILING_LATE = CARELESS_CEILING_LATE; // 0.42 — NOT a looser constant
+    expect(wrestleSpam[9].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    expect(wrestleSpam[10].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    expect(aggWinRate(wrestleSpam)).toBeLessThanOrEqual(aggWinRate(good) + 0.05);
   });
 });
