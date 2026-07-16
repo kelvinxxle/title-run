@@ -6,6 +6,8 @@ import type { RoundReport } from './report';
 import { startingStamina } from './stamina';
 import { isGassed } from './stamina';
 import { createRng } from '../rng';
+import { opponentTakedownType } from './takedown';
+import type { ArchetypeId } from './archetypes';
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -165,7 +167,7 @@ export function opponentMove(state: FightState): ExchangeMove {
   // Choose kind by the opponent's better edge over the player's matching defense.
   const strikeEdge = state.opponent.statLine[PHASE_OFFENSE.strike] - state.player.statLine.strikingDef;
   const wrestleEdge = state.opponent.statLine[PHASE_OFFENSE.wrestle] - state.player.statLine.takedownDef;
-  if (wrestleEdge > strikeEdge) return { kind: 'takedown' };
+  if (wrestleEdge > strikeEdge) return { kind: 'takedown', takedownType: opponentTakedownType(state.opponent.archetype as ArchetypeId) };
 
   // Gassed player: dig the body/legs to compound the gas.
   if (isGassed(state.player.stamina)) return { kind: 'strike', strike: 'bodyKick' };

@@ -33,7 +33,7 @@ function groundWindowRun(): RunState {
     statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
   };
   const f0 = startFight({ seed: GROUND_SEED, fightNumber: 1, playerStatLine: GRAPPLER, opponent: opp });
-  const parked = resolveExchange(f0, { kind: 'takedown' });
+  const parked = resolveExchange(f0, { kind: 'takedown', takedownType: 'double-leg' });
   // guard: this must genuinely be a valid ground-window per the persistence invariant
   if (parked.phase !== 'ground-window' || parked.window?.method !== 'ground' || parked.outcome !== null) {
     throw new Error('expected a parked ground-window fight');

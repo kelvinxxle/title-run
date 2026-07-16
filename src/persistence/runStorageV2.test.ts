@@ -29,7 +29,7 @@ function finishWindowRun(): RunState {
 // (seed updated in T2 — real opponent system changed the fight dynamics; 'gw-0' verified deterministic)
 function groundWindowRun(): RunState {
   const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
-  return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown' }) };
+  return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown', takedownType: 'double-leg' }) };
 }
 function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));

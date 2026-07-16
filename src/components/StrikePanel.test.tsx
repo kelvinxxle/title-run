@@ -26,5 +26,5 @@ it('emits the takedown move on tap', () => {
   const onMove = vi.fn();
   render(<StrikePanel statLine={P as any} exchange={1} exchangesPerRound={3} onMove={onMove} />);
   fireEvent.click(screen.getByTestId('strike-takedown'));
-  expect(onMove).toHaveBeenCalledWith({ kind: 'takedown' });
+  expect(onMove).toHaveBeenCalledWith({ kind: 'takedown', takedownType: 'double-leg' });
 });

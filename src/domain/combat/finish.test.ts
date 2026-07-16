@@ -186,7 +186,7 @@ describe('ground window (Task 2)', () => {
     const player = { ...ARCHETYPES.wrestler, takedowns: 99 };
     const opp = { id: 'o', name: 'Opp', archetype: 'striker' as const, statLine: { ...ARCHETYPES.striker, takedownDef: 20 } };
     const s0 = startFight({ seed: 'ground-probe-0', fightNumber: 1, playerStatLine: player, opponent: opp });
-    const s1 = resolveExchange(s0, { kind: 'takedown' });
+    const s1 = resolveExchange(s0, { kind: 'takedown', takedownType: 'double-leg' });
     expect(s1.phase).toBe('ground-window');
     expect(s1.window?.side).toBe('player');
     expect(s1.window?.method).toBe('ground');

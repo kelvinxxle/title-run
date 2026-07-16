@@ -95,7 +95,7 @@ describe('resolveExchange', () => {
     // worst-case oppAttackScore (~11) and seededSwing (−12) dominance > 40 — always positive.
     const wrestler: StatLine = { ...P, takedowns: 99, striking: 40 };
     const s = startFight({ seed: 'td-seed', fightNumber: 1, playerStatLine: wrestler, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
-    const td: ExchangeMove = { kind: 'takedown' };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
     const r = resolveExchange(s, td);
     expect(r.phase).toBe('ground-window');
     expect(r.window).toEqual({ side: 'player', method: 'ground', stepsLeft: expect.any(Number) });

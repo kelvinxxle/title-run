@@ -58,7 +58,7 @@ export default function StrikePanel({
         type="button"
         data-testid="strike-takedown"
         disabled={disabled}
-        onClick={() => onMove({ kind: 'takedown' })}
+        onClick={() => onMove({ kind: 'takedown', takedownType: 'double-leg' })}
         className="w-full h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide disabled:opacity-50"
       >
         {MOVE_KIND_LABELS.takedown}

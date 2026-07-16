@@ -3,6 +3,10 @@ import { startFight, roundsForFight, opponentMove, computePredictability } from 
 import type { FightState, RoundLogEntry } from './fightState';
 import { STRIKES } from './strikes';
 import { ARCHETYPES } from './archetypes';
+import { generateOpponent } from './opponent';
+import { buildStatLine, getFighter } from './roster';
+import { opponentTakedownType } from './takedown';
+import type { ArchetypeId } from './archetypes';
 
 const OPP = { id: 'o1', name: 'Test Foe', archetype: 'wrestler' as const, statLine: ARCHETYPES.wrestler };
 
@@ -78,5 +82,19 @@ describe('computePredictability (head-hunting)', () => {
 
   it('is 0 when the player mixes in only non-KO strikes', () => {
     expect(computePredictability([beat('jab'), beat('jab'), beat('jab')], 3)).toBe(0);
+  });
+});
+
+describe('M16: opponentMove takedownType', () => {
+  it('tags takedowns with the archetype-preferred type (no extra rng draw)', () => {
+    const st = startFight({
+      seed: 'td-type-seed', fightNumber: 1,
+      playerStatLine: buildStatLine(getFighter('georges-st-pierre')),
+      opponent: generateOpponent('td-type-seed', 4),
+    });
+    const mv = opponentMove(st);
+    if (mv.kind === 'takedown') {
+      expect(mv.takedownType).toBe(opponentTakedownType(st.opponent.archetype as ArchetypeId));
+    }
   });
 });

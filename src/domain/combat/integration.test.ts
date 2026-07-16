@@ -149,7 +149,7 @@ describe('combat integration: finishing methods through the real state machine',
     const s0 = startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: player, opponent: opp });
 
     // Open the window through resolveExchange (NOT a hand-built ground-window state).
-    const opened = resolveExchange(s0, { kind: 'takedown' });
+    const opened = resolveExchange(s0, { kind: 'takedown', takedownType: 'double-leg' });
     expect(opened.phase).toBe('ground-window');
     expect(opened.window).not.toBeNull();
     expect(opened.window!.side).toBe('player');
@@ -176,7 +176,7 @@ describe('combat integration: finishing methods through the real state machine',
     };
     const s0 = startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: player, opponent: opp });
 
-    const opened = resolveExchange(s0, { kind: 'takedown' });
+    const opened = resolveExchange(s0, { kind: 'takedown', takedownType: 'double-leg' });
     expect(opened.phase).toBe('ground-window');
     expect(opened.window!.method).toBe('ground');
 
@@ -210,8 +210,8 @@ describe('combat integration: finishing methods through the real state machine',
       archetype: 'striker' as const,
       statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
     };
-    const gnpOpenA = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown' });
-    const gnpOpenB = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown' });
+    const gnpOpenA = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown', takedownType: 'double-leg' });
+    const gnpOpenB = resolveExchange(startFight({ seed: 'gnp-tko-0', fightNumber: 1, playerStatLine: gnpPlayer, opponent: gnpOpp }), { kind: 'takedown', takedownType: 'double-leg' });
     const gnpEndA = groundStep(gnpOpenA, 'ground-and-pound');
     const gnpEndB = groundStep(gnpOpenB, 'ground-and-pound');
     expect(gnpEndA.outcome).not.toBeNull();
@@ -225,8 +225,8 @@ describe('combat integration: finishing methods through the real state machine',
       archetype: 'striker' as const,
       statLine: { ...ARCHETYPES.striker, takedownDef: 20, submissionDef: 10 },
     };
-    const subOpenA = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown' });
-    const subOpenB = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown' });
+    const subOpenA = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown', takedownType: 'double-leg' });
+    const subOpenB = resolveExchange(startFight({ seed: 'sub-win-0', fightNumber: 1, playerStatLine: subPlayer, opponent: subOpp }), { kind: 'takedown', takedownType: 'double-leg' });
     const subEndA = groundStep(subOpenA, 'submission');
     const subEndB = groundStep(subOpenB, 'submission');
     expect(subEndA.outcome).not.toBeNull();

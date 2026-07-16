@@ -34,7 +34,7 @@ function goodIntent(s: FightState): ExchangeMove {
   const strikeEdge  = me.striking  - opp.strikingDef;
   const wrestleEdge = me.takedowns - opp.takedownDef;
   if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
-    return { kind: 'takedown' };
+    return { kind: 'takedown', takedownType: 'double-leg' };
   }
   // Otherwise strike and read the moment. Only load up on the head-hunting power
   // punch to finish a hurt/gassed foe; the rest of the time chip with body/leg
