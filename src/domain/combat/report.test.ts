@@ -121,3 +121,20 @@ describe('buildRoundReport', () => {
     expect(buildRoundReport(input)).toEqual(buildRoundReport(input));
   });
 });
+
+import { buildGroundReport } from './report';
+
+describe('buildGroundReport', () => {
+  it('narrates a submission tap as the headline', () => {
+    const r = buildGroundReport({ round: 2, action: 'submission', position: 'back', success: true, opponentHeadDelta: 0, escaped: false, submitted: true });
+    expect(r.headline.toLowerCase()).toContain('rear-naked choke');
+    expect(r.winner).toBe('player');
+  });
+  it('narrates an advance and an escape distinctly', () => {
+    const adv = buildGroundReport({ round: 1, action: 'advance', position: 'mount', success: true, opponentHeadDelta: 0, escaped: false, submitted: false });
+    expect(adv.headline.toLowerCase()).toContain('mount');
+    const esc = buildGroundReport({ round: 1, action: 'ground-and-pound', position: 'side-control', success: true, opponentHeadDelta: 12, escaped: true, submitted: false });
+    expect(esc.detail.toLowerCase()).toContain('escap');
+    expect(esc.opponentHeadDelta).toBe(12);
+  });
+});
