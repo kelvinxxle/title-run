@@ -175,4 +175,47 @@ describe('resolveExchange', () => {
     expect(control.opponent.stamina - planned.opponent.stamina)
       .toBe(Math.round(planned.opponent.bodyDamage * 0.5)); // BODY_TO_STAMINA = 0.5
   });
+
+  // ── Fix A: takedown outcome consistency ──────────────────────────────────────────
+  it('a landed takedown (tc>0, dom<0) logs player win with positive dominance', () => {
+    // player.takedowns=90, opp.takedownDef=30: takedownCheck ≫ 0 always.
+    // opp.striking=99, player.strikingDef=1: oppAttackScore ≫ playerAttackScore → dominance < 0 always.
+    const tdPlayer: StatLine = { ...P, takedowns: 90, strikingDef: 1 };
+    const s = startFight({ seed: 'tc-pos-dom-neg', fightNumber: 1, playerStatLine: tdPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 30, striking: 99 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).toBe('ground');
+    const lastLog = r.log[r.log.length - 1]!;
+    expect(lastLog.winner).toBe('player');
+    expect(lastLog.dominance).toBeGreaterThan(0);
+    expect(r.player.roundScore).toBeGreaterThan(0);
+  });
+
+  it('a stuffed takedown (tc<=0, dom>0) deals no head damage to opponent', () => {
+    // player.takedowns=20, opp.takedownDef=99: takedownCheck ≪ 0 always (shot always fails).
+    // opp.striking=5, player.strikingDef=99: oppAttackScore ≪ 0 → dominance > 0 always.
+    const weakWrestler: StatLine = { ...P, takedowns: 20, strikingDef: 99 };
+    const s = startFight({ seed: 'tc-neg-dom-pos', fightNumber: 1, playerStatLine: weakWrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 5 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');
+    expect(r.opponent.headDamage).toBe(0);       // stuffed shot must never damage opponent head
+    expect(r.player.stamina).toBeLessThan(s.player.stamina); // stamina cost paid
+  });
+
+  it('a stuffed takedown (tc<=0, dom<0) applies opponent counter damage to player', () => {
+    // player.takedowns=20, opp.takedownDef=99: takedownCheck ≪ 0 always.
+    // opp.striking=99, player.strikingDef=1: dominance < 0 always → opponent counter lands.
+    const weakWrestler2: StatLine = { ...P, takedowns: 20, strikingDef: 1 };
+    const s = startFight({ seed: 'tc-neg-dom-neg', fightNumber: 1, playerStatLine: weakWrestler2,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 99 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');
+    // Opponent counter landed → player takes some damage (head or body)
+    const playerDmg = r.player.headDamage + r.player.bodyDamage + r.player.legDamage;
+    expect(playerDmg).toBeGreaterThan(0);
+  });
 });

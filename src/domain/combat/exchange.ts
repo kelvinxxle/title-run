@@ -183,9 +183,10 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const tdMargin = Math.floor(Math.abs(takedownCheck!) / 10);
     const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - pCost), roundScore: state.player.roundScore + 1 + tdMargin };
     const o: FightState['opponent'] = { ...state.opponent, stamina: clampStamina(state.opponent.stamina - oCost) };
-    const report = makeReport(state.round, 'player', dominance, playerMove, oppMove, state, p, o);
+    const tdLogEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner: 'player', dominance: takedownCheck! };
+    const report = makeReport(state.round, 'player', takedownCheck!, playerMove, oppMove, state, p, o);
     const nextExchange = state.exchange + 1;
-    const logNow = [...state.log, logEntry];
+    const logNow = [...state.log, tdLogEntry];
     // The shot consumed this beat. If it was the last beat, the takedown still SCORES
     // but there are no ground beats this round → cross the round boundary (recovery applied).
     if (nextExchange > EXCHANGES_PER_ROUND) {
@@ -254,7 +255,56 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report };
   }
 
-  // ── Strike exchange ──
+  // ── Player takedown stuffed (takedownCheck ≤ 0): failed shot — never enters ground, never deals strike damage ──
+  if (takedownCheck !== null) {
+    // At this point: playerMove.kind === 'takedown' && takedownCheck <= 0
+    const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - pCost) };
+    const o: Opp = { ...state.opponent, stamina: clampStamina(state.opponent.stamina - oCost) };
+
+    if (dominance < 0) {
+      // Opponent counter wins the beat: oppMove drives damage (same logic as strike branch loser path).
+      const cPower = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].power : 1;
+      const cTarget = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : 'head';
+      const cDmg = Math.round(Math.abs(dominance) * DMG_FACTOR * cPower);
+      if (cTarget === 'body') { p.bodyDamage += cDmg; p.stamina = clampStamina(p.stamina - Math.round(cDmg * BODY_TO_STAMINA)); }
+      else if (cTarget === 'legs') { p.legDamage += cDmg; }
+      else { p.headDamage += cDmg; }
+      o.roundScore += 1 + margin;
+    }
+    // dominance >= 0: whiff — stamina cost paid above, no damage applied.
+
+    const stuffedWinner: 'player' | 'opponent' | 'draw' = dominance < 0 ? 'opponent' : dominance > 0 ? 'player' : 'draw';
+    const stuffedLogEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner: stuffedWinner, dominance };
+    const report = makeReport(state.round, stuffedWinner, dominance, playerMove, oppMove, state, p, o);
+    const logNow = [...state.log, stuffedLogEntry];
+
+    // Finish detection only when opponent counter landed (dom < 0 has player taking damage).
+    if (dominance < 0) {
+      const fw = detectWindow({
+        prePlayerHeadDamage: state.player.headDamage,
+        preOpponentHeadDamage: state.opponent.headDamage,
+        playerHeadDamage: p.headDamage,
+        opponentHeadDamage: o.headDamage,
+        playerStamina: p.stamina,
+        opponentStamina: o.stamina,
+        playerStatLine: state.player.statLine,
+        opponentStatLine: state.opponent.statLine,
+        dominance,
+        playerIntent: playerMove,
+        opponentIntent: oppMove,
+      });
+      if (fw) {
+        return { ...state, player: p, opponent: o, log: logNow, lastReport: report, phase: 'finish-window', window: fw, gamePlan: null };
+      }
+    }
+
+    if (state.exchange < EXCHANGES_PER_ROUND) {
+      return { ...state, player: p, opponent: o, log: logNow, lastReport: report, exchange: state.exchange + 1 };
+    }
+    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report };
+  }
+
+  // ── Strike exchange (playerMove.kind === 'strike' is guaranteed here) ──
   const winnerMove = dominance > 0 ? playerMove : oppMove;
   const power = winnerMove.kind === 'strike' ? STRIKES[winnerMove.strike].power : 1;
   const target = winnerMove.kind === 'strike' ? STRIKES[winnerMove.strike].target : 'head';
