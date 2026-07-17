@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { startFight, type FightState } from './fightState';
 import { resolveExchange, EXCHANGES_PER_ROUND } from './exchange';
+import { resolveGround } from './groundResolve';
 import type { ExchangeMove } from './intents';
 import type { StatLine } from './stats';
 
@@ -217,5 +218,54 @@ describe('resolveExchange', () => {
     // Opponent counter landed → player takes some damage (head or body)
     const playerDmg = r.player.headDamage + r.player.bodyDamage + r.player.legDamage;
     expect(playerDmg).toBeGreaterThan(0);
+  });
+
+  // ── Fix B: gamePlan preserved through ground phase ──────────────────────────
+
+  it('gamePlan is preserved when a takedown enters the ground phase', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99 };
+    const s = startFight({ seed: 'plan-ground', fightNumber: 1, playerStatLine: wrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 10 } } });
+    const sWithPlan = { ...s, gamePlan: 'push-pace' as const };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(sWithPlan, td);
+    expect(r.phase).toBe('ground');
+    expect(r.gamePlan).toBe('push-pace'); // was null before Fix B
+  });
+
+  it('push-pace staminaDelta applied when ground beats carry to round boundary', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99, cardio: 50 };
+    const weakOpp = { id: 'o', name: 'Foe', archetype: 'striker' as const,
+      statLine: { ...O, takedownDef: 10, chin: 600, striking: 1 } };
+    const s0WithPlan = { ...startFight({ seed: 'plan-rb', fightNumber: 1, playerStatLine: wrestler, opponent: weakOpp }), gamePlan: 'push-pace' as const };
+    const s0NoPlan = startFight({ seed: 'plan-rb', fightNumber: 1, playerStatLine: wrestler, opponent: weakOpp });
+
+    function playToCorner(init: FightState): FightState {
+      let s = init;
+      let guard = 0;
+      while (s.phase !== 'corner' && s.phase !== 'finished') {
+        if (guard++ > 50) throw new Error('did not reach corner');
+        if (s.phase === 'in-round') s = resolveExchange(s, { kind: 'takedown', takedownType: 'double-leg' });
+        else if (s.phase === 'ground') s = resolveGround(s, 'ground-and-pound');
+        else break;
+      }
+      return s;
+    }
+
+    const withPlan = playToCorner(s0WithPlan);
+    const noPlan = playToCorner(s0NoPlan);
+    // push-pace: staminaDelta=−6 applied at round boundary → lower stamina
+    expect(withPlan.player.stamina).toBeLessThan(noPlan.player.stamina);
+  });
+
+  it('gamePlan persists in ground phase state (enabling correct post-escape plan propagation)', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99 };
+    const s0 = startFight({ seed: 'escape-plan', fightNumber: 1, playerStatLine: wrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'wrestler', statLine: { ...O, takedownDef: 10 } } });
+    const sWithPlan = { ...s0, gamePlan: 'catch-breath' as const };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const ground = resolveExchange(sWithPlan, td);
+    expect(ground.phase).toBe('ground');
+    expect(ground.gamePlan).toBe('catch-breath'); // plan preserved after entry
   });
 });

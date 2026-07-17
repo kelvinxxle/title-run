@@ -199,7 +199,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       exchange: nextExchange,
       ground: { position: profile.landsAt },
       window: null,
-      gamePlan: null,
+      gamePlan: state.gamePlan,
       lastReport: report,
       player: p,
       opponent: o,
