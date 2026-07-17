@@ -253,10 +253,9 @@ describe('combat balance bands', () => {
   it('BAND 7 — ground-spam exploit is dead: wrestleSpam late ceiling and aggregate cap', () => {
     // B7a: ground spam vs champions is NOT an exploit — same inviolable ceiling as head-hunt spam.
     // B7b: ground spam does not strictly dominate balanced good play in aggregate.
-    // Fix B (preserve gamePlan through ground) shifted fight-9 wrestleSpam from 0.4200→0.4233;
-    // ceiling bumped to 0.44 to reflect the new correct stamina accounting. Still well above
-    // measured 0.4233, so the guard remains meaningful.
-    const GROUND_SPAM_CEILING_LATE = 0.44;
+    // GROUND_SPAM_CEILING_LATE is CARELESS_CEILING_LATE (0.42) — NOT a looser constant.
+    // Fix C (re-tune profiles + honest 4-type probe) will expand this to the full honest gate.
+    const GROUND_SPAM_CEILING_LATE = CARELESS_CEILING_LATE; // 0.42 — inviolable
     expect(wrestleSpam[9].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
     expect(wrestleSpam[10].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
     expect(aggWinRate(wrestleSpam)).toBeLessThanOrEqual(aggWinRate(good) + 0.05);
