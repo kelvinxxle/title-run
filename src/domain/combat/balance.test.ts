@@ -30,12 +30,12 @@ const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 function goodIntent(s: FightState): ExchangeMove {
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
-  // Shoot the takedown when the opponent's takedownDef is the weak point — i.e. our
-  // takedown edge beats our striking edge and is genuinely positive.
+  // Shoot when the opponent's takedown defense is the weak point. Use trip (lands at
+  // side-control) for the smart selective shot; wrestleSpam uses double-leg always.
   const strikeEdge  = me.striking  - opp.strikingDef;
   const wrestleEdge = me.takedowns - opp.takedownDef;
   if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
-    return { kind: 'takedown', takedownType: 'double-leg' };
+    return { kind: 'takedown', takedownType: 'trip' };
   }
   // Otherwise strike and read the moment. Only load up on the head-hunting power
   // punch to finish a hurt/gassed foe; the rest of the time chip with body/leg
@@ -59,8 +59,8 @@ function goodGamePlan(s: FightState): GamePlan {
   return 'work-body';
 }
 
-// Interim ground policy: always attempt the submission when position allows, otherwise advance.
-// Replaced in T8 by tuned goodGround policy (GnP fallback when neither sub nor advance apply).
+// Ground policy: always attempt the submission when position allows, otherwise advance.
+// Position quality gates the probability (sub from mount/back is high-%, half-guard is low-%).
 function goodGround(s: FightState): GroundAction {
   const pos = s.ground!.position;
   if (POSITION_SUBMISSION[pos] !== null) return 'submission';

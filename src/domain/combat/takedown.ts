@@ -12,12 +12,16 @@ export interface TakedownProfile {
   landsAt: GroundPosition;
 }
 
-// Starting values — TUNED IN T6/T8. Risk/reward: easier shot → weaker position.
+// TUNED IN T8b: double-leg atkMult lowered to make blind shots into elite TDD genuinely contested.
+// At atkMult=0.85: GSP takedowns=90, 90×0.85=76.5 vs fight-9 TDD=82 → shots stuffed ~73% of the time.
+// wrestleSpam (always shoots) gets punished; goodIntent (only shoots when wrestleEdge > 0 AND >
+// strikeEdge) spares the 30% of seeds where striking is the better bet.
+// Risk/reward order preserved: easier shot → weaker position; harder shot → better position.
 export const TAKEDOWN_PROFILES: Record<TakedownType, TakedownProfile> = {
-  'single-leg': { atkMult: 1.30, cost: 14, landsAt: 'guard' },
-  'double-leg': { atkMult: 1.20, cost: 17, landsAt: 'half-guard' },
-  'trip':       { atkMult: 1.10, cost: 12, landsAt: 'side-control' },
-  'body-lock':  { atkMult: 1.00, cost: 18, landsAt: 'mount' },
+  'single-leg': { atkMult: 1.15, cost: 14, landsAt: 'guard' },
+  'double-leg': { atkMult: 0.85, cost: 17, landsAt: 'half-guard' },
+  'trip':       { atkMult: 0.90, cost: 12, landsAt: 'side-control' },
+  'body-lock':  { atkMult: 0.80, cost: 18, landsAt: 'mount' },
 };
 
 export const TAKEDOWN_TYPES: readonly TakedownType[] = ['single-leg', 'double-leg', 'trip', 'body-lock'] as const;

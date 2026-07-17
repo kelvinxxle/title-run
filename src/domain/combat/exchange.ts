@@ -152,10 +152,17 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     state.player.statLine[PHASE_DEFENSE[oPhase]] * pEffort * defMult(playerMove, oPhase) * plan.defMult +
     timingBonus(oppMove, playerMove);
 
-  const dominance =
-    playerAttackScore - oppAttackScore +
-    (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR +
-    seededSwing;
+  const IQ = (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR;
+  const dominance = playerAttackScore - oppAttackScore + IQ + seededSwing;
+
+  // For player takedowns, the landing check uses ONLY the wrestling dimension
+  // (player.takedowns × atkMult − opp.TDD + IQ + swing), decoupled from the opponent's
+  // counter-strike score. This ensures early-fight shots into weak-TDD opponents
+  // always land while late-fight shots into elite-TDD opponents get genuinely contested.
+  // When a shot fails (takedownCheck ≤ 0), full `dominance` drives the counter-damage.
+  const takedownCheck = playerMove.kind === 'takedown'
+    ? playerAttackScore + IQ + seededSwing
+    : null;
 
   const pCost = playerMove.kind === 'strike' ? STRIKES[playerMove.strike].staminaCost : TAKEDOWN_PROFILES[playerMove.takedownType].cost;
   const oCost = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].staminaCost : TAKEDOWN_PROFILES[oppMove.takedownType].cost;
@@ -170,10 +177,11 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     dominance,
   };
 
-  // ── Player takedown lands (dominance > 0) → enter the ground phase ──
-  if (dominance > 0 && playerMove.kind === 'takedown') {
+  // ── Player takedown lands (takedownCheck > 0) → enter the ground phase ──
+  if ((takedownCheck ?? dominance) > 0 && playerMove.kind === 'takedown') {
     const profile = TAKEDOWN_PROFILES[playerMove.takedownType];
-    const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - pCost), roundScore: state.player.roundScore + 1 + margin };
+    const tdMargin = Math.floor(Math.abs(takedownCheck!) / 10);
+    const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - pCost), roundScore: state.player.roundScore + 1 + tdMargin };
     const o: FightState['opponent'] = { ...state.opponent, stamina: clampStamina(state.opponent.stamina - oCost) };
     const report = makeReport(state.round, 'player', dominance, playerMove, oppMove, state, p, o);
     const nextExchange = state.exchange + 1;

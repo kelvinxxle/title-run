@@ -91,8 +91,8 @@ describe('resolveExchange', () => {
   });
 
   it('a winning takedown enters the ground phase at the landed position', () => {
-    // takedowns: 99 vs takedownDef: 55 → playerAttackScore ≈ 124 − 55 = 69; even with
-    // worst-case oppAttackScore (~11) and seededSwing (−12) dominance > 40 — always positive.
+    // takedowns: 99 vs takedownDef: 55 → playerAttackScore ≈ 99×atkMult − 55; with atkMult=0.85
+    // playerAttackScore ≈ 29. takedownCheck = playerAtk + IQ + swing ≈ 29+IQ-12 > 0 — always positive.
     // double-leg landsAt: 'half-guard' per TAKEDOWN_PROFILES.
     const wrestler: StatLine = { ...P, takedowns: 99, striking: 40 };
     const s = startFight({ seed: 'td-seed', fightNumber: 1, playerStatLine: wrestler, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
