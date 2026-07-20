@@ -365,4 +365,41 @@ describe('runStorageV2', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: bad, bestReign: null }));
     expect(load()).toEqual({ run: null, bestReign: null });
   });
+
+  // ── M17: schema v6 — signatureId + signatureCharge ──────────────────────────
+
+  it('M17 T7 RED: rejects a fight state with signatureCharge > 100', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    store({ ...run, fight: { ...fight, signatureCharge: 101 } });
+    expect(load().run).toBeNull();
+  });
+
+  it('M17 T7 RED: rejects a fight state with signatureCharge < 0', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    store({ ...run, fight: { ...fight, signatureCharge: -1 } });
+    expect(load().run).toBeNull();
+  });
+
+  it('M17 T7 RED: rejects a fight state missing signatureId', () => {
+    const run = midFight();
+    const fight = run.fight as FightState;
+    const { signatureId: _sig, ...fightNoSig } = fight as FightState & Record<string, unknown>;
+    store({ ...run, fight: fightNoSig });
+    expect(load().run).toBeNull();
+  });
+
+  it('M17 T7 RED: rejects a runner fighter missing signatureId', () => {
+    const run = preFight();
+    store({ ...run, fighter: { name: 'A', statLine: LINE } }); // no signatureId
+    expect(load().run).toBeNull();
+  });
+
+  it('M17 T7 RED: clears a stale v5 blob', () => {
+    const run = midFight();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 5, run, bestReign: 0 }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
 });
