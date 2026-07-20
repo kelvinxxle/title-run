@@ -272,10 +272,12 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       o.roundScore += 1 + margin;
     }
     // dominance >= 0: whiff — stamina cost paid above, no damage applied.
-
-    const stuffedWinner: 'player' | 'opponent' | 'draw' = dominance < 0 ? 'opponent' : dominance > 0 ? 'player' : 'draw';
-    const stuffedLogEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner: stuffedWinner, dominance };
-    const report = makeReport(state.round, stuffedWinner, dominance, playerMove, oppMove, state, p, o);
+    // Whiff is a no-op: nobody scored, report draw at dominance 0 (not a player win).
+    // Counter (dom < 0) already handled above with actual dominance.
+    const stuffedWinner: 'player' | 'opponent' | 'draw' = dominance < 0 ? 'opponent' : 'draw';
+    const resolvedDominance = dominance < 0 ? dominance : 0;
+    const stuffedLogEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner: stuffedWinner, dominance: resolvedDominance };
+    const report = makeReport(state.round, stuffedWinner, resolvedDominance, playerMove, oppMove, state, p, o);
     const logNow = [...state.log, stuffedLogEntry];
 
     // Finish detection only when opponent counter landed (dom < 0 has player taking damage).

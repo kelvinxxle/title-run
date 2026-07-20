@@ -206,6 +206,28 @@ describe('resolveExchange', () => {
     expect(r.player.stamina).toBeLessThan(s.player.stamina); // stamina cost paid
   });
 
+  // ── Fix D: whiff (tc<=0, dom>0) must log a draw at dominance 0 ─────────────
+  it('a stuffed whiff (tc<=0, dom>0) reports draw/0 in log — no score change, no opponent damage', () => {
+    // Guarantees: player.takedowns=20, opp.takedownDef=99 → tc ≤ −60 < 0 (always stuffed).
+    // player.fightIQ=99, opp.fightIQ=1 → IQ=9.8. player.strikingDef=99, player.takedownDef=99,
+    // opp.striking=1, opp.takedowns=1 → oppAttackScore ≤ −79 whatever the AI picks →
+    // dominance = tc − oppAttackScore ≥ 13.76 > 0 (always whiff, never counter).
+    const whiffPlayer: StatLine = { ...P, takedowns: 20, fightIQ: 99, strikingDef: 99, takedownDef: 99 };
+    const s = startFight({ seed: 'whiff-draw', fightNumber: 1, playerStatLine: whiffPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 1, takedowns: 1, fightIQ: 1 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');                           // shot was stuffed
+    expect(r.opponent.headDamage).toBe(s.opponent.headDamage);   // no damage
+    expect(r.opponent.bodyDamage).toBe(s.opponent.bodyDamage);
+    expect(r.opponent.legDamage).toBe(s.opponent.legDamage);
+    expect(r.player.roundScore).toBe(s.player.roundScore);        // no score
+    expect(r.opponent.roundScore).toBe(s.opponent.roundScore);
+    const lastLog = r.log[r.log.length - 1]!;
+    expect(lastLog.winner).toBe('draw');     // must be draw, not 'player'
+    expect(lastLog.dominance).toBe(0);       // resolved dominance 0, not raw positive
+  });
+
   it('a stuffed takedown (tc<=0, dom<0) applies opponent counter damage to player', () => {
     // player.takedowns=20, opp.takedownDef=99: takedownCheck ≪ 0 always.
     // opp.striking=99, player.strikingDef=1: dominance < 0 always → opponent counter lands.
