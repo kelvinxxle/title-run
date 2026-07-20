@@ -1,4 +1,4 @@
-import { type FightState, type ExchangeMove, type FinishChoice, type GroundPlan, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND } from '../domain/combat';
+import { type FightState, type ExchangeMove, type FinishChoice, type GroundAction, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND } from '../domain/combat';
 import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import StrikePanel from '../components/StrikePanel';
@@ -13,12 +13,12 @@ interface Props {
   playerName: string;
   onMove: (m: ExchangeMove) => void;
   onFinishStep: (choice: FinishChoice) => void;
-  onGroundStep: (plan: GroundPlan) => void;
+  onGroundAction: (a: GroundAction) => void;
   onChooseGamePlan: (plan: GamePlan) => void;
   onContinue: () => void;
 }
 
-export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundStep, onChooseGamePlan, onContinue }: Props) {
+export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundAction, onChooseGamePlan, onContinue }: Props) {
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
 
   // Damage flash: show deltas from the last resolved round
@@ -89,8 +89,8 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
       {phase === 'finish-window' && win && (
         <FinishSequencePanel window={win} onChoice={onFinishStep} />
       )}
-      {phase === 'ground-window' && win && (
-        <GroundPanel window={win} onGround={onGroundStep} />
+      {phase === 'ground' && fightState.ground && (
+        <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
       )}
       {phase === 'finished' && outcome && (
         <div className="w-full flex flex-col items-center gap-sm">

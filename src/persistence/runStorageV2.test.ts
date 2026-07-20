@@ -4,7 +4,7 @@ import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, t
 import { STAT_IDS, type StatLine } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
-// Wrestler stat line: high takedowns (99) to win a wrestle for ground-window; seed 'gw-5' verified.
+// WRESTLER stat line: high takedowns (99) to land a takedown and enter 'ground' phase.
 const WRESTLER = Object.fromEntries(STAT_IDS.map((s) => [s, s === 'takedowns' ? 99 : 40])) as StatLine;
 function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
 const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
@@ -25,11 +25,10 @@ function finishWindowRun(): RunState {
   run = { ...run, fight: f };
   return run;
 }
-// seed 'gw-0' with WRESTLER (takedowns:99, others:40) wins the first wrestle → ground-window.
-// (seed updated in T2 — real opponent system changed the fight dynamics; 'gw-0' verified deterministic)
-function groundWindowRun(): RunState {
+// seed 'gw-0' with WRESTLER (takedowns:99, others:40) lands a double-leg → enters 'ground' phase.
+function groundRun(): RunState {
   const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
-  return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown' }) };
+  return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown', takedownType: 'double-leg' }) };
 }
 function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
@@ -101,7 +100,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
-      gamePlan: null, lastReport: null,
+      gamePlan: null, lastReport: null, ground: null,
     };
     const postWin: RunState = {
       seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE },
@@ -133,7 +132,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
-      gamePlan: null, lastReport: null,
+      gamePlan: null, lastReport: null, ground: null,
     };
     store({ ...preFight(), phase: 'fighting', fight: finished });
     expect(load().run).toBeNull();
@@ -154,35 +153,35 @@ describe('runStorageV2', () => {
     expect(load()).toEqual({ run, bestReign: 0 });
   });
 
-  it('rejects a finish-window fight with a ground-method window (phase↔payload invariant)', () => {
+  it('rejects a finish-window fight with an invalid window method (phase↔payload invariant)', () => {
     const run = finishWindowRun();
-    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'bad', stepsLeft: 3 } } });
     expect(load().run).toBeNull();
   });
 
-  it('round-trips a real ground-window run (no false reject)', () => {
-    const run = groundWindowRun();
-    expect((run.fight as FightState).phase).toBe('ground-window');
+  it('round-trips a real ground run (no false reject)', () => {
+    const run = groundRun();
+    expect((run.fight as FightState).phase).toBe('ground');
     save({ run, bestReign: 0 });
     expect(load()).toEqual({ run, bestReign: 0 });
   });
 
-  it('rejects a ground-window fight with a null window (phase↔payload invariant), and clears the key', () => {
-    const run = groundWindowRun();
-    store({ ...run, fight: { ...(run.fight as FightState), window: null } });
+  it('rejects a ground fight with a non-null window (phase↔payload invariant), and clears the key', () => {
+    const run = groundRun();
+    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'player', method: 'KO', stepsLeft: 3 } } });
     expect(load().run).toBeNull();
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it('rejects a ground-window fight with a KO-method window (phase↔payload invariant)', () => {
-    const run = groundWindowRun();
-    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'player', method: 'KO', stepsLeft: 3 } } });
+  it('rejects a ground fight with a null ground field (phase↔payload invariant)', () => {
+    const run = groundRun();
+    store({ ...run, fight: { ...(run.fight as FightState), ground: null } });
     expect(load().run).toBeNull();
   });
 
-  it('rejects a ground-window fight whose window is opponent-side (player-top-control invariant)', () => {
-    const run = groundWindowRun();
-    store({ ...run, fight: { ...(run.fight as FightState), window: { side: 'opponent', method: 'ground', stepsLeft: 3 } } });
+  it('rejects a ground fight with an invalid ground position (phase↔payload invariant)', () => {
+    const run = groundRun();
+    store({ ...run, fight: { ...(run.fight as FightState), ground: { position: 'clinch' } } });
     expect(load().run).toBeNull();
   });
 
@@ -278,5 +277,90 @@ describe('runStorageV2', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 3, run, bestReign: 0 }));
     expect(load()).toEqual({ run: null, bestReign: null });
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  // ── Task 7: schema v5 — ground phase + ground-state invariant ──────────────
+
+  it('M16: round-trips a real ground-phase fight state', () => {
+    const run = groundRun();
+    expect((run.fight as FightState).phase).toBe('ground');
+    expect((run.fight as FightState).ground).toEqual({ position: 'half-guard' });
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
+
+  it('M16: rejects a ground phase with a null ground field (clears to defaults)', () => {
+    const bad = {
+      ...preFight(),
+      phase: 'fighting',
+      fight: {
+        seed: 'seed-1',
+        fightNumber: 1,
+        rounds: 3,
+        round: 1,
+        exchange: 1,
+        phase: 'ground',
+        player: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0 },
+        opponent: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0, name: 'Opponent', archetype: 'brawler' },
+        window: null,
+        outcome: null,
+        ground: null,
+        log: [],
+        gamePlan: null,
+        lastReport: null,
+      },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: bad, bestReign: null }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+  });
+
+  it('M16: rejects a ground state carrying a stale window (invariant: window null on ground)', () => {
+    const bad = {
+      ...preFight(),
+      phase: 'fighting',
+      fight: {
+        seed: 'seed-1',
+        fightNumber: 1,
+        rounds: 3,
+        round: 1,
+        exchange: 1,
+        phase: 'ground',
+        player: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0 },
+        opponent: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0, name: 'Opponent', archetype: 'brawler' },
+        window: { side: 'player', method: 'KO', stepsLeft: 3 },
+        outcome: null,
+        ground: { position: 'mount' },
+        log: [],
+        gamePlan: null,
+        lastReport: null,
+      },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: bad, bestReign: null }));
+    expect(load()).toEqual({ run: null, bestReign: null });
+  });
+
+  it('M16: rejects window.method === "ground" (method dropped)', () => {
+    const bad = {
+      ...preFight(),
+      phase: 'fighting',
+      fight: {
+        seed: 'seed-1',
+        fightNumber: 1,
+        rounds: 3,
+        round: 1,
+        exchange: 1,
+        phase: 'finish-window',
+        player: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0 },
+        opponent: { statLine: LINE, headDamage: 0, bodyDamage: 0, stamina: 99, legDamage: 0, roundScore: 0, name: 'Opponent', archetype: 'brawler' },
+        window: { side: 'player', method: 'ground', stepsLeft: 3 },
+        outcome: null,
+        ground: null,
+        log: [],
+        gamePlan: null,
+        lastReport: null,
+      },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: bad, bestReign: null }));
+    expect(load()).toEqual({ run: null, bestReign: null });
   });
 });

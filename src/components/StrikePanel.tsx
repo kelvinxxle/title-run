@@ -2,10 +2,12 @@ import {
   STRIKE_PALETTE,
   STRIKES,
   type ExchangeMove,
-  MOVE_KIND_LABELS,
   PHASE_OFFENSE,
   STAT_LABELS,
   type StatLine,
+  TAKEDOWN_TYPES,
+  TAKEDOWN_LABELS,
+  TAKEDOWN_BLURBS,
 } from '../domain/combat';
 
 interface Props {
@@ -54,15 +56,21 @@ export default function StrikePanel({
         })}
       </div>
 
-      <button
-        type="button"
-        data-testid="strike-takedown"
-        disabled={disabled}
-        onClick={() => onMove({ kind: 'takedown' })}
-        className="w-full h-16 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide disabled:opacity-50"
-      >
-        {MOVE_KIND_LABELS.takedown}
-      </button>
+      <div className="grid grid-cols-2 gap-xs" data-testid="takedown-row">
+        {TAKEDOWN_TYPES.map((t) => (
+          <button
+            key={t}
+            type="button"
+            data-testid={`takedown-${t}`}
+            disabled={disabled}
+            onClick={() => onMove({ kind: 'takedown', takedownType: t })}
+            className="flex flex-col gap-1 p-sm bg-surface-container border border-outline text-left disabled:opacity-50"
+          >
+            <span className="font-semibold">{TAKEDOWN_LABELS[t]}</span>
+            <span className="block text-xs opacity-70">{TAKEDOWN_BLURBS[t]}</span>
+          </button>
+        ))}
+      </div>
 
       <p className="font-mono text-xs text-on-surface-variant text-center uppercase tracking-widest">
         Exchange {exchange} of {exchangesPerRound}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  startRun, applyDraft, startNextFight, settleFight, resolveExchange, finishStep, groundStep, chooseGamePlan,
-  type RunState, type ExchangeMove, type FinishChoice, type GroundPlan, type DraftedFighter, type GamePlan,
+  startRun, applyDraft, startNextFight, settleFight, resolveExchange, finishStep, resolveGround, chooseGamePlan,
+  type RunState, type ExchangeMove, type FinishChoice, type GroundAction, type DraftedFighter, type GamePlan,
 } from './domain/combat';
 import { load, save } from './persistence/runStorageV2';
 import { isNewRecord as computeIsNewRecord, commitReign } from './bestReign';
@@ -37,10 +37,10 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
       if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'finish-window') return r;
       return { ...r, fight: finishStep(r.fight, choice) };
     });
-  const handleGroundStep = (plan: GroundPlan) =>
+  const handleGroundAction = (plan: GroundAction) =>
     setRun((r) => {
-      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'ground-window') return r;
-      return { ...r, fight: groundStep(r.fight, plan) };
+      if (!r || r.phase !== 'fighting' || !r.fight || r.fight.phase !== 'ground') return r;
+      return { ...r, fight: resolveGround(r.fight, plan) };
     });
   const handleChooseGamePlan = (plan: GamePlan) =>
     setRun((r) => {
@@ -89,7 +89,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
         playerName={run.fighter.name}
         onMove={handleMove}
         onFinishStep={handleFinishStep}
-        onGroundStep={handleGroundStep}
+        onGroundAction={handleGroundAction}
         onChooseGamePlan={handleChooseGamePlan}
         onContinue={handleContinue}
       />

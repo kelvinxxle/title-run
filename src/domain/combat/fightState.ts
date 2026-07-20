@@ -6,6 +6,9 @@ import type { RoundReport } from './report';
 import { startingStamina } from './stamina';
 import { isGassed } from './stamina';
 import { createRng } from '../rng';
+import { opponentTakedownType } from './takedown';
+import type { ArchetypeId } from './archetypes';
+import type { GroundState } from './ground';
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -18,11 +21,11 @@ export interface Fighter2 {
   roundScore: number;
 }
 
-export type FightPhase = 'in-round' | 'corner' | 'finish-window' | 'ground-window' | 'finished';
+export type FightPhase = 'in-round' | 'corner' | 'finish-window' | 'ground' | 'finished';
 
 export interface FinishWindow {
   side: 'player' | 'opponent';
-  method: 'KO' | 'submission' | 'ground';
+  method: 'KO' | 'submission';
   stepsLeft: number;
 }
 
@@ -63,6 +66,7 @@ export interface FightState {
   log: RoundLogEntry[];
   gamePlan: GamePlan | null;
   lastReport: RoundReport | null;
+  ground: GroundState | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -105,6 +109,7 @@ export function startFight(args: {
     log: [],
     gamePlan: null,
     lastReport: null,
+    ground: null,
   };
 }
 
@@ -165,7 +170,7 @@ export function opponentMove(state: FightState): ExchangeMove {
   // Choose kind by the opponent's better edge over the player's matching defense.
   const strikeEdge = state.opponent.statLine[PHASE_OFFENSE.strike] - state.player.statLine.strikingDef;
   const wrestleEdge = state.opponent.statLine[PHASE_OFFENSE.wrestle] - state.player.statLine.takedownDef;
-  if (wrestleEdge > strikeEdge) return { kind: 'takedown' };
+  if (wrestleEdge > strikeEdge) return { kind: 'takedown', takedownType: opponentTakedownType(state.opponent.archetype as ArchetypeId) };
 
   // Gassed player: dig the body/legs to compound the gas.
   if (isGassed(state.player.stamina)) return { kind: 'strike', strike: 'bodyKick' };

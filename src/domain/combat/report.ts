@@ -1,5 +1,7 @@
 import type { ExchangeMove } from './intents';
 import { STRIKES } from './strikes';
+import type { GroundAction, GroundPosition } from './ground';
+import { GROUND_POSITION_LABELS, POSITION_SUBMISSION, SUBMISSION_LABELS } from './ground';
 
 export interface RoundReportInput {
   round: number;
@@ -99,5 +101,48 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
     playerBodyDelta,
     opponentHeadDelta,
     opponentBodyDelta,
+  };
+}
+
+export interface GroundReportInput {
+  round: number;
+  action: GroundAction;
+  position: GroundPosition;   // position AFTER the action resolved
+  success: boolean;
+  opponentHeadDelta: number;
+  escaped: boolean;
+  submitted: boolean;
+}
+
+export function buildGroundReport(input: GroundReportInput): RoundReport {
+  const posLabel = GROUND_POSITION_LABELS[input.position];
+  let headline: string;
+  let detail: string;
+
+  if (input.submitted) {
+    const sub = POSITION_SUBMISSION[input.position];
+    headline = sub ? `Tap! ${SUBMISSION_LABELS[sub]} from ${posLabel}.` : `Submission from ${posLabel}.`;
+    detail = 'The opponent taps — it is over.';
+  } else if (input.action === 'submission') {
+    headline = `Submission attempt from ${posLabel}.`;
+    detail = 'He defends and works free of the hold.';
+  } else if (input.action === 'advance') {
+    headline = input.success ? `Advanced to ${posLabel}.` : `Stuffed advancing from ${posLabel}.`;
+    detail = input.success ? 'Better position, more control.' : 'He frames and denies the pass.';
+  } else {
+    headline = `Ground & pound from ${posLabel}.`;
+    detail = input.opponentHeadDelta > 0 ? `Heavy shots land — ${input.opponentHeadDelta} damage.` : 'He covers up.';
+  }
+  if (input.escaped) detail += ' The opponent scrambles up and escapes to the feet.';
+
+  return {
+    round: input.round,
+    headline,
+    detail,
+    winner: 'player',
+    playerHeadDelta: 0,
+    playerBodyDelta: 0,
+    opponentHeadDelta: input.opponentHeadDelta,
+    opponentBodyDelta: 0,
   };
 }

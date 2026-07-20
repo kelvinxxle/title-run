@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import App from './App';
 import { save, load } from './persistence/runStorageV2';
 import {
-  startRun, applyDraft, startNextFight, startFight, resolveExchange, groundStep,
+  startRun, applyDraft, startNextFight, startFight, resolveExchange, resolveGround, finishStep,
   ARCHETYPES,
   STAT_IDS, type RunState, type StatLine, type ExchangeMove,
 } from './domain/combat';
@@ -19,13 +19,13 @@ function midFightRun(): RunState {
   return run;
 }
 
-// A drafted, in-progress run whose active fight is parked in a real 'ground-window'
-// (opened by a winning wrestle through resolveExchange). Seed/fightNumber on the fight
-// match the run so it satisfies runStorageV2's 'fighting' + 'ground-window' invariants.
+// A drafted, in-progress run whose active fight is parked in the real 'ground' phase
+// (opened by a landing takedown through resolveExchange). Seed/fightNumber on the fight
+// match the run so it satisfies runStorageV2's 'fighting' + 'ground' invariants.
 const GROUND_SEED = 'resume-ground-seed';
 const GRAPPLER: StatLine = { ...ARCHETYPES.wrestler, takedowns: 99 };
 
-function groundWindowRun(): RunState {
+function groundRun(): RunState {
   const opp = {
     id: 'o',
     name: 'Opp',
@@ -33,10 +33,10 @@ function groundWindowRun(): RunState {
     statLine: { ...ARCHETYPES.striker, takedownDef: 20, chin: 1 },
   };
   const f0 = startFight({ seed: GROUND_SEED, fightNumber: 1, playerStatLine: GRAPPLER, opponent: opp });
-  const parked = resolveExchange(f0, { kind: 'takedown' });
-  // guard: this must genuinely be a valid ground-window per the persistence invariant
-  if (parked.phase !== 'ground-window' || parked.window?.method !== 'ground' || parked.outcome !== null) {
-    throw new Error('expected a parked ground-window fight');
+  const parked = resolveExchange(f0, { kind: 'takedown', takedownType: 'double-leg' });
+  // guard: this must genuinely be a valid ground phase per the persistence invariant
+  if (parked.phase !== 'ground' || parked.ground === null || parked.outcome !== null) {
+    throw new Error(`expected a parked ground fight, got phase=${parked.phase}`);
   }
   const run: RunState = applyDraft(startRun(GROUND_SEED), { name: 'Grappler', statLine: GRAPPLER });
   return { ...run, phase: 'fighting', fight: parked };
@@ -62,31 +62,36 @@ describe('mid-fight resume (v2)', () => {
   });
 });
 
-describe('ground-window resume (v2)', () => {
-  it('persists and reloads a parked ground-window run (deep equal)', () => {
-    const run = groundWindowRun();
+describe('ground resume (v2)', () => {
+  it('persists and reloads a parked ground run (deep equal)', () => {
+    const run = groundRun();
     save({ run, bestReign: null });
-    // The saved ground-window run survives the round-trip exactly (window + fight state).
+    // The saved ground run survives the round-trip exactly (ground state + fight state).
     expect(load().run).toEqual(run);
   });
 
   it('App resumes into the GroundPanel, not round 1 or a striking panel', () => {
-    const run = groundWindowRun();
+    const run = groundRun();
     save({ run, bestReign: null });
     render(<App />);
-    // Proves App restored the parked ground window: the ground UI renders...
+    // Proves App restored the parked ground phase: the ground UI renders...
     expect(screen.getByTestId('ground-panel')).toBeInTheDocument();
     // ...and the striking intent panel does NOT.
     expect(screen.queryByTestId('intent-commit')).not.toBeInTheDocument();
   });
 
-  it('groundStep continues deterministically to the same outcome after reload', () => {
-    const run = groundWindowRun();
+  it('resolveGround continues deterministically to the same outcome after reload', () => {
+    const run = groundRun();
     save({ run, bestReign: null });
     const reloaded = load().run;
     expect(reloaded).not.toBeNull();
-    const fromReload = groundStep(reloaded!.fight!, 'ground-and-pound');
-    const fromOriginal = groundStep(run.fight!, 'ground-and-pound');
+    const applyGnP = (fight: typeof run.fight) => {
+      let s = resolveGround(fight!, 'ground-and-pound');
+      if (s.phase === 'finish-window') s = finishStep(s, 'commit');
+      return s;
+    };
+    const fromReload = applyGnP(reloaded!.fight);
+    const fromOriginal = applyGnP(run.fight);
     // Same seed ⇒ identical resolution whether continued from memory or from storage.
     expect(fromReload.outcome).toEqual(fromOriginal.outcome);
     expect(fromReload.outcome).not.toBeNull();

@@ -45,11 +45,23 @@ describe('fightDisplay', () => {
     const st = (phase: FightState['phase']): FightState => ({
       seed:'s', fightNumber:1, rounds:3, round:2, exchange:1, phase,
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
-      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null,
     });
     expect(roundLabel(st('in-round'))).toBe('Round 2 of 3');
     expect(roundLabel(st('finish-window'))).toContain('Finish');
     expect(roundLabel(st('finished'))).toBe('Fight over');
+  });
+
+  it('roundLabel labels the ground phase with the current position', () => {
+    const base = fighter();
+    const groundSt: FightState = {
+      seed:'s', fightNumber:1, rounds:3, round:2, exchange:2, phase: 'ground',
+      player: base, opponent: { ...base, name:'R', archetype:'boxer' },
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
+      ground: { position: 'mount' },
+    };
+    expect(roundLabel(groundSt)).toMatch(/Mount/i);
+    expect(roundLabel(groundSt)).toContain('Round 2');
   });
 
   it('legPct is 0 at zero leg damage, monotonic, and clamps at 1', () => {
@@ -67,7 +79,7 @@ describe('fightDisplay', () => {
     const st = (exchange: number): FightState => ({
       seed:'s', fightNumber:1, rounds:3, round:2, exchange, phase: 'in-round',
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
-      window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
+      window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null,
     });
     expect(exchangeLabel(st(2))).toBe(`Exchange 2 of ${EXCHANGES_PER_ROUND}`);
     expect(exchangeLabel(st(1))).toBe(`Exchange 1 of ${EXCHANGES_PER_ROUND}`);

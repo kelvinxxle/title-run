@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  startFight, resolveExchange, finishStep, groundStep, generateOpponent,
-  buildStatLine, getFighter, chooseGamePlan,
+  startFight, resolveExchange, finishStep, resolveGround, generateOpponent,
+  buildStatLine, getFighter, chooseGamePlan, POSITION_SUBMISSION, nextPosition,
 } from './index';
 import type { FightState } from './fightState';
-import type { ExchangeMove, GroundPlan, GamePlan } from './intents';
+import type { ExchangeMove, GamePlan } from './intents';
+import type { GroundAction } from './ground';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Balance harness (M8a success criteria).
@@ -29,12 +30,15 @@ const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 function goodIntent(s: FightState): ExchangeMove {
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
-  // Shoot the takedown when the opponent's takedownDef is the weak point — i.e. our
-  // takedown edge beats our striking edge and is genuinely positive.
+  // Shoot only when wrestling is the clear edge AND dominates striking.
+  // wrestleEdge > 7 (i.e., edge ≥ 8): at tier-5, this selects TDD ≤ 82 opponents where
+  // P(land@trip=0.83) ≥ 26% — shots are net-positive despite the high cost=18.
+  // Opponents with edge ≤ 7 (TDD ≥ 83: Khabib/Jones) are too difficult: P(land) < 9%
+  // and every stuffed shot pays the cost + takes a counter → fall back to striking.
   const strikeEdge  = me.striking  - opp.strikingDef;
   const wrestleEdge = me.takedowns - opp.takedownDef;
-  if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
-    return { kind: 'takedown' };
+  if (wrestleEdge > strikeEdge && wrestleEdge > 7) {
+    return { kind: 'takedown', takedownType: 'trip' };
   }
   // Otherwise strike and read the moment. Only load up on the head-hunting power
   // punch to finish a hurt/gassed foe; the rest of the time chip with body/leg
@@ -58,30 +62,47 @@ function goodGamePlan(s: FightState): GamePlan {
   return 'work-body';
 }
 
-// Good play in a ground window: hunt the tap when the opponent's submission
-// defense is soft, otherwise pound from top control.
-function goodGroundPlan(s: FightState): GroundPlan {
-  return s.opponent.statLine.submissionDef < 55 ? 'submission' : 'ground-and-pound';
+// Ground policy: always attempt the submission when position allows, otherwise advance.
+// Position quality gates the probability (sub from mount/back is high-%, half-guard is low-%).
+function goodGround(s: FightState): GroundAction {
+  const pos = s.ground!.position;
+  if (POSITION_SUBMISSION[pos] !== null) return 'submission';
+  if (nextPosition(pos) !== null) return 'advance';
+  return 'ground-and-pound';
 }
 
-function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
+// wrestleSpam standing move: always shoot a double-leg (B7 exploit probe).
+function wrestleSpamMove(): ExchangeMove {
+  return { kind: 'takedown', takedownType: 'double-leg' };
+}
+
+// All 4 single-type spam policies for the honest B7 gate (Fix C).
+function singleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'single-leg' }; }
+function doubleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'double-leg' }; }
+function tripSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'trip' }; }
+function bodyLockSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'body-lock' }; }
+
+function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'): FightState {
   let s = init;
   let guard = 0;
   while (s.phase !== 'finished') {
     if (guard++ > 300) throw new Error('fight did not terminate');
     if (s.phase === 'in-round') {
-      s = resolveExchange(s, policy === 'good' ? goodIntent(s) : carelessIntent());
+      let move: ExchangeMove;
+      if (policy === 'good') move = goodIntent(s);
+      else if (policy === 'wrestleSpam') move = wrestleSpamMove();
+      else move = carelessIntent();
+      s = resolveExchange(s, move);
     } else if (s.phase === 'corner') {
-      // Use policy-derived game plan: good play picks strategically, careless always pushes pace
+      // Use policy-derived game plan: good play picks strategically, others always pushes pace
       const plan: GamePlan = policy === 'good' ? goodGamePlan(s) : 'push-pace';
       s = chooseGamePlan(s, plan);
-    } else if (s.phase === 'ground-window') {
-      // Only good play wrestles, so only good play reaches a player ground window.
-      s = groundStep(s, goodGroundPlan(s));
+    } else if (s.phase === 'ground') {
+      s = resolveGround(s, goodGround(s));
     } else {
       const window = s.window!;
       // Good play seizes its own windows and defends composed when hunted;
-      // careless swings for the fences either way.
+      // careless/wrestleSpam swings for the fences either way.
       const choice = policy === 'good'
         ? (window.side === 'player' ? 'commit' : 'hold')
         : 'commit';
@@ -91,11 +112,24 @@ function playFight(init: FightState, policy: 'good' | 'careless'): FightState {
   return s;
 }
 
+function playFightWithMove(init: FightState, moveFunc: () => ExchangeMove): FightState {
+  let s = init;
+  let guard = 0;
+  while (s.phase !== 'finished') {
+    if (guard++ > 300) throw new Error('fight did not terminate');
+    if (s.phase === 'in-round') s = resolveExchange(s, moveFunc());
+    else if (s.phase === 'corner') s = chooseGamePlan(s, 'push-pace');
+    else if (s.phase === 'ground') s = resolveGround(s, goodGround(s));
+    else { s = finishStep(s, 'commit'); }
+  }
+  return s;
+}
+
 const SEEDS = 300;
 
 interface Band { winRate: number; finishRate: number; }
 
-function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
+function simulate(fightNumber: number, policy: 'good' | 'careless' | 'wrestleSpam'): Band {
   let wins = 0;
   let finishes = 0;
   for (let i = 0; i < SEEDS; i++) {
@@ -110,6 +144,23 @@ function simulate(fightNumber: number, policy: 'good' | 'careless'): Band {
     }
   }
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
+}
+
+function simulateSpam(fightNumber: number, moveFunc: () => ExchangeMove): Band {
+  let wins = 0; let finishes = 0;
+  for (let i = 0; i < SEEDS; i++) {
+    const seed = `balance#spam#${i}`;
+    const opponent = generateOpponent(seed, fightNumber);
+    const s0 = startFight({ seed, fightNumber, playerStatLine: PLAYER, opponent });
+    const done = playFightWithMove(s0, moveFunc);
+    const outcome = done.outcome!;
+    if (outcome.winner === 'player') { wins++; if (outcome.method !== 'decision') finishes++; }
+  }
+  return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
+}
+
+function aggWinRate(bands: Band[]): number {
+  return bands.slice(1).reduce((sum, b) => sum + b.winRate, 0) / 10;
 }
 
 // ── M15 T7: BANDs re-derived on the multi-exchange engine + strike palette ──
@@ -159,9 +210,44 @@ const RAMP_BUFFER = 0.12;
 describe('combat balance bands', () => {
   const good: Band[] = [];
   const careless: Band[] = [];
+  const wrestleSpam: Band[] = [];
   for (let fn = 1; fn <= 10; fn++) {
     good[fn] = simulate(fn, 'good');
     careless[fn] = simulate(fn, 'careless');
+    wrestleSpam[fn] = simulate(fn, 'wrestleSpam');
+  }
+
+  // 4-type spam simulations for honest B7 gate (Fix C).
+  const singleLegSpam: Band[] = [];
+  const doubleLegSpam: Band[] = [];
+  const tripSpam: Band[] = [];
+  const bodyLockSpam: Band[] = [];
+  for (let fn = 1; fn <= 10; fn++) {
+    singleLegSpam[fn] = simulateSpam(fn, singleLegSpamMove);
+    doubleLegSpam[fn] = simulateSpam(fn, doubleLegSpamMove);
+    tripSpam[fn]      = simulateSpam(fn, tripSpamMove);
+    bodyLockSpam[fn]  = simulateSpam(fn, bodyLockSpamMove);
+  }
+
+  // Print the full measured table for inspection and commit body.
+  for (let fn = 1; fn <= 10; fn++) {
+    const g = good[fn]; const c = careless[fn]; const w = wrestleSpam[fn];
+    console.log(
+      `fight ${String(fn).padStart(2)}: ` +
+      `good wR=${g.winRate.toFixed(4)} fR=${g.finishRate.toFixed(4)} | ` +
+      `careless wR=${c.winRate.toFixed(4)} fR=${c.finishRate.toFixed(4)} | ` +
+      `wrestleSpam wR=${w.winRate.toFixed(4)} fR=${w.finishRate.toFixed(4)} | ` +
+      `gap=${(g.winRate - c.winRate).toFixed(4)}`
+    );
+  }
+  console.log(`AGG good finishRate = ${(good.slice(1).reduce((s, b) => s + b.finishRate, 0) / 10).toFixed(4)}`);
+  console.log(`AGG good winRate = ${aggWinRate(good).toFixed(4)}, AGG wrestleSpam winRate = ${aggWinRate(wrestleSpam).toFixed(4)}`);
+  for (let fn = 9; fn <= 10; fn++) {
+    console.log(
+      `spam@${fn}: sl=${singleLegSpam[fn].winRate.toFixed(4)} dl=${doubleLegSpam[fn].winRate.toFixed(4)} ` +
+      `trip=${tripSpam[fn].winRate.toFixed(4)} bl=${bodyLockSpam[fn].winRate.toFixed(4)} ` +
+      `MAX=${Math.max(singleLegSpam[fn].winRate, doubleLegSpam[fn].winRate, tripSpam[fn].winRate, bodyLockSpam[fn].winRate).toFixed(4)}`
+    );
   }
 
   it('BAND 1 — finishes happen: aggregate good finish rate >= 0.55', () => {
@@ -216,5 +302,19 @@ describe('combat balance bands', () => {
     const DIPTIER2TO3_CARELESS = 0.36; // measured +0.3100 + ~0.05 buffer
     expect(good[3].winRate - good[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_GOOD);
     expect(careless[3].winRate - careless[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_CARELESS);
+  });
+
+  it('BAND 7 — ground-spam exploit is dead: MAX single-type spam late ceiling and aggregate cap', () => {
+    // Probe ALL FOUR takedown types — cannot game the gate by nerfing only one type.
+    const GROUND_SPAM_CEILING_LATE = CARELESS_CEILING_LATE; // 0.42 — NOT a looser constant
+    const maxSpam9 = Math.max(singleLegSpam[9].winRate, doubleLegSpam[9].winRate, tripSpam[9].winRate, bodyLockSpam[9].winRate);
+    const maxSpam10 = Math.max(singleLegSpam[10].winRate, doubleLegSpam[10].winRate, tripSpam[10].winRate, bodyLockSpam[10].winRate);
+    expect(maxSpam9).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    expect(maxSpam10).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    // B7b: ground spam aggregate must not dominate balanced good play.
+    const aggMaxSpam = [singleLegSpam, doubleLegSpam, tripSpam, bodyLockSpam]
+      .map(bands => bands.slice(1).reduce((s, b) => s + b.winRate, 0) / 10)
+      .reduce((a, b) => Math.max(a, b));
+    expect(aggMaxSpam).toBeLessThanOrEqual(aggWinRate(good) + 0.05);
   });
 });

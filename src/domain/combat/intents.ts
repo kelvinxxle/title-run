@@ -4,6 +4,7 @@ export type Target = 'head' | 'body';
 export type Phase = 'strike' | 'wrestle';
 
 import type { StrikeId } from './strikes';
+import type { TakedownType } from './takedown';
 
 export type RoundIntent =
   | { kind: 'strike'; target: Target; tactic: StrikeTactic }
@@ -42,7 +43,7 @@ export const GAME_PLAN_BLURBS: Record<GamePlan,string> = {
 
 export type ExchangeMove =
   | { kind: 'strike'; strike: StrikeId }
-  | { kind: 'takedown' };
+  | { kind: 'takedown'; takedownType: TakedownType };
 
 export const MOVE_KIND_LABELS: Record<'strike' | 'takedown', string> = {
   strike: 'Strike',

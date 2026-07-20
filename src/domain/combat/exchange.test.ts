@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { startFight, type FightState } from './fightState';
 import { resolveExchange, EXCHANGES_PER_ROUND } from './exchange';
+import { resolveGround } from './groundResolve';
 import type { ExchangeMove } from './intents';
 import type { StatLine } from './stats';
 
@@ -90,16 +91,19 @@ describe('resolveExchange', () => {
     expect(() => resolveExchange(cornerish, jab)).toThrow(/in-round/);
   });
 
-  it('a winning takedown opens the player ground-window (interim), freezing the round', () => {
-    // takedowns: 99 vs takedownDef: 55 → playerAttackScore ≈ 124 − 55 = 69; even with
-    // worst-case oppAttackScore (~11) and seededSwing (−12) dominance > 40 — always positive.
+  it('a winning takedown enters the ground phase at the landed position', () => {
+    // takedowns: 99 vs takedownDef: 55 → playerAttackScore ≈ 99×atkMult − 55; with atkMult=0.85
+    // playerAttackScore ≈ 29. takedownCheck = playerAtk + IQ + swing ≈ 29+IQ-12 > 0 — always positive.
+    // double-leg landsAt: 'half-guard' per TAKEDOWN_PROFILES.
     const wrestler: StatLine = { ...P, takedowns: 99, striking: 40 };
     const s = startFight({ seed: 'td-seed', fightNumber: 1, playerStatLine: wrestler, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
-    const td: ExchangeMove = { kind: 'takedown' };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
     const r = resolveExchange(s, td);
-    expect(r.phase).toBe('ground-window');
-    expect(r.window).toEqual({ side: 'player', method: 'ground', stepsLeft: expect.any(Number) });
-    expect(r.round).toBe(1); // frozen
+    expect(r.phase).toBe('ground');
+    expect(r.ground).not.toBeNull();
+    expect(r.ground!.position).toBe('half-guard');
+    expect(r.window).toBeNull();
+    expect(r.round).toBe(1); // exchange advanced, not a new round
   });
 
   it('leg damage accrues on a winning leg kick and lowers the loser mobility story', () => {
@@ -171,5 +175,119 @@ describe('resolveExchange', () => {
     expect(planned.opponent.headDamage).toBe(0);
     expect(control.opponent.stamina - planned.opponent.stamina)
       .toBe(Math.round(planned.opponent.bodyDamage * 0.5)); // BODY_TO_STAMINA = 0.5
+  });
+
+  // ── Fix A: takedown outcome consistency ──────────────────────────────────────────
+  it('a landed takedown (tc>0, dom<0) logs player win with positive dominance', () => {
+    // player.takedowns=90, opp.takedownDef=30: takedownCheck ≫ 0 always.
+    // opp.striking=99, player.strikingDef=1: oppAttackScore ≫ playerAttackScore → dominance < 0 always.
+    const tdPlayer: StatLine = { ...P, takedowns: 90, strikingDef: 1 };
+    const s = startFight({ seed: 'tc-pos-dom-neg', fightNumber: 1, playerStatLine: tdPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 30, striking: 99 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).toBe('ground');
+    const lastLog = r.log[r.log.length - 1]!;
+    expect(lastLog.winner).toBe('player');
+    expect(lastLog.dominance).toBeGreaterThan(0);
+    expect(r.player.roundScore).toBeGreaterThan(0);
+  });
+
+  it('a stuffed takedown (tc<=0, dom>0) deals no head damage to opponent', () => {
+    // player.takedowns=20, opp.takedownDef=99: takedownCheck ≪ 0 always (shot always fails).
+    // opp.striking=5, player.strikingDef=99: oppAttackScore ≪ 0 → dominance > 0 always.
+    const weakWrestler: StatLine = { ...P, takedowns: 20, strikingDef: 99 };
+    const s = startFight({ seed: 'tc-neg-dom-pos', fightNumber: 1, playerStatLine: weakWrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 5 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');
+    expect(r.opponent.headDamage).toBe(0);       // stuffed shot must never damage opponent head
+    expect(r.player.stamina).toBeLessThan(s.player.stamina); // stamina cost paid
+  });
+
+  // ── Fix D: whiff (tc<=0, dom>0) must log a draw at dominance 0 ─────────────
+  it('a stuffed whiff (tc<=0, dom>0) reports draw/0 in log — no score change, no opponent damage', () => {
+    // Guarantees: player.takedowns=20, opp.takedownDef=99 → tc ≤ −60 < 0 (always stuffed).
+    // player.fightIQ=99, opp.fightIQ=1 → IQ=9.8. player.strikingDef=99, player.takedownDef=99,
+    // opp.striking=1, opp.takedowns=1 → oppAttackScore ≤ −79 whatever the AI picks →
+    // dominance = tc − oppAttackScore ≥ 13.76 > 0 (always whiff, never counter).
+    const whiffPlayer: StatLine = { ...P, takedowns: 20, fightIQ: 99, strikingDef: 99, takedownDef: 99 };
+    const s = startFight({ seed: 'whiff-draw', fightNumber: 1, playerStatLine: whiffPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 1, takedowns: 1, fightIQ: 1 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');                           // shot was stuffed
+    expect(r.opponent.headDamage).toBe(s.opponent.headDamage);   // no damage
+    expect(r.opponent.bodyDamage).toBe(s.opponent.bodyDamage);
+    expect(r.opponent.legDamage).toBe(s.opponent.legDamage);
+    expect(r.player.roundScore).toBe(s.player.roundScore);        // no score
+    expect(r.opponent.roundScore).toBe(s.opponent.roundScore);
+    const lastLog = r.log[r.log.length - 1]!;
+    expect(lastLog.winner).toBe('draw');     // must be draw, not 'player'
+    expect(lastLog.dominance).toBe(0);       // resolved dominance 0, not raw positive
+  });
+
+  it('a stuffed takedown (tc<=0, dom<0) applies opponent counter damage to player', () => {
+    // player.takedowns=20, opp.takedownDef=99: takedownCheck ≪ 0 always.
+    // opp.striking=99, player.strikingDef=1: dominance < 0 always → opponent counter lands.
+    const weakWrestler2: StatLine = { ...P, takedowns: 20, strikingDef: 1 };
+    const s = startFight({ seed: 'tc-neg-dom-neg', fightNumber: 1, playerStatLine: weakWrestler2,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 99 } } });
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(s, td);
+    expect(r.phase).not.toBe('ground');
+    // Opponent counter landed → player takes some damage (head or body)
+    const playerDmg = r.player.headDamage + r.player.bodyDamage + r.player.legDamage;
+    expect(playerDmg).toBeGreaterThan(0);
+  });
+
+  // ── Fix B: gamePlan preserved through ground phase ──────────────────────────
+
+  it('gamePlan is preserved when a takedown enters the ground phase', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99 };
+    const s = startFight({ seed: 'plan-ground', fightNumber: 1, playerStatLine: wrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 10 } } });
+    const sWithPlan = { ...s, gamePlan: 'push-pace' as const };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const r = resolveExchange(sWithPlan, td);
+    expect(r.phase).toBe('ground');
+    expect(r.gamePlan).toBe('push-pace'); // was null before Fix B
+  });
+
+  it('push-pace staminaDelta applied when ground beats carry to round boundary', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99, cardio: 50 };
+    const weakOpp = { id: 'o', name: 'Foe', archetype: 'striker' as const,
+      statLine: { ...O, takedownDef: 10, chin: 600, striking: 1 } };
+    const s0WithPlan = { ...startFight({ seed: 'plan-rb', fightNumber: 1, playerStatLine: wrestler, opponent: weakOpp }), gamePlan: 'push-pace' as const };
+    const s0NoPlan = startFight({ seed: 'plan-rb', fightNumber: 1, playerStatLine: wrestler, opponent: weakOpp });
+
+    function playToCorner(init: FightState): FightState {
+      let s = init;
+      let guard = 0;
+      while (s.phase !== 'corner' && s.phase !== 'finished') {
+        if (guard++ > 50) throw new Error('did not reach corner');
+        if (s.phase === 'in-round') s = resolveExchange(s, { kind: 'takedown', takedownType: 'double-leg' });
+        else if (s.phase === 'ground') s = resolveGround(s, 'ground-and-pound');
+        else break;
+      }
+      return s;
+    }
+
+    const withPlan = playToCorner(s0WithPlan);
+    const noPlan = playToCorner(s0NoPlan);
+    // push-pace: staminaDelta=−6 applied at round boundary → lower stamina
+    expect(withPlan.player.stamina).toBeLessThan(noPlan.player.stamina);
+  });
+
+  it('gamePlan persists in ground phase state (enabling correct post-escape plan propagation)', () => {
+    const wrestler: StatLine = { ...P, takedowns: 99 };
+    const s0 = startFight({ seed: 'escape-plan', fightNumber: 1, playerStatLine: wrestler,
+      opponent: { id: 'o', name: 'Foe', archetype: 'wrestler', statLine: { ...O, takedownDef: 10 } } });
+    const sWithPlan = { ...s0, gamePlan: 'catch-breath' as const };
+    const td: ExchangeMove = { kind: 'takedown', takedownType: 'double-leg' };
+    const ground = resolveExchange(sWithPlan, td);
+    expect(ground.phase).toBe('ground');
+    expect(ground.gamePlan).toBe('catch-breath'); // plan preserved after entry
   });
 });
