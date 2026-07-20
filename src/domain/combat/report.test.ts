@@ -140,6 +140,35 @@ describe('buildRoundReport', () => {
     });
     expect(report.detail.toLowerCase()).toContain('signature');
   });
+
+  it('FIX C RED: opponent-winning signature exchange must NOT use the KO flavor as headline', () => {
+    // When the opponent wins (winner='opponent'), the signature flavor line should NOT appear.
+    // Bug: signatureFlavor is used regardless of winner — the KO flavor is printed even when you lost.
+    // Fix: only use signatureFlavor when winner === 'player'.
+    const report = buildRoundReport({
+      ...base,
+      winner: 'opponent',
+      dominance: -20,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: "THAT LEFT HAND — lights go out!",
+      playerHeadDelta: 15,
+      opponentHeadDelta: 0,
+    });
+    expect(report.headline).not.toBe("THAT LEFT HAND — lights go out!");
+  });
+
+  it('FIX C RED: opponent-winning signature detail must not say "SIGNATURE LANDS"', () => {
+    const report = buildRoundReport({
+      ...base,
+      winner: 'opponent',
+      dominance: -25,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: 'BOOMING shot!',
+      playerHeadDelta: 20,
+      opponentHeadDelta: 0,
+    });
+    expect(report.detail.toUpperCase()).not.toContain('SIGNATURE LANDS');
+  });
 });
 
 import { buildGroundReport } from './report';
