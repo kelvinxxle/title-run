@@ -165,9 +165,11 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       state.player.statLine[PHASE_OFFENSE['strike']] * pEffort * sigMove.atkMult * plan.atkMult -
       state.opponent.statLine[PHASE_DEFENSE['strike']] * oEffort * defMult(oppMove, 'strike');
     const oPhase = movePhase(oppMove);
+    // FIX A: defMult(_, 'wrestle') always returns 1.0 — apply sigMove.defMult only for strike counters.
+    const sigCounterDefMult = oPhase === 'wrestle' ? 1.0 : sigMove.defMult;
     const oppAttackScore =
       state.opponent.statLine[PHASE_OFFENSE[oPhase]] * oEffort * atkMult(oppMove) -
-      state.player.statLine[PHASE_DEFENSE[oPhase]] * pEffort * sigMove.defMult * plan.defMult;
+      state.player.statLine[PHASE_DEFENSE[oPhase]] * pEffort * sigCounterDefMult * plan.defMult;
 
     const IQ = (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR;
     const dominance = playerAttackScore - oppAttackScore + IQ + seededSwing;
@@ -182,15 +184,57 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       : oppMove.kind === 'takedown' ? TAKEDOWN_PROFILES[oppMove.takedownType].cost
       : 0;
 
+    // FIX A: opponent takedown during signature → route through the SAME ground handler as the normal
+    // path (submission window or GnP + crossRoundBoundary). Never apply generic head damage for a takedown.
+    if (dominance < 0 && oppMove.kind === 'takedown') {
+      const oppScoreAfter = state.opponent.roundScore + 1 + margin;
+      const pBase: Fighter2 = p; // signature staminaCost = 0; player stamina unchanged.
+      const oBase: Opp = { ...o, stamina: clampStamina(o.stamina - oCost), roundScore: oppScoreAfter };
+      const tdLogEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner, dominance };
+
+      const oppPlan = chooseGroundPlan(state.player.statLine);
+      if (oppPlan === 'submission') {
+        const report = makeReport(state.round, 'opponent', dominance, playerMove, oppMove, state, pBase, oBase);
+        return {
+          ...state, phase: 'finish-window',
+          window: { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS },
+          gamePlan: null, lastReport: report,
+          player: pBase, opponent: oBase,
+          log: [...state.log, tdLogEntry], signatureCharge: 0,
+        };
+      }
+
+      const gpDmg = groundAndPoundDamage(state.opponent.statLine, state.player.statLine);
+      const preHead = state.player.headDamage;
+      const postHead = preHead + gpDmg;
+      const rocked = ROCKED_HEAD_DMG(state.player.statLine.chin);
+      const pGnp: Fighter2 = { ...pBase, headDamage: postHead };
+      const gnpReport = makeReport(state.round, 'opponent', dominance, playerMove, oppMove, state, pGnp, oBase);
+
+      if (preHead < rocked && postHead >= rocked) {
+        return {
+          ...state, phase: 'finish-window',
+          window: { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS },
+          gamePlan: null, lastReport: gnpReport,
+          player: pGnp, opponent: oBase,
+          log: [...state.log, tdLogEntry], signatureCharge: 0,
+        };
+      }
+
+      return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, tdLogEntry]), lastReport: gnpReport, signatureCharge: 0 };
+    }
+
     if (dominance > 0) {
       const dmg = Math.round(Math.abs(dominance) * DMG_FACTOR * sigMove.power);
       o.headDamage += dmg; // signature always targets head
       p.roundScore += 1 + margin;
     } else if (dominance < 0) {
+      // Strike counter (oppMove.kind === 'strike' guaranteed; takedown was handled above)
       const cPower = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].power : 1;
       const cTarget = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : 'head';
       const cDmg = Math.round(Math.abs(dominance) * DMG_FACTOR * cPower);
-      if (cTarget === 'body') { p.bodyDamage += cDmg; p.stamina -= Math.round(cDmg * BODY_TO_STAMINA); }
+      // FIX A: clamp player stamina after body counter (was missing, could go negative)
+      if (cTarget === 'body') { p.bodyDamage += cDmg; p.stamina = clampStamina(p.stamina - Math.round(cDmg * BODY_TO_STAMINA)); }
       else if (cTarget === 'legs') { p.legDamage += cDmg; }
       else { p.headDamage += cDmg; }
       o.roundScore += 1 + margin;
@@ -287,11 +331,9 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
   const margin = Math.floor(Math.abs(dominance) / 10);
   const winner: 'player' | 'opponent' | 'draw' = dominance > 0 ? 'player' : dominance < 0 ? 'opponent' : 'draw';
 
-  // ── M17: Charge accrual — only when player wins the beat ──────────────────
-  const chargeGain = winner === 'player'
-    ? Math.min(100 - state.signatureCharge, Math.round(SIGNATURE_CHARGE_GAIN + SIGNATURE_CHARGE_DOM * dominance))
-    : 0;
-  const newSignatureCharge = state.signatureCharge + chargeGain;
+  // ── M17: Charge accrual — computed per-branch from the branch's actual winner ──
+  // FIX B: the up-front winner (from raw dominance) is wrong for takedowns where takedownCheck
+  // diverges from dominance. Charge is now computed inside each branch.
 
   const logEntry: RoundLogEntry = {
     round: state.round,
@@ -312,10 +354,13 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const report = makeReport(state.round, 'player', takedownCheck!, playerMove, oppMove, state, p, o);
     const nextExchange = state.exchange + 1;
     const logNow = [...state.log, tdLogEntry];
+    // FIX B: charge uses the actual takedownCheck (the authoritative winner for this branch), not raw dominance.
+    const tdChargeGain = Math.min(100 - state.signatureCharge, Math.round(SIGNATURE_CHARGE_GAIN + SIGNATURE_CHARGE_DOM * takedownCheck!));
+    const tdSignatureCharge = state.signatureCharge + tdChargeGain;
     // The shot consumed this beat. If it was the last beat, the takedown still SCORES
     // but there are no ground beats this round → cross the round boundary (recovery applied).
     if (nextExchange > EXCHANGES_PER_ROUND) {
-      return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: newSignatureCharge };
+      return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: tdSignatureCharge };
     }
     // Otherwise enter the ground phase at the landed position; ground beats share the beat budget.
     return {
@@ -329,7 +374,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       player: p,
       opponent: o,
       log: logNow,
-      signatureCharge: newSignatureCharge,
+      signatureCharge: tdSignatureCharge,
     };
   }
 
@@ -352,7 +397,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         player: pBase,
         opponent: oBase,
         log: [...state.log, logEntry],
-        signatureCharge: newSignatureCharge,
+        signatureCharge: state.signatureCharge, // FIX B: opponent wins → no charge
       };
     }
 
@@ -375,12 +420,12 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         player: pGnp,
         opponent: oBase,
         log: [...state.log, logEntry],
-        signatureCharge: newSignatureCharge,
+        signatureCharge: state.signatureCharge, // FIX B: opponent wins → no charge
       };
     }
 
     // No rock → partial damage; advance the round (round-boundary stamina applied).
-    return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge: newSignatureCharge };
+    return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge: state.signatureCharge }; // FIX B
   }
 
   // ── Player takedown stuffed (takedownCheck ≤ 0): failed shot — never enters ground, never deals strike damage ──
@@ -424,14 +469,16 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         opponentIntent: oppMove,
       });
       if (fw) {
-        return { ...state, player: p, opponent: o, log: logNow, lastReport: report, phase: 'finish-window', window: fw, gamePlan: null, signatureCharge: newSignatureCharge };
+        // FIX B: stuffed shot → no charge regardless of raw dominance direction
+        return { ...state, player: p, opponent: o, log: logNow, lastReport: report, phase: 'finish-window', window: fw, gamePlan: null, signatureCharge: state.signatureCharge };
       }
     }
 
     if (state.exchange < EXCHANGES_PER_ROUND) {
-      return { ...state, player: p, opponent: o, log: logNow, lastReport: report, exchange: state.exchange + 1, signatureCharge: newSignatureCharge };
+      // FIX B: stuffed shot → no charge regardless of raw dominance direction
+      return { ...state, player: p, opponent: o, log: logNow, lastReport: report, exchange: state.exchange + 1, signatureCharge: state.signatureCharge };
     }
-    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: newSignatureCharge };
+    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: state.signatureCharge }; // FIX B
   }
 
   // ── Strike exchange (playerMove.kind === 'strike' is guaranteed here) ──
@@ -460,6 +507,12 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
   // Per-beat stamina COST only (no recovery mid-round).
   p.stamina = clampStamina(p.stamina - pCost);
   o.stamina = clampStamina(o.stamina - oCost);
+
+  // FIX B: charge from strike win — use actual dominance for this branch (correct here since no takedownCheck divergence).
+  const chargeGain = dominance > 0
+    ? Math.min(100 - state.signatureCharge, Math.round(SIGNATURE_CHARGE_GAIN + SIGNATURE_CHARGE_DOM * dominance))
+    : 0;
+  const newSignatureCharge = state.signatureCharge + chargeGain;
 
   const report = makeReport(state.round, winner, dominance, playerMove, oppMove, state, p, o);
 

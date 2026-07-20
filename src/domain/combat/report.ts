@@ -44,8 +44,9 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
   } = input;
 
   let headline: string;
-  // M17: signature detonation always uses the move's flavor as the headline.
-  if (signatureFlavor && playerIntent.kind === 'signature') {
+  // M17: signature detonation uses the move's flavor as the headline — but ONLY when the player wins.
+  // FIX C: if the opponent counter wins the exchange, narrate that normally (not with KO flavor).
+  if (signatureFlavor && playerIntent.kind === 'signature' && winner === 'player') {
     headline = signatureFlavor;
   } else if (opponentBecameRocked) {
     headline = "You've got him HURT!";
@@ -76,7 +77,8 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
   }
 
   let detail: string;
-  if (playerIntent.kind === 'signature') {
+  // FIX C: only show signature detail when the player's attack landed (player wins the exchange).
+  if (playerIntent.kind === 'signature' && winner === 'player') {
     detail = opponentHeadDelta >= 15
       ? `SIGNATURE LANDS — ${opponentHeadDelta} damage to the head!`
       : 'Signature connects — reset and build again.';
