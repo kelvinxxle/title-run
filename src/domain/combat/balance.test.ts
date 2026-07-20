@@ -29,6 +29,7 @@ import type { GroundAction } from './ground';
 const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 
 function goodIntent(s: FightState): ExchangeMove {
+  if (signatureReady(s)) return { kind: 'signature' };
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
   // Shoot only when wrestling is the clear edge AND dominates striking.
@@ -166,25 +167,24 @@ function aggWinRate(bands: Band[]): number {
   return bands.slice(1).reduce((sum, b) => sum + b.winRate, 0) / 10;
 }
 
-// ── M17 T6: BANDs re-measured with signature-aware policies (careless + all spam throw when ready) ──
+// ── FIX-E re-measured: all policies (careless, wrestleSpam, goodIntent) use signature when ready ──
 // Measured across 300 seeds, fightNumbers 1..10, SIGNATURE_CHARGE_GAIN=18, SIGNATURE_CHARGE_DOM=0.15.
-// All 7 bands pass without needing to weaken any constant.
+// All 7 bands pass without needing to weaken any constant or tune signature knobs.
 //   fight  1: good wR=0.9867 fR=0.9867 | careless wR=0.4300 fR=0.2600 | wrestleSpam wR=0.9967 fR=0.9967 | gap=0.5567
-//   fight  2: good wR=0.6967 fR=0.6633 | careless wR=0.3067 fR=0.2833 | wrestleSpam wR=0.8033 fR=0.7867 | gap=0.3900
+//   fight  2: good wR=0.6967 fR=0.6667 | careless wR=0.3067 fR=0.2833 | wrestleSpam wR=0.8033 fR=0.7800 | gap=0.3900
 //   fight  3: good wR=0.8367 fR=0.8133 | careless wR=0.6567 fR=0.5900 | wrestleSpam wR=0.8633 fR=0.8433 | gap=0.1800
-//   fight  4: good wR=0.7333 fR=0.6433 | careless wR=0.5600 fR=0.4500 | wrestleSpam wR=0.5467 fR=0.5267 | gap=0.1733
-//   fight  5: good wR=0.4700 fR=0.4633 | careless wR=0.3633 fR=0.3600 | wrestleSpam wR=0.4267 fR=0.4267 | gap=0.1067
-//   fight  6: good wR=0.5033 fR=0.4933 | careless wR=0.3233 fR=0.3200 | wrestleSpam wR=0.3833 fR=0.3800 | gap=0.1800
-//   fight  7: good wR=0.4767 fR=0.4767 | careless wR=0.3500 fR=0.3500 | wrestleSpam wR=0.3567 fR=0.3533 | gap=0.1267
-//   fight  8: good wR=0.4967 fR=0.4900 | careless wR=0.2967 fR=0.2967 | wrestleSpam wR=0.3033 fR=0.3033 | gap=0.2000
-//   fight  9: good wR=0.4600 fR=0.4600 | careless wR=0.3367 fR=0.3300 | wrestleSpam wR=0.4067 fR=0.4067 | gap=0.1233
-//   fight 10: good wR=0.5200 fR=0.5167 | careless wR=0.2933 fR=0.2933 | wrestleSpam wR=0.3900 fR=0.3900 | gap=0.2267
-//   AGG good finishRate = 0.6007 | AGG good winRate = 0.6180 | AGG wrestleSpam winRate = 0.5477
-//   spam@9: sl=0.3233 dl=0.3800 trip=0.3467 bl=0.2500 MAX=0.3800
-//   spam@10: sl=0.3800 dl=0.4033 trip=0.3933 bl=0.2700 MAX=0.4033
-// Signature knobs (SIGNATURE_CHARGE_GAIN=18, SIGNATURE_CHARGE_DOM=0.15) are balanced:
-//   careless gets the signature detonation but still sits well below the 0.42 ceiling at fights 9-10.
-//   Maximum single-type spam@10 = 0.4033, just under the 0.42 ceiling.
+//   fight  4: good wR=0.7400 fR=0.6533 | careless wR=0.5600 fR=0.4500 | wrestleSpam wR=0.5433 fR=0.5233 | gap=0.1800
+//   fight  5: good wR=0.4733 fR=0.4667 | careless wR=0.3633 fR=0.3600 | wrestleSpam wR=0.4233 fR=0.4233 | gap=0.1100
+//   fight  6: good wR=0.5100 fR=0.5067 | careless wR=0.3233 fR=0.3200 | wrestleSpam wR=0.3833 fR=0.3833 | gap=0.1867
+//   fight  7: good wR=0.4867 fR=0.4867 | careless wR=0.3500 fR=0.3500 | wrestleSpam wR=0.3533 fR=0.3533 | gap=0.1367
+//   fight  8: good wR=0.5033 fR=0.4967 | careless wR=0.2967 fR=0.2967 | wrestleSpam wR=0.3000 fR=0.3000 | gap=0.2067
+//   fight  9: good wR=0.4700 fR=0.4700 | careless wR=0.3367 fR=0.3300 | wrestleSpam wR=0.4033 fR=0.4033 | gap=0.1333
+//   fight 10: good wR=0.5333 fR=0.5300 | careless wR=0.2933 fR=0.2933 | wrestleSpam wR=0.3900 fR=0.3900 | gap=0.2400
+//   AGG good finishRate = 0.6077 | AGG good winRate = 0.6237 | AGG wrestleSpam winRate = 0.5460
+//   spam@9: sl=0.3133 dl=0.3800 trip=0.3467 bl=0.2500 MAX=0.3800
+//   spam@10: sl=0.3600 dl=0.4067 trip=0.3867 bl=0.2700 MAX=0.4067
+// Signature knobs (SIGNATURE_CHARGE_GAIN=18, SIGNATURE_CHARGE_DOM=0.15) unchanged:
+//   goodIntent getting the signature raised good wR/fR slightly — all bands still comfortable.
 
 /** BAND 1 — finishes happen: aggregate good finish rate derived floor.
  *  Derived floor: M17 measured 0.6007 − ~0.05 buffer. Plan floor 0.30 (well above). */
@@ -222,6 +222,12 @@ describe('M17 T6: policies use signature when ready', () => {
     const s0 = startFight({ seed: 'sig-spam', fightNumber: 1, playerStatLine: PLAYER, opponent: generateOpponent('sig-spam', 1), signatureId: 'check-hook' });
     const readyState = { ...s0, signatureCharge: 100 };
     expect(wrestleSpamMove(readyState)).toEqual({ kind: 'signature' });
+  });
+
+  it('M17 FIX-E RED: goodIntent uses signature when signatureCharge = 100', () => {
+    const s0 = startFight({ seed: 'sig-good', fightNumber: 1, playerStatLine: PLAYER, opponent: generateOpponent('sig-good', 1), signatureId: 'check-hook' });
+    const readyState = { ...s0, signatureCharge: 100 };
+    expect(goodIntent(readyState)).toEqual({ kind: 'signature' });
   });
 });
 
