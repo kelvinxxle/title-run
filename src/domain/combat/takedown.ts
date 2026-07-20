@@ -12,15 +12,19 @@ export interface TakedownProfile {
   landsAt: GroundPosition;
 }
 
-// TUNED IN T8b: double-leg atkMult lowered to make blind shots into elite TDD genuinely contested.
-// At atkMult=0.85: GSP takedowns=90, 90×0.85=76.5 vs fight-9 TDD=82 → shots stuffed ~73% of the time.
-// wrestleSpam (always shoots) gets punished; goodIntent (only shoots when wrestleEdge > 0 AND >
-// strikeEdge) spares the 30% of seeds where striking is the better bet.
-// Risk/reward order preserved: easier shot → weaker position; harder shot → better position.
+// Fix C: De-dominated monotonic frontier (no type is Pareto-dominated).
+// Each pair: one type wins on at least one axis; no type wins on ALL THREE.
+//   single-leg(0.87,12,guard)  vs double-leg(0.84,17,hg):   sl wins atkMult+cost; dl wins position.
+//   single-leg(0.87,12,guard)  vs trip(0.83,18,sc):         sl wins atkMult+cost; trip wins position.
+//   single-leg(0.87,12,guard)  vs body-lock(0.80,18,mount): sl wins atkMult+cost; bl wins position.
+//   double-leg(0.84,17,hg)     vs trip(0.83,18,sc):         dl wins atkMult+cost; trip wins position.
+//   double-leg(0.84,17,hg)     vs body-lock(0.80,18,mount): dl wins atkMult+cost; bl wins position.
+//   trip(0.83,18,sc)           vs body-lock(0.80,18,mount): trip wins atkMult; tie cost; bl wins position.
+// Hard constraints: double-leg.cost===17 (takedown.test.ts:16); single-leg.atkMult>body-lock.atkMult.
 export const TAKEDOWN_PROFILES: Record<TakedownType, TakedownProfile> = {
-  'single-leg': { atkMult: 1.15, cost: 14, landsAt: 'guard' },
-  'double-leg': { atkMult: 0.85, cost: 17, landsAt: 'half-guard' },
-  'trip':       { atkMult: 0.90, cost: 12, landsAt: 'side-control' },
+  'single-leg': { atkMult: 0.87, cost: 12, landsAt: 'guard' },
+  'double-leg': { atkMult: 0.84, cost: 17, landsAt: 'half-guard' },
+  'trip':       { atkMult: 0.83, cost: 18, landsAt: 'side-control' },
   'body-lock':  { atkMult: 0.80, cost: 18, landsAt: 'mount' },
 };
 

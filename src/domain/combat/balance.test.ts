@@ -30,11 +30,14 @@ const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 function goodIntent(s: FightState): ExchangeMove {
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
-  // Shoot when the opponent's takedown defense is the weak point. Use trip (lands at
-  // side-control) for the smart selective shot; wrestleSpam uses double-leg always.
+  // Shoot only when wrestling is the clear edge AND dominates striking.
+  // wrestleEdge > 7 (i.e., edge ≥ 8): at tier-5, this selects TDD ≤ 82 opponents where
+  // P(land@trip=0.83) ≥ 26% — shots are net-positive despite the high cost=18.
+  // Opponents with edge ≤ 7 (TDD ≥ 83: Khabib/Jones) are too difficult: P(land) < 9%
+  // and every stuffed shot pays the cost + takes a counter → fall back to striking.
   const strikeEdge  = me.striking  - opp.strikingDef;
   const wrestleEdge = me.takedowns - opp.takedownDef;
-  if (wrestleEdge > strikeEdge && wrestleEdge > 0) {
+  if (wrestleEdge > strikeEdge && wrestleEdge > 7) {
     return { kind: 'takedown', takedownType: 'trip' };
   }
   // Otherwise strike and read the moment. Only load up on the head-hunting power
@@ -73,6 +76,12 @@ function wrestleSpamMove(): ExchangeMove {
   return { kind: 'takedown', takedownType: 'double-leg' };
 }
 
+// All 4 single-type spam policies for the honest B7 gate (Fix C).
+function singleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'single-leg' }; }
+function doubleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'double-leg' }; }
+function tripSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'trip' }; }
+function bodyLockSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'body-lock' }; }
+
 function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'): FightState {
   let s = init;
   let guard = 0;
@@ -103,6 +112,19 @@ function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'
   return s;
 }
 
+function playFightWithMove(init: FightState, moveFunc: () => ExchangeMove): FightState {
+  let s = init;
+  let guard = 0;
+  while (s.phase !== 'finished') {
+    if (guard++ > 300) throw new Error('fight did not terminate');
+    if (s.phase === 'in-round') s = resolveExchange(s, moveFunc());
+    else if (s.phase === 'corner') s = chooseGamePlan(s, 'push-pace');
+    else if (s.phase === 'ground') s = resolveGround(s, goodGround(s));
+    else { s = finishStep(s, 'commit'); }
+  }
+  return s;
+}
+
 const SEEDS = 300;
 
 interface Band { winRate: number; finishRate: number; }
@@ -120,6 +142,19 @@ function simulate(fightNumber: number, policy: 'good' | 'careless' | 'wrestleSpa
       wins++;
       if (outcome.method !== 'decision') finishes++;
     }
+  }
+  return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
+}
+
+function simulateSpam(fightNumber: number, moveFunc: () => ExchangeMove): Band {
+  let wins = 0; let finishes = 0;
+  for (let i = 0; i < SEEDS; i++) {
+    const seed = `balance#spam#${i}`;
+    const opponent = generateOpponent(seed, fightNumber);
+    const s0 = startFight({ seed, fightNumber, playerStatLine: PLAYER, opponent });
+    const done = playFightWithMove(s0, moveFunc);
+    const outcome = done.outcome!;
+    if (outcome.winner === 'player') { wins++; if (outcome.method !== 'decision') finishes++; }
   }
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
 }
@@ -182,6 +217,18 @@ describe('combat balance bands', () => {
     wrestleSpam[fn] = simulate(fn, 'wrestleSpam');
   }
 
+  // 4-type spam simulations for honest B7 gate (Fix C).
+  const singleLegSpam: Band[] = [];
+  const doubleLegSpam: Band[] = [];
+  const tripSpam: Band[] = [];
+  const bodyLockSpam: Band[] = [];
+  for (let fn = 1; fn <= 10; fn++) {
+    singleLegSpam[fn] = simulateSpam(fn, singleLegSpamMove);
+    doubleLegSpam[fn] = simulateSpam(fn, doubleLegSpamMove);
+    tripSpam[fn]      = simulateSpam(fn, tripSpamMove);
+    bodyLockSpam[fn]  = simulateSpam(fn, bodyLockSpamMove);
+  }
+
   // Print the full measured table for inspection and commit body.
   for (let fn = 1; fn <= 10; fn++) {
     const g = good[fn]; const c = careless[fn]; const w = wrestleSpam[fn];
@@ -195,6 +242,13 @@ describe('combat balance bands', () => {
   }
   console.log(`AGG good finishRate = ${(good.slice(1).reduce((s, b) => s + b.finishRate, 0) / 10).toFixed(4)}`);
   console.log(`AGG good winRate = ${aggWinRate(good).toFixed(4)}, AGG wrestleSpam winRate = ${aggWinRate(wrestleSpam).toFixed(4)}`);
+  for (let fn = 9; fn <= 10; fn++) {
+    console.log(
+      `spam@${fn}: sl=${singleLegSpam[fn].winRate.toFixed(4)} dl=${doubleLegSpam[fn].winRate.toFixed(4)} ` +
+      `trip=${tripSpam[fn].winRate.toFixed(4)} bl=${bodyLockSpam[fn].winRate.toFixed(4)} ` +
+      `MAX=${Math.max(singleLegSpam[fn].winRate, doubleLegSpam[fn].winRate, tripSpam[fn].winRate, bodyLockSpam[fn].winRate).toFixed(4)}`
+    );
+  }
 
   it('BAND 1 — finishes happen: aggregate good finish rate >= 0.55', () => {
     const totalFinishRate =
@@ -250,14 +304,17 @@ describe('combat balance bands', () => {
     expect(careless[3].winRate - careless[2].winRate).toBeLessThanOrEqual(DIPTIER2TO3_CARELESS);
   });
 
-  it('BAND 7 — ground-spam exploit is dead: wrestleSpam late ceiling and aggregate cap', () => {
-    // B7a: ground spam vs champions is NOT an exploit — same inviolable ceiling as head-hunt spam.
-    // B7b: ground spam does not strictly dominate balanced good play in aggregate.
-    // GROUND_SPAM_CEILING_LATE is CARELESS_CEILING_LATE (0.42) — NOT a looser constant.
-    // Fix C (re-tune profiles + honest 4-type probe) will expand this to the full honest gate.
-    const GROUND_SPAM_CEILING_LATE = CARELESS_CEILING_LATE; // 0.42 — inviolable
-    expect(wrestleSpam[9].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
-    expect(wrestleSpam[10].winRate).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
-    expect(aggWinRate(wrestleSpam)).toBeLessThanOrEqual(aggWinRate(good) + 0.05);
+  it('BAND 7 — ground-spam exploit is dead: MAX single-type spam late ceiling and aggregate cap', () => {
+    // Probe ALL FOUR takedown types — cannot game the gate by nerfing only one type.
+    const GROUND_SPAM_CEILING_LATE = CARELESS_CEILING_LATE; // 0.42 — NOT a looser constant
+    const maxSpam9 = Math.max(singleLegSpam[9].winRate, doubleLegSpam[9].winRate, tripSpam[9].winRate, bodyLockSpam[9].winRate);
+    const maxSpam10 = Math.max(singleLegSpam[10].winRate, doubleLegSpam[10].winRate, tripSpam[10].winRate, bodyLockSpam[10].winRate);
+    expect(maxSpam9).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    expect(maxSpam10).toBeLessThanOrEqual(GROUND_SPAM_CEILING_LATE);
+    // B7b: ground spam aggregate must not dominate balanced good play.
+    const aggMaxSpam = [singleLegSpam, doubleLegSpam, tripSpam, bodyLockSpam]
+      .map(bands => bands.slice(1).reduce((s, b) => s + b.winRate, 0) / 10)
+      .reduce((a, b) => Math.max(a, b));
+    expect(aggMaxSpam).toBeLessThanOrEqual(aggWinRate(good) + 0.05);
   });
 });
