@@ -64,8 +64,7 @@ describe('signatures', () => {
       expect(typeof move.atkMult).toBe('number');
       expect(typeof move.defMult).toBe('number');
       expect(typeof move.power).toBe('number');
-      expect(typeof move.koWeight).toBe('number');
-      expect(typeof move.speed).toBe('number');
+      // speed and koWeight removed (FIX D): signatures are timing-immune and KO via head damage accumulation
     }
   });
 

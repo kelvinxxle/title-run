@@ -14,14 +14,14 @@ export interface SignatureMove {
   flavor: string;
   /** Offensive multiplier — must exceed powerPunch (1.35) to be impactful. */
   atkMult: number;
-  /** Defensive exposure while throwing (same semantics as StrikeProfile.defMult). */
+  /** Defensive exposure while throwing (same semantics as StrikeProfile.defMult for strike counters;
+   *  ignored for takedown counters — defMult always returns 1.0 for 'wrestle' phase). */
   defMult: number;
   /** Damage weight applied to |dominance| when it lands. */
   power: number;
-  /** Head-KO potential contribution. */
-  koWeight: number;
-  /** 0..1 — strike speed (affects timing read). */
-  speed: number;
+  // NOTE: speed and koWeight intentionally absent:
+  //   • Signatures are timing-immune (timingBonus only reads STRIKES, never signature profiles).
+  //   • KO detection uses accumulated head damage, not koWeight (detectWindow ignores signature kind).
 }
 
 // ── Archetype generics (guaranteed coverage for every roster fighter) ─────────
@@ -34,8 +34,6 @@ export const ARCHETYPE_SIGNATURE: Record<ArchetypeId, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.90,
     power: 1.40,
-    koWeight: 1.80,
-    speed: 0.75,
   },
   brawler: {
     id: 'overhand-bomb',
@@ -45,8 +43,6 @@ export const ARCHETYPE_SIGNATURE: Record<ArchetypeId, SignatureMove> = {
     atkMult: 1.60,
     defMult: 0.65,
     power: 1.55,
-    koWeight: 2.00,
-    speed: 0.20,
   },
   wrestler: {
     id: 'level-change-right',
@@ -56,8 +52,6 @@ export const ARCHETYPE_SIGNATURE: Record<ArchetypeId, SignatureMove> = {
     atkMult: 1.50,
     defMult: 0.75,
     power: 1.45,
-    koWeight: 1.60,
-    speed: 0.45,
   },
   grappler: {
     id: 'flying-knee',
@@ -67,8 +61,6 @@ export const ARCHETYPE_SIGNATURE: Record<ArchetypeId, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.70,
     power: 1.50,
-    koWeight: 1.75,
-    speed: 0.50,
   },
   allrounder: {
     id: 'spinning-back-kick',
@@ -78,8 +70,6 @@ export const ARCHETYPE_SIGNATURE: Record<ArchetypeId, SignatureMove> = {
     atkMult: 1.52,
     defMult: 0.75,
     power: 1.45,
-    koWeight: 1.65,
-    speed: 0.40,
   },
 };
 
@@ -93,8 +83,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.60,
     defMult: 0.72,
     power: 1.55,
-    koWeight: 2.00,
-    speed: 0.65,
   },
   'jon-jones': {
     id: 'spinning-elbow',
@@ -104,8 +92,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.58,
     defMult: 0.75,
     power: 1.50,
-    koWeight: 1.85,
-    speed: 0.50,
   },
   'anderson-silva': {
     id: 'front-kick',
@@ -115,8 +101,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.80,
     power: 1.45,
-    koWeight: 1.80,
-    speed: 0.60,
   },
   'jose-aldo': {
     id: 'body-kick-counter',
@@ -126,8 +110,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.52,
     defMult: 0.85,
     power: 1.50,
-    koWeight: 1.20,
-    speed: 0.55,
   },
   'max-holloway': {
     id: 'volume-finisher',
@@ -137,8 +119,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.80,
     power: 1.45,
-    koWeight: 1.70,
-    speed: 0.70,
   },
   'francis-ngannou': {
     id: 'predator-bomb',
@@ -148,8 +128,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.70,
     defMult: 0.60,
     power: 1.70,
-    koWeight: 2.20,
-    speed: 0.20,
   },
   'israel-adesanya': {
     id: 'last-stylebender',
@@ -159,8 +137,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.90,
     power: 1.45,
-    koWeight: 1.75,
-    speed: 0.80,
   },
   'georges-st-pierre': {
     id: 'superman-punch',
@@ -170,8 +146,6 @@ export const MARQUEE_SIGNATURE: Record<string, SignatureMove> = {
     atkMult: 1.55,
     defMult: 0.78,
     power: 1.48,
-    koWeight: 1.65,
-    speed: 0.55,
   },
 };
 
