@@ -31,4 +31,24 @@ describe('StrikePanel', () => {
     fireEvent.click(screen.getByTestId('takedown-body-lock'));
     expect(onMove).toHaveBeenCalledWith({ kind: 'takedown', takedownType: 'body-lock' });
   });
+
+  // ── M17 T8: Signature button ────────────────────────────────────────────────
+
+  it('M17 T8 RED: does NOT render the signature button when sigReady=false', () => {
+    render(<StrikePanel statLine={P as any} exchange={1} exchangesPerRound={3} onMove={() => {}} signatureCharge={50} sigReady={false} />);
+    expect(screen.queryByTestId('strike-signature')).not.toBeInTheDocument();
+  });
+
+  it('M17 T8 RED: renders strike-signature button when sigReady=true', () => {
+    const onMove = vi.fn();
+    render(<StrikePanel statLine={P as any} exchange={1} exchangesPerRound={3} onMove={onMove} signatureCharge={100} sigReady={true} />);
+    expect(screen.getByTestId('strike-signature')).toBeInTheDocument();
+  });
+
+  it('M17 T8 RED: emits { kind: signature } when signature button is clicked', () => {
+    const onMove = vi.fn();
+    render(<StrikePanel statLine={P as any} exchange={1} exchangesPerRound={3} onMove={onMove} signatureCharge={100} sigReady={true} />);
+    fireEvent.click(screen.getByTestId('strike-signature'));
+    expect(onMove).toHaveBeenCalledWith({ kind: 'signature' });
+  });
 });
