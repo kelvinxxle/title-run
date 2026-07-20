@@ -38,8 +38,9 @@ function bodyRecoveryPenalty(bodyDamage: number): number {
   return Math.round(bodyDamage * BODY_RECOVERY_FACTOR);
 }
 
-/** Offensive multiplier for a move. */
+/** Offensive multiplier for a move. Signature case handled before this helper (returns placeholder). */
 function atkMult(move: ExchangeMove): number {
+  if (move.kind === 'signature') return 1.0; // placeholder; T4 handles signature before this
   return move.kind === 'strike' ? STRIKES[move.strike].atkMult : TAKEDOWN_PROFILES[move.takedownType].atkMult;
 }
 
@@ -164,8 +165,12 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     ? playerAttackScore + IQ + seededSwing
     : null;
 
-  const pCost = playerMove.kind === 'strike' ? STRIKES[playerMove.strike].staminaCost : TAKEDOWN_PROFILES[playerMove.takedownType].cost;
-  const oCost = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].staminaCost : TAKEDOWN_PROFILES[oppMove.takedownType].cost;
+  const pCost = playerMove.kind === 'strike' ? STRIKES[playerMove.strike].staminaCost
+    : playerMove.kind === 'takedown' ? TAKEDOWN_PROFILES[playerMove.takedownType].cost
+    : 0; // signature: no stamina cost (it's earned)
+  const oCost = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].staminaCost
+    : oppMove.kind === 'takedown' ? TAKEDOWN_PROFILES[oppMove.takedownType].cost
+    : 0; // opponent never throws signature, but TypeScript needs exhaustiveness
   const margin = Math.floor(Math.abs(dominance) / 10);
   const winner: 'player' | 'opponent' | 'draw' = dominance > 0 ? 'player' : dominance < 0 ? 'opponent' : 'draw';
   const logEntry: RoundLogEntry = {

@@ -51,13 +51,19 @@ describe('ExchangeMove', () => {
     expect(movePhase(m)).toBe('wrestle');
     expect(isTakedown(m)).toBe(true);
   });
-  it('labels both move kinds', () => {
+  it('labels all three move kinds', () => {
     expect(MOVE_KIND_LABELS.strike.length).toBeGreaterThan(0);
     expect(MOVE_KIND_LABELS.takedown.length).toBeGreaterThan(0);
+    expect(MOVE_KIND_LABELS.signature.length).toBeGreaterThan(0);
   });
   it('M16: takedown ExchangeMove carries a takedownType', () => {
     const m: ExchangeMove = { kind: 'takedown', takedownType: 'single-leg' };
     expect(isTakedown(m)).toBe(true);
     if (isTakedown(m)) expect(m.takedownType).toBe('single-leg');
+  });
+  it('M17: signature ExchangeMove maps to strike phase, not a takedown', () => {
+    const m: ExchangeMove = { kind: 'signature' };
+    expect(movePhase(m)).toBe('strike');
+    expect(isTakedown(m)).toBe(false);
   });
 });
