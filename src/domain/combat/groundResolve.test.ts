@@ -74,6 +74,18 @@ describe('resolveGround', () => {
     expect(s.ground!.position).toBe('half-guard');
   });
 
+  // ── Fix E: successful submission must clear gamePlan ────────────────────────
+  it('a successful submission sets gamePlan to null (terminal state hygiene)', () => {
+    const s0 = toGround('ground-seed-C');
+    expect(s0.phase).toBe('ground');
+    // Force 'back' position (highest sub probability) with a gamePlan active.
+    const s: FightState = { ...s0, ground: { position: 'back' }, exchange: 1, gamePlan: 'push-pace' as const };
+    const r = resolveGround(s, 'submission');
+    expect(r.phase).toBe('finished');
+    expect(r.outcome?.method).toBe('submission');
+    expect(r.gamePlan).toBeNull(); // Fix E: was state.gamePlan before fix
+  });
+
   it('POSITION_SUBMISSION returns null for guard, non-null for all other positions', () => {
     expect(POSITION_SUBMISSION['guard']).toBeNull();
     expect(POSITION_SUBMISSION['half-guard']).not.toBeNull();

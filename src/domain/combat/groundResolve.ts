@@ -59,7 +59,7 @@ export function resolveGround(state: FightState, action: GroundAction): FightSta
     const roll = rng();
     if (POSITION_SUBMISSION[position] !== null && roll < chance) {
       const report = buildGroundReport({ round: state.round, action, position, success: true, opponentHeadDelta: 0, escaped: false, submitted: true });
-      return { ...state, phase: 'finished', ground: null, window: null, lastReport: report, outcome: { winner: 'player', method: 'submission', round: state.round } };
+      return { ...state, phase: 'finished', ground: null, window: null, gamePlan: null, lastReport: report, outcome: { winner: 'player', method: 'submission', round: state.round } };
     }
     const p: Fighter2 = { ...state.player, stamina: clampStamina(state.player.stamina - GND_SUBFAIL_COST) };
     const escaped = rollEscape();
