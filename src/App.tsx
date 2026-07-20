@@ -24,7 +24,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     setRun(startRun(makeSeed()));
   };
   const handleDraftComplete = (d: DraftedFighter) =>
-    setRun((r) => (r ? applyDraft(r, { name: d.name, statLine: d.statLine }) : r));
+    setRun((r) => (r ? applyDraft(r, { name: d.name, statLine: d.statLine, slots: d.slots }) : r));
   const handleEnterFight = () => setRun((r) => (r ? startNextFight(r) : r));
 
   const handleMove = (move: ExchangeMove) =>

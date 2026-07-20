@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { load, save, STORAGE_KEY, SCHEMA_VERSION } from './runStorageV2';
 import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState } from '../domain/combat';
-import { STAT_IDS, type StatLine } from '../domain/combat';
+import { STAT_IDS, type StatLine, type StatId } from '../domain/combat';
+import type { SlotFill } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+const MOCK_SLOTS = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 55, sourceFighterId: 'israel-adesanya' }])) as Record<StatId, SlotFill>;
 // WRESTLER stat line: high takedowns (99) to land a takedown and enter 'ground' phase.
 const WRESTLER = Object.fromEntries(STAT_IDS.map((s) => [s, s === 'takedowns' ? 99 : 40])) as StatLine;
-function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE }); }
+function preFight(): RunState { return applyDraft(startRun('seed-1'), { name: 'A', statLine: LINE, slots: MOCK_SLOTS }); }
 const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
 function continueFromCorner(fight: FightState): FightState {
   return fight.phase === 'corner' ? { ...fight, phase: 'in-round', gamePlan: null } : fight;
@@ -17,7 +19,7 @@ function midFight(): RunState {
 }
 // seed 'fw-4' deterministically lands in a finish-window after 3 JAB rounds (round 3, opponent KO window).
 function finishWindowRun(): RunState {
-  let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE }));
+  let run = startNextFight(applyDraft(startRun('fw-4'), { name: 'A', statLine: LINE, slots: MOCK_SLOTS }));
   let f = run.fight as FightState;
   while (f.phase === 'in-round' || f.phase === 'corner') {
     f = f.phase === 'corner' ? continueFromCorner(f) : resolveExchange(f, JAB);
@@ -27,7 +29,7 @@ function finishWindowRun(): RunState {
 }
 // seed 'gw-0' with WRESTLER (takedowns:99, others:40) lands a double-leg → enters 'ground' phase.
 function groundRun(): RunState {
-  const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER }));
+  const run = startNextFight(applyDraft(startRun('gw-0'), { name: 'A', statLine: WRESTLER, slots: MOCK_SLOTS }));
   return { ...run, fight: resolveExchange(run.fight as FightState, { kind: 'takedown', takedownType: 'double-leg' }) };
 }
 function store(run: unknown): void {
@@ -100,10 +102,10 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
-      gamePlan: null, lastReport: null, ground: null,
+      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
     };
     const postWin: RunState = {
-      seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE },
+      seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE, signatureId: 'check-hook' },
       fightNumber: 2, record: { wins: 1, losses: 0 }, isChampion: false, defenses: 0, fight: finishedFight,
     };
     save({ run: postWin, bestReign: 2 });
@@ -132,7 +134,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
-      gamePlan: null, lastReport: null, ground: null,
+      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
     };
     store({ ...preFight(), phase: 'fighting', fight: finished });
     expect(load().run).toBeNull();

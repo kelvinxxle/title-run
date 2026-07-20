@@ -11,9 +11,12 @@ import {
   buildStatLine,
   getFighter,
   ARCHETYPES,
+  STAT_IDS,
   type FightState,
   type RunState,
   type ExchangeMove,
+  type SlotFill,
+  type StatId,
 } from './index';
 
 // A deterministic "always technical head strike" policy — enough to drive a
@@ -48,7 +51,8 @@ function playFightToEnd(initial: FightState): FightState {
 function playRunToEnd(seed: string): RunState {
   let run = startRun(seed);
   const fighter = getFighter('georges-st-pierre');
-  run = applyDraft(run, { name: fighter.name, statLine: buildStatLine(fighter) });
+  const slots = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 80, sourceFighterId: fighter.id }])) as Record<StatId, SlotFill>;
+  run = applyDraft(run, { name: fighter.name, statLine: buildStatLine(fighter), slots });
 
   let guard = 0;
   while (run.phase !== 'run-over') {

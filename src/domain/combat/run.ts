@@ -1,13 +1,16 @@
-import type { StatLine } from './stats';
+import type { StatLine, StatId } from './stats';
 import type { FightState } from './fightState';
 import { startFight } from './fightState';
 import { generateOpponent } from './opponent';
+import type { SlotFill } from './draft';
+import { resolveSignature } from './signatures';
 
 export type RunPhase = 'drafting' | 'pre-fight' | 'fighting' | 'run-over';
 
 export interface RunFighter {
   name: string;
   statLine: StatLine;
+  signatureId: string;
 }
 
 export interface RunState {
@@ -38,12 +41,17 @@ export function startRun(seed: string): RunState {
 
 export function applyDraft(
   run: RunState,
-  fighter: { name: string; statLine: StatLine },
+  fighter: { name: string; statLine: StatLine; slots: Record<StatId, SlotFill> },
 ): RunState {
   if (run.phase !== 'drafting') {
     throw new Error(`applyDraft requires phase 'drafting' (got '${run.phase}')`);
   }
-  return { ...run, phase: 'pre-fight', fighter: { name: fighter.name, statLine: fighter.statLine } };
+  const signatureId = resolveSignature(fighter.slots.striking.sourceFighterId).id;
+  return {
+    ...run,
+    phase: 'pre-fight',
+    fighter: { name: fighter.name, statLine: fighter.statLine, signatureId },
+  };
 }
 
 export function startNextFight(run: RunState): RunState {
@@ -58,6 +66,7 @@ export function startNextFight(run: RunState): RunState {
     seed: run.seed,
     fightNumber: run.fightNumber,
     playerStatLine: run.fighter.statLine,
+    signatureId: run.fighter.signatureId,
     opponent,
   });
   return { ...run, phase: 'fighting', fight };
