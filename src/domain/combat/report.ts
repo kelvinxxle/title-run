@@ -17,6 +17,8 @@ export interface RoundReportInput {
   opponentBecameRocked: boolean;
   playerGassed: boolean;
   opponentGassed: boolean;
+  /** M17: Signature move flavor headline — set when playerIntent.kind === 'signature'. */
+  signatureFlavor?: string;
 }
 
 export interface RoundReport {
@@ -38,10 +40,14 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
     opponentHeadDelta, opponentBodyDelta,
     playerBecameRocked, opponentBecameRocked,
     playerGassed, opponentGassed,
+    signatureFlavor,
   } = input;
 
   let headline: string;
-  if (opponentBecameRocked) {
+  // M17: signature detonation always uses the move's flavor as the headline.
+  if (signatureFlavor && playerIntent.kind === 'signature') {
+    headline = signatureFlavor;
+  } else if (opponentBecameRocked) {
     headline = "You've got him HURT!";
   } else if (playerBecameRocked) {
     headline = "You're ROCKED — hang on!";
@@ -70,7 +76,11 @@ export function buildRoundReport(input: RoundReportInput): RoundReport {
   }
 
   let detail: string;
-  if (opponentBodyDelta >= 8) {
+  if (playerIntent.kind === 'signature') {
+    detail = opponentHeadDelta >= 15
+      ? `SIGNATURE LANDS — ${opponentHeadDelta} damage to the head!`
+      : 'Signature connects — reset and build again.';
+  } else if (opponentBodyDelta >= 8) {
     detail = 'Body work is adding up — his gas will pay for it.';
   } else if (opponentGassed) {
     detail = "He's sucking wind.";

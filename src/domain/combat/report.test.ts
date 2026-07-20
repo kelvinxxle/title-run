@@ -120,6 +120,26 @@ describe('buildRoundReport', () => {
 
     expect(buildRoundReport(input)).toEqual(buildRoundReport(input));
   });
+
+  it('M17 T5: signature detonation uses the move flavor as headline', () => {
+    const sigFlavor = 'THAT LEFT HAND — you can\'t teach that timing!';
+    const report = buildRoundReport({
+      ...base,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: sigFlavor,
+    });
+    expect(report.headline).toBe(sigFlavor);
+  });
+
+  it('M17 T5: signature detonation detail is SIGNATURE LANDS when opponent head delta is high', () => {
+    const report = buildRoundReport({
+      ...base,
+      playerIntent: { kind: 'signature' },
+      opponentHeadDelta: 20,
+      signatureFlavor: 'BOOMING shot!',
+    });
+    expect(report.detail.toLowerCase()).toContain('signature');
+  });
 });
 
 import { buildGroundReport } from './report';

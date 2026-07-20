@@ -202,7 +202,26 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const signatureCharge = 0;
 
     const logEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner, dominance };
-    const report = makeReport(state.round, winner, dominance, playerMove, oppMove, state, p, o);
+    const report = buildRoundReport({
+      round: state.round,
+      winner,
+      dominance,
+      playerIntent: playerMove,
+      opponentIntent: oppMove,
+      playerHeadDelta: Math.max(0, p.headDamage - state.player.headDamage),
+      playerBodyDelta: Math.max(0, p.bodyDamage - state.player.bodyDamage),
+      opponentHeadDelta: Math.max(0, o.headDamage - state.opponent.headDamage),
+      opponentBodyDelta: Math.max(0, o.bodyDamage - state.opponent.bodyDamage),
+      playerBecameRocked:
+        state.player.headDamage < ROCKED_HEAD_DMG(state.player.statLine.chin) &&
+        p.headDamage >= ROCKED_HEAD_DMG(state.player.statLine.chin),
+      opponentBecameRocked:
+        state.opponent.headDamage < ROCKED_HEAD_DMG(state.opponent.statLine.chin) &&
+        o.headDamage >= ROCKED_HEAD_DMG(state.opponent.statLine.chin),
+      playerGassed: isGassed(p.stamina),
+      opponentGassed: isGassed(o.stamina),
+      signatureFlavor: sigMove.flavor,
+    });
 
     const finishWindow = detectWindow({
       prePlayerHeadDamage: state.player.headDamage,
