@@ -189,3 +189,19 @@ export function resolveSignature(sourceFighterId: string): SignatureMove {
   const fighter = getFighter(sourceFighterId);
   return ARCHETYPE_SIGNATURE[fighter.archetype];
 }
+
+/** Build a lookup map from move id → SignatureMove (for detonation in resolveExchange). */
+const _moveById: ReadonlyMap<string, SignatureMove> = new Map<string, SignatureMove>([
+  ...Object.values(ARCHETYPE_SIGNATURE).map((m): [string, SignatureMove] => [m.id, m]),
+  ...Object.values(MARQUEE_SIGNATURE).map((m): [string, SignatureMove] => [m.id, m]),
+]);
+
+/**
+ * Look up a SignatureMove by its move id.
+ * Used during signature detonation where state.signatureId is the move id.
+ */
+export function getSignatureMoveById(id: string): SignatureMove {
+  const move = _moveById.get(id);
+  if (!move) throw new Error(`Unknown signature move id: ${id}`);
+  return move;
+}

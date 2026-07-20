@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { startFight, type FightState } from './fightState';
-import { resolveExchange, EXCHANGES_PER_ROUND } from './exchange';
+import { resolveExchange, EXCHANGES_PER_ROUND, signatureReady } from './exchange';
 import { resolveGround } from './groundResolve';
 import type { ExchangeMove } from './intents';
 import type { StatLine } from './stats';
@@ -289,5 +289,84 @@ describe('resolveExchange', () => {
     const ground = resolveExchange(sWithPlan, td);
     expect(ground.phase).toBe('ground');
     expect(ground.gamePlan).toBe('catch-breath'); // plan preserved after entry
+  });
+});
+
+describe('M17 T4: signature charge + detonation', () => {
+  // Helper: play enough beats so the player wins at least one, charging the signature
+  function freshWithSig(signatureId = 'check-hook', charge = 0): FightState {
+    return { ...startFight({ seed: 'sig-seed', fightNumber: 1, playerStatLine: P, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O }, signatureId }), signatureCharge: charge };
+  }
+
+  it('signatureCharge starts at 0', () => {
+    expect(fresh().signatureCharge).toBe(0);
+  });
+
+  it('winning a beat raises signatureCharge above 0', () => {
+    // Player with dominant stats vs weak opponent, jab → player wins → charge increases
+    const strong: StatLine = { striking: 99, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 99 };
+    const weak: StatLine = { striking: 1, strikingDef: 1, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 1, chin: 1, fightIQ: 1 };
+    const s = startFight({ seed: 'charge-test', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'W', archetype: 'brawler', statLine: weak }, signatureId: 'check-hook' });
+    const after = resolveExchange(s, jab);
+    expect(after.signatureCharge).toBeGreaterThan(0);
+  });
+
+  it('signatureCharge clamps at 100', () => {
+    // With charge starting at 95, a winning beat should bring it to 100, not above
+    const strong: StatLine = { striking: 99, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 99 };
+    const weak: StatLine = { striking: 1, strikingDef: 1, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 1, chin: 1, fightIQ: 1 };
+    const s = { ...startFight({ seed: 'charge-clamp', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'W', archetype: 'brawler', statLine: weak }, signatureId: 'check-hook' }), signatureCharge: 95 };
+    const after = resolveExchange(s, jab);
+    expect(after.signatureCharge).toBeLessThanOrEqual(100);
+  });
+
+  it('signatureReady() returns false when charge < 100', () => {
+    expect(signatureReady(freshWithSig('check-hook', 0))).toBe(false);
+    expect(signatureReady(freshWithSig('check-hook', 99))).toBe(false);
+  });
+
+  it('signatureReady() returns true when charge >= 100', () => {
+    expect(signatureReady(freshWithSig('check-hook', 100))).toBe(true);
+  });
+
+  it('throwing signature when not ready throws a guard error', () => {
+    const notReady = freshWithSig('check-hook', 50);
+    const sigMove: ExchangeMove = { kind: 'signature' };
+    expect(() => resolveExchange(notReady, sigMove)).toThrow();
+  });
+
+  it('detonation uses the signature profile (bigger head damage than powerPunch on same seed)', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const seed = 'det-test';
+    const sBase = startFight({ seed, fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'Glass', archetype: 'brawler', statLine: glass }, signatureId: 'check-hook' });
+    const sReady = { ...sBase, signatureCharge: 100 };
+
+    const pp: ExchangeMove = { kind: 'strike', strike: 'powerPunch' };
+    const sig: ExchangeMove = { kind: 'signature' };
+
+    const afterPP = resolveExchange(sBase, pp);
+    const afterSig = resolveExchange(sReady, sig);
+
+    expect(afterSig.opponent.headDamage).toBeGreaterThan(afterPP.opponent.headDamage);
+  });
+
+  it('detonation resets signatureCharge to 0', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const s = { ...startFight({ seed: 'det-reset', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'Glass', archetype: 'brawler', statLine: glass }, signatureId: 'check-hook' }), signatureCharge: 100 };
+    const after = resolveExchange(s, { kind: 'signature' });
+    expect(after.signatureCharge).toBe(0);
+  });
+
+  it('detonation is deterministic across two runs (same seed + charge → same state)', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const sBase = startFight({ seed: 'det-determ', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'G', archetype: 'brawler', statLine: glass }, signatureId: 'the-left-hand' });
+    const s = { ...sBase, signatureCharge: 100 };
+    const r1 = resolveExchange(s, { kind: 'signature' });
+    const r2 = resolveExchange(s, { kind: 'signature' });
+    expect(r1.opponent.headDamage).toBe(r2.opponent.headDamage);
+    expect(r1.signatureCharge).toBe(r2.signatureCharge);
   });
 });

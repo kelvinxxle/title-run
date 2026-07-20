@@ -15,6 +15,7 @@ import {
 import { gamePlanEffect } from './gameplan';
 import { buildRoundReport, type RoundReport } from './report';
 import { TAKEDOWN_PROFILES } from './takedown';
+import { getSignatureMoveById } from './signatures';
 
 export const EXCHANGES_PER_ROUND = 3;
 
@@ -28,6 +29,20 @@ const BODY_TO_STAMINA = 0.5;
 const BODY_RECOVERY_FACTOR = 0.08;
 /** Shooting for a takedown leaves you open to strikes on the way in (<1). */
 const TAKEDOWN_VS_STRIKE_DEF = 0.9;
+
+// ── M17 Signature charge constants (tuned in T6) ───────────────────────────
+/** Base charge gain on any player-winning beat. */
+export const SIGNATURE_CHARGE_GAIN = 18;
+/** Additional charge per point of dominance (scales charge with how well you won). */
+export const SIGNATURE_CHARGE_DOM = 0.15;
+
+/**
+ * True when the player's signature is fully charged and can be detonated.
+ * Gate: only the StrikePanel UI (and the guard in resolveExchange) should call this.
+ */
+export function signatureReady(state: FightState): boolean {
+  return state.signatureCharge >= 100;
+}
 
 export function clampStamina(s: number): number {
   return Math.max(0, Math.min(STAMINA_MAX, s));
@@ -130,6 +145,85 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
   if (state.phase !== 'in-round') {
     throw new Error(`resolveExchange requires state.phase === "in-round" (got "${state.phase}")`);
   }
+
+  // ── M17: Signature detonation ─────────────────────────────────────────────
+  if (playerMove.kind === 'signature') {
+    if (!signatureReady(state)) {
+      throw new Error('resolveExchange: signature is not ready (signatureCharge < 100)');
+    }
+    // Resolve through the same two-sided exchange math, using the SignatureMove profile.
+    const sigMove = getSignatureMoveById(state.signatureId);
+    const oppMove = opponentMove(state);
+    const plan = gamePlanEffect(state.gamePlan);
+    const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#x${state.exchange}`);
+    const seededSwing = (rng() - 0.5) * SWING_RANGE;
+
+    const pEffort = effortMultiplier(state.player.stamina) * mobilityMultiplier(state.player.legDamage);
+    const oEffort = effortMultiplier(state.opponent.stamina) * mobilityMultiplier(state.opponent.legDamage);
+
+    const playerAttackScore =
+      state.player.statLine[PHASE_OFFENSE['strike']] * pEffort * sigMove.atkMult * plan.atkMult -
+      state.opponent.statLine[PHASE_DEFENSE['strike']] * oEffort * defMult(oppMove, 'strike');
+    const oPhase = movePhase(oppMove);
+    const oppAttackScore =
+      state.opponent.statLine[PHASE_OFFENSE[oPhase]] * oEffort * atkMult(oppMove) -
+      state.player.statLine[PHASE_DEFENSE[oPhase]] * pEffort * sigMove.defMult * plan.defMult;
+
+    const IQ = (state.player.statLine.fightIQ - state.opponent.statLine.fightIQ) * IQ_FACTOR;
+    const dominance = playerAttackScore - oppAttackScore + IQ + seededSwing;
+
+    const margin = Math.floor(Math.abs(dominance) / 10);
+    const winner: 'player' | 'opponent' | 'draw' = dominance > 0 ? 'player' : dominance < 0 ? 'opponent' : 'draw';
+
+    const p: Fighter2 = { ...state.player };
+    const o: FightState['opponent'] = { ...state.opponent };
+
+    const oCost = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].staminaCost
+      : oppMove.kind === 'takedown' ? TAKEDOWN_PROFILES[oppMove.takedownType].cost
+      : 0;
+
+    if (dominance > 0) {
+      const dmg = Math.round(Math.abs(dominance) * DMG_FACTOR * sigMove.power);
+      o.headDamage += dmg; // signature always targets head
+      p.roundScore += 1 + margin;
+    } else if (dominance < 0) {
+      const cPower = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].power : 1;
+      const cTarget = oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : 'head';
+      const cDmg = Math.round(Math.abs(dominance) * DMG_FACTOR * cPower);
+      if (cTarget === 'body') { p.bodyDamage += cDmg; p.stamina -= Math.round(cDmg * BODY_TO_STAMINA); }
+      else if (cTarget === 'legs') { p.legDamage += cDmg; }
+      else { p.headDamage += cDmg; }
+      o.roundScore += 1 + margin;
+    }
+
+    o.stamina = clampStamina(o.stamina - oCost);
+
+    // Charge resets to 0 regardless of outcome — it's spent.
+    const signatureCharge = 0;
+
+    const logEntry: RoundLogEntry = { round: state.round, exchange: state.exchange, playerIntent: playerMove, opponentIntent: oppMove, winner, dominance };
+    const report = makeReport(state.round, winner, dominance, playerMove, oppMove, state, p, o);
+
+    const finishWindow = detectWindow({
+      prePlayerHeadDamage: state.player.headDamage,
+      preOpponentHeadDamage: state.opponent.headDamage,
+      playerHeadDamage: p.headDamage,
+      opponentHeadDamage: o.headDamage,
+      playerStamina: p.stamina,
+      opponentStamina: o.stamina,
+      playerStatLine: state.player.statLine,
+      opponentStatLine: state.opponent.statLine,
+      dominance,
+      playerIntent: playerMove,
+      opponentIntent: oppMove,
+    });
+
+    const base = { ...state, player: p, opponent: o, log: [...state.log, logEntry], lastReport: report, signatureCharge };
+    if (finishWindow) return { ...base, phase: 'finish-window', window: finishWindow, gamePlan: null };
+    if (state.exchange < EXCHANGES_PER_ROUND) return { ...base, exchange: state.exchange + 1 };
+    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge };
+  }
+
   const oppMove = opponentMove(state);
   const plan = gamePlanEffect(state.gamePlan);
   const rng = createRng(`${state.seed}#f${state.fightNumber}#r${state.round}#x${state.exchange}`);
@@ -173,6 +267,13 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     : 0; // opponent never throws signature, but TypeScript needs exhaustiveness
   const margin = Math.floor(Math.abs(dominance) / 10);
   const winner: 'player' | 'opponent' | 'draw' = dominance > 0 ? 'player' : dominance < 0 ? 'opponent' : 'draw';
+
+  // ── M17: Charge accrual — only when player wins the beat ──────────────────
+  const chargeGain = winner === 'player'
+    ? Math.min(100 - state.signatureCharge, Math.round(SIGNATURE_CHARGE_GAIN + SIGNATURE_CHARGE_DOM * dominance))
+    : 0;
+  const newSignatureCharge = state.signatureCharge + chargeGain;
+
   const logEntry: RoundLogEntry = {
     round: state.round,
     exchange: state.exchange,
@@ -195,7 +296,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     // The shot consumed this beat. If it was the last beat, the takedown still SCORES
     // but there are no ground beats this round → cross the round boundary (recovery applied).
     if (nextExchange > EXCHANGES_PER_ROUND) {
-      return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report };
+      return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: newSignatureCharge };
     }
     // Otherwise enter the ground phase at the landed position; ground beats share the beat budget.
     return {
@@ -209,6 +310,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       player: p,
       opponent: o,
       log: logNow,
+      signatureCharge: newSignatureCharge,
     };
   }
 
@@ -231,6 +333,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         player: pBase,
         opponent: oBase,
         log: [...state.log, logEntry],
+        signatureCharge: newSignatureCharge,
       };
     }
 
@@ -253,11 +356,12 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         player: pGnp,
         opponent: oBase,
         log: [...state.log, logEntry],
+        signatureCharge: newSignatureCharge,
       };
     }
 
     // No rock → partial damage; advance the round (round-boundary stamina applied).
-    return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report };
+    return { ...crossRoundBoundary(state, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge: newSignatureCharge };
   }
 
   // ── Player takedown stuffed (takedownCheck ≤ 0): failed shot — never enters ground, never deals strike damage ──
@@ -301,14 +405,14 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         opponentIntent: oppMove,
       });
       if (fw) {
-        return { ...state, player: p, opponent: o, log: logNow, lastReport: report, phase: 'finish-window', window: fw, gamePlan: null };
+        return { ...state, player: p, opponent: o, log: logNow, lastReport: report, phase: 'finish-window', window: fw, gamePlan: null, signatureCharge: newSignatureCharge };
       }
     }
 
     if (state.exchange < EXCHANGES_PER_ROUND) {
-      return { ...state, player: p, opponent: o, log: logNow, lastReport: report, exchange: state.exchange + 1 };
+      return { ...state, player: p, opponent: o, log: logNow, lastReport: report, exchange: state.exchange + 1, signatureCharge: newSignatureCharge };
     }
-    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report };
+    return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, logNow), lastReport: report, signatureCharge: newSignatureCharge };
   }
 
   // ── Strike exchange (playerMove.kind === 'strike' is guaranteed here) ──
@@ -355,7 +459,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     opponentIntent: oppMove,
   });
 
-  const base = { ...state, player: p, opponent: o, log: [...state.log, logEntry], lastReport: report };
+  const base = { ...state, player: p, opponent: o, log: [...state.log, logEntry], lastReport: report, signatureCharge: newSignatureCharge };
   if (finishWindow) {
     return { ...base, phase: 'finish-window', window: finishWindow, gamePlan: null };
   }
@@ -366,5 +470,5 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
   }
 
   // Last beat of the round → cross the round boundary.
-  return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, [...state.log, logEntry]), lastReport: report };
+  return { ...crossRoundBoundary(state, p, o, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge: newSignatureCharge };
 }
