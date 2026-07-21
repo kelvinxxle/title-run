@@ -446,3 +446,68 @@ describe('Review FIX B: charge uses per-branch authoritative outcome', () => {
     expect(foundStuffed).toBe(true);
   });
 });
+
+// ── M18: ResolvedBeat emission ────────────────────────────────────────────────
+
+import type { ExchangeMove as _EM } from './intents';
+
+function playScript(seed: string, moves: _EM[]): FightState {
+  let s = startFight({ seed, fightNumber: 1, playerStatLine: P, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
+  for (const m of moves) {
+    if (s.phase === 'in-round') s = resolveExchange(s, m);
+    else if (s.phase === 'corner') s = { ...s, phase: 'in-round' as const, gamePlan: null };
+  }
+  return s;
+}
+
+describe('M18 ResolvedBeat emission', () => {
+  it('appends exactly one ResolvedBeat per resolved standing beat', () => {
+    const s0 = fresh();
+    const s1 = resolveExchange(s0, jab);
+    expect(s1.beats.length).toBe(s0.beats.length + 1);
+    const b = s1.beats[s1.beats.length - 1];
+    expect(b.round).toBe(s1.round);
+    expect(b.moveClass === 'strike' || b.moveClass === 'evade').toBe(true);
+  });
+
+  it('captures leg + stamina deltas that the old report dropped', () => {
+    const s0 = fresh();
+    const s1 = resolveExchange(s0, { kind: 'strike', strike: 'legKick' });
+    const b = s1.beats.at(-1)!;
+    // player always pays stamina cost for throwing
+    expect(b.deltas.playerStamina).toBeLessThanOrEqual(0);
+    expect(typeof b.deltas.opponentLeg).toBe('number');
+  });
+
+  it('emitting a beat does not perturb RNG ordering (parity vs pre-beat resolution)', () => {
+    const pp: _EM = { kind: 'strike', strike: 'powerPunch' };
+    const jb: _EM = { kind: 'strike', strike: 'jab' };
+    const s = playScript('parity-seed', [pp, jb, pp]);
+    // Snapshot pinned from pre-beat run: opponent.headDamage = 36
+    expect(s.opponent.headDamage).toBe(36);
+  });
+
+  it('a signature detonation beat carries signatureId + moveClass signature', () => {
+    // Build a state with the-left-hand signature charged to 100
+    const sigPlayer: StatLine = { striking: 99, strikingDef: 70, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 75, chin: 70, fightIQ: 80 };
+    const s0 = startFight({ seed: 'sig-seed', fightNumber: 1, playerStatLine: sigPlayer, signatureId: 'the-left-hand', opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
+    const sigState: FightState = { ...s0, signatureCharge: 100 };
+    const s1 = resolveExchange(sigState, { kind: 'signature' });
+    const b = s1.beats.at(-1)!;
+    expect(b.moveClass).toBe('signature');
+    expect(b.signatureId).toBe('the-left-hand');
+  });
+
+  it('startFight initializes beats as empty array', () => {
+    expect(fresh().beats).toEqual([]);
+  });
+
+  it('beats accumulate across multiple exchanges', () => {
+    const s0 = fresh();
+    const s1 = resolveExchange(s0, jab);
+    const s2 = resolveExchange(s1, jab);
+    expect(s2.beats.length).toBe(2);
+    expect(s2.beats[0].exchange).toBe(1);
+    expect(s2.beats[1].exchange).toBe(2);
+  });
+});
