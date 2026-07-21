@@ -105,4 +105,28 @@ describe('buildBeatTimeline', () => {
   it('a KO finish appends a knockdown', () => {
     expect(buildBeatTimeline(koFinishBeat, 'p').events.some(e => e.kind === 'knockdown')).toBe(true);
   });
+
+  it('opponent-counter during signature attempt (signatureId null) does NOT play signature choreography', () => {
+    const oppCounterBeat: ResolvedBeat = {
+      id: '2-2', round: 2, exchange: 2,
+      actorId: 'opponent', targetId: 'player',
+      moveClass: 'signature', moveId: 'the-left-hand', outcome: 'landed', target: 'head',
+      deltas: {
+        playerHead: 20, playerBody: 0, playerLeg: 0, playerStamina: -3,
+        opponentHead: 0, opponentBody: 0, opponentLeg: 0, opponentStamina: -5,
+      },
+      status: {
+        playerBecameRocked: false, opponentBecameRocked: false,
+        playerGassed: false, opponentGassed: false,
+      },
+      signatureId: null, isFinish: false, finishMethod: null,
+    };
+    const t = buildBeatTimeline(oppCounterBeat, 'p');
+    // Must NOT have a slip event (signature choreography guard)
+    expect(t.events.some(e => e.kind === 'slip')).toBe(false);
+    // Must NOT have a sig-load pose (opponent should not do McGregor's stance)
+    expect(t.events.some(e => (e as { pose?: string }).pose === 'sig-load')).toBe(false);
+    // Should fall through to regular strike branch (has windup + impact)
+    expect(t.events.some(e => e.kind === 'impact')).toBe(true);
+  });
 });

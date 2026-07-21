@@ -48,7 +48,7 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
     t += dur;
   }
 
-  if (beat.moveClass === 'signature') {
+  if (beat.moveClass === 'signature' && beat.signatureId !== null) {
     // Opponent telegraphs the cross (windup) → actor slips → actor fires signature → impact
     push('windup', 80, beat.targetId, { pose: 'cross' });
     push('slip', 120, beat.actorId, { pose: 'slip' });
