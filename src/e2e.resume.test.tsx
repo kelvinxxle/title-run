@@ -12,6 +12,12 @@ const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
 const MOCK_SLOTS = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 55, sourceFighterId: 'israel-adesanya' }])) as Record<StatId, SlotFill>;
 const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
 
+// M18: normalize runs by clearing beats (since they're not persisted)
+function withoutBeats(run: RunState | null): RunState | null {
+  if (!run || !run.fight) return run;
+  return { ...run, fight: { ...run.fight, beats: [] } };
+}
+
 function midFightRun(): RunState {
   let run: RunState = applyDraft(startRun('resume-seed'), { name: 'Tester', statLine: LINE, slots: MOCK_SLOTS });
   run = startNextFight(run);
@@ -50,7 +56,7 @@ describe('mid-fight resume (v2)', () => {
   it('persists and reloads the exact in-progress FightState (deep equal)', () => {
     const run = midFightRun();
     save({ run, bestReign: null });
-    expect(load().run).toEqual(run); // full run incl. run.fight round/damage/stamina survives the round-trip
+    expect(load().run).toEqual(withoutBeats(run)); // full run incl. run.fight round/damage/stamina survives the round-trip
   });
 
   it('App restores the parked fight at its saved round, not round 1', () => {
@@ -68,7 +74,7 @@ describe('ground resume (v2)', () => {
     const run = groundRun();
     save({ run, bestReign: null });
     // The saved ground run survives the round-trip exactly (ground state + fight state).
-    expect(load().run).toEqual(run);
+    expect(load().run).toEqual(withoutBeats(run));
   });
 
   it('App resumes into the GroundPanel, not round 1 or a striking panel', () => {

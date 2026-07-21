@@ -245,7 +245,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
           moveClass: 'signature', moveId: oppMove.takedownType, target: 'head',
           deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
-          signatureId: state.signatureId, isFinish: false, finishMethod: null });
+          signatureId: null, isFinish: false, finishMethod: null });
         return {
           ...state, phase: 'finish-window',
           window: { side: 'opponent', method: 'KO', stepsLeft: INITIAL_STEPS },
@@ -259,7 +259,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
         moveClass: 'signature', moveId: oppMove.takedownType, target: 'head',
         deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
-        signatureId: state.signatureId, isFinish: false, finishMethod: null });
+        signatureId: null, isFinish: false, finishMethod: null });
       return { ...crossRoundBoundary({ ...state, beats: [...state.beats, beat] }, pGnp, oBase, plan.staminaDelta, [...state.log, tdLogEntry]), lastReport: gnpReport, signatureCharge: 0 };
     }
 

@@ -69,6 +69,15 @@ function normalizeLegacyRun(run: unknown): unknown {
     : run;
 }
 
+function hydrateBeats(fight: unknown): unknown {
+  // M18: beats is presentation-derived; ensure it defaults to [] on load.
+  if (!isObject(fight)) return fight;
+  if (!Array.isArray(fight['beats'])) {
+    return { ...fight, beats: [] };
+  }
+  return fight;
+}
+
 function isValidFightState(x: unknown): boolean {
   if (!isObject(x)) return false;
   if (typeof x['seed'] !== 'string') return false;
@@ -163,7 +172,10 @@ export function load(): LoadedState {
   if (raw === null) return defaults();
   try {
     const parsed = JSON.parse(raw) as { version?: unknown; run?: unknown; bestReign?: unknown };
-    const normalizedRun = normalizeLegacyRun(parsed.run);
+    let normalizedRun = normalizeLegacyRun(parsed.run);
+    if (isObject(normalizedRun) && normalizedRun['fight'] !== null && isObject(normalizedRun['fight'])) {
+      normalizedRun = { ...normalizedRun, fight: hydrateBeats(normalizedRun['fight']) };
+    }
     if (parsed.version !== SCHEMA_VERSION || !isValidRun(normalizedRun)) { clearKey(); return defaults(); }
     const bestReign =
       typeof parsed.bestReign === 'number' && Number.isInteger(parsed.bestReign) && parsed.bestReign >= 0
@@ -172,9 +184,19 @@ export function load(): LoadedState {
   } catch { clearKey(); return defaults(); }
 }
 
+function stripBeats(run: unknown): unknown {
+  // M18: beats is presentation-derived; strip it before persisting to keep storage lean.
+  if (!isObject(run)) return run;
+  if (run['fight'] === null) return run;
+  if (!isObject(run['fight'])) return run;
+  const { beats, ...fightWithoutBeats } = run['fight'] as any;
+  return { ...run, fight: fightWithoutBeats };
+}
+
 export function save(state: { run: RunState | null; bestReign: number | null }): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: state.run, bestReign: state.bestReign }));
+    const runToSave = stripBeats(state.run);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: runToSave, bestReign: state.bestReign }));
   } catch { /* degrade gracefully */ }
 }
 
