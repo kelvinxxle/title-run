@@ -223,7 +223,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
         const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
           moveClass: 'signature', moveId: oppMove.takedownType, target: null,
           deltas: makeBeatDeltas(state, pBase, oBase), status: makeBeatStatus(state, pBase, oBase),
-          signatureId: state.signatureId, isFinish: false, finishMethod: null });
+          signatureId: null, isFinish: false, finishMethod: null });
         return {
           ...state, phase: 'finish-window',
           window: { side: 'opponent', method: 'submission', stepsLeft: INITIAL_STEPS },
@@ -327,7 +327,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const sigBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner, dominance,
       moveClass: 'signature', moveId: sigBeatMoveId, target: sigBeatTarget,
       deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
-      signatureId: state.signatureId, isFinish: false, finishMethod: null });
+      signatureId: winner === 'player' ? state.signatureId : null, isFinish: false, finishMethod: null });
 
     const base = { ...state, player: p, opponent: o, log: [...state.log, logEntry], lastReport: report, signatureCharge, beats: [...state.beats, sigBeat] };
     if (finishWindow) return { ...base, phase: 'finish-window', window: finishWindow, gamePlan: null };
