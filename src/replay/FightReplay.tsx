@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import FighterRig from '../components/FighterRig';
 import { buildBeatTimeline, computeFinalPose } from './timeline';
 import type { BeatEvent } from './timeline';
@@ -176,23 +176,51 @@ export default function FightReplay({
       const delta = rafTs - prevRafTsRef.current;
       prevRafTsRef.current = rafTs;
 
-      // Hitstop: accumulate real wall-clock time while the event is active.
-      // Once wall-clock debt >= durMs, jump game clock past the hitstop window.
-      const hsEvent = events.find(
-        e => e.kind === 'hitstop' &&
-          gameElapsedRef.current >= e.tMs &&
-          gameElapsedRef.current < e.tMs + e.durMs,
-      );
+      // Advance game clock respecting hitstop events.
+      // Process delta in segments: advance normally until hitting a hitstop,
+      // freeze real time during hitstop, resume with leftover after hitstop.
+      let remaining = delta;
+      const MAX_SEGMENTS = 8; // safety guard against float precision loops
+      for (let seg = 0; seg < MAX_SEGMENTS && remaining > 0.5; seg++) {
+        const hsEvent = events.find(
+          e => e.kind === 'hitstop' &&
+            gameElapsedRef.current >= e.tMs &&
+            gameElapsedRef.current < e.tMs + e.durMs,
+        );
 
-      if (hsEvent) {
-        hitstopWallTimeRef.current += delta;
-        if (hitstopWallTimeRef.current >= hsEvent.durMs) {
-          gameElapsedRef.current = hsEvent.tMs + hsEvent.durMs;
-          hitstopWallTimeRef.current = 0;
+        if (hsEvent) {
+          // Inside a hitstop: consume wall-clock budget
+          const need = hsEvent.durMs - hitstopWallTimeRef.current;
+          if (remaining < need) {
+            // Not enough to exit the hitstop this frame — stay frozen
+            hitstopWallTimeRef.current += remaining;
+            remaining = 0;
+          } else {
+            // Hitstop expires this frame — resume after it
+            hitstopWallTimeRef.current = 0;
+            gameElapsedRef.current = hsEvent.tMs + hsEvent.durMs;
+            remaining -= need;
+          }
+        } else {
+          // Normal advance — but stop at the next hitstop start
+          const nextHs = events
+            .filter(e => e.kind === 'hitstop' && e.tMs > gameElapsedRef.current)
+            .sort((a, b) => a.tMs - b.tMs)[0];
+          if (nextHs) {
+            const toHs = nextHs.tMs - gameElapsedRef.current;
+            if (remaining <= toHs) {
+              gameElapsedRef.current += remaining;
+              remaining = 0;
+            } else {
+              // Advance up to the hitstop entry; let next iteration enter it
+              gameElapsedRef.current = nextHs.tMs;
+              remaining -= toHs;
+            }
+          } else {
+            gameElapsedRef.current += remaining;
+            remaining = 0;
+          }
         }
-        // Else: stay frozen (don't advance game clock this frame)
-      } else {
-        gameElapsedRef.current += delta;
       }
 
       const done = gameElapsedRef.current >= totalMs;
@@ -215,7 +243,7 @@ export default function FightReplay({
     };
   }, [beat, presentationSeed]);
 
-  const containerStyle: React.CSSProperties | undefined =
+  const containerStyle: CSSProperties | undefined =
     animState.shakeX !== 0
       ? { transform: `translate(${animState.shakeX}px, 0)` }
       : undefined;

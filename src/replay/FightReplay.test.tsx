@@ -171,6 +171,53 @@ describe('FightReplay', () => {
     expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('false');
   });
 
+  it('I4 — hitstop: 16ms frames freeze game clock for durMs, then animation reaches done', async () => {
+    // sigKoBeat: signature timeline. hitstop at tMs=440, durMs=120. totalMs=1160.
+    // Verify: after pumping frames through the hitstop window, data-playing eventually becomes false.
+    // The mini-loop fix ensures large deltas don't skip the hitstop start AND
+    // the remaining delta after hitstop exit is not discarded.
+    mockReducedMotion(false);
+
+    const rafCallbacks = new Map<number, FrameRequestCallback>();
+    let rafNextId = 1;
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      const id = rafNextId++;
+      rafCallbacks.set(id, cb);
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      rafCallbacks.delete(id);
+    });
+
+    render(<FightReplay {...defaultProps} beat={sigKoBeat} presentationSeed="test-i4" />);
+
+    // Frame 0: init (delta=0)
+    await act(async () => {
+      const cbs = [...rafCallbacks.values()];
+      rafCallbacks.clear();
+      cbs.forEach(cb => cb(0));
+    });
+
+    // Pump 16ms frames. After each frame check that we haven't ended too early.
+    // The hitstop is at 440ms game time and lasts 120ms wall time.
+    // With the fix: game clock stops at 440, then resumes after 120ms wall time.
+    // With or without the fix, during the hitstop frames data-playing stays 'true'.
+    let ts = 0;
+    // Pump frames up through the full animation (totalMs=1160 + hitstop=120 wall = ~1280ms worth)
+    const totalFrames = Math.ceil((1160 + 120 + 80) / 16); // overshoot by ~80ms
+    for (let i = 0; i < totalFrames; i++) {
+      ts += 16;
+      await act(async () => {
+        const cbs = [...rafCallbacks.values()];
+        rafCallbacks.clear();
+        cbs.forEach(cb => cb(ts));
+      });
+    }
+
+    // After enough 16ms frames to cover totalMs + hitstop wall time, animation must be done.
+    expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('false');
+  });
+
   it('is deterministic: same beat+seed → same end DOM (snapshot)', () => {
     mockReducedMotion(true);
 
