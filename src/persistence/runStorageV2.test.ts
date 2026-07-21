@@ -124,7 +124,7 @@ describe('runStorageV2', () => {
     delete legacyFight.gamePlan;
     delete legacyFight.lastReport;
     store({ ...mid, fight: legacyFight });
-    expect(load()).toEqual({ run: { ...mid, fight: { ...(mid.fight as FightState), gamePlan: null, lastReport: null } }, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats({ ...mid, fight: { ...(mid.fight as FightState), gamePlan: null, lastReport: null } }), bestReign: 0 });
   });
 
   it('rejects a finish-window fight with a null window (phase↔payload invariant), and clears the key', () => {
@@ -457,5 +457,18 @@ describe('runStorageV2', () => {
     const { beats, ...fightWithoutBeats } = run.fight as any;
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: { ...run, fight: fightWithoutBeats }, bestReign: 0 }));
     expect(load().run).not.toBeNull();
+  });
+
+  // H5 RED: hydrateBeats must always reset to [] even when persisted beats is non-empty
+  it('H5: hydrateBeats always resets to empty array even when persisted beats is non-empty', () => {
+    const run = midFight();
+    const raw = JSON.stringify({
+      version: SCHEMA_VERSION,
+      run: { ...run, fight: { ...(run.fight as object), beats: [{ text: 'stale-beat' }] } },
+      bestReign: 0,
+    });
+    localStorage.setItem(STORAGE_KEY, raw);
+    const loaded = load();
+    expect(loaded.run?.fight?.beats).toEqual([]);
   });
 });

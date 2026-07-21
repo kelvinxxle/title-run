@@ -70,12 +70,9 @@ function normalizeLegacyRun(run: unknown): unknown {
 }
 
 function hydrateBeats(fight: unknown): unknown {
-  // M18: beats is presentation-derived; ensure it defaults to [] on load.
+  // M18: beats is presentation-derived; always reset to [] on load — never trust persisted beats.
   if (!isObject(fight)) return fight;
-  if (!Array.isArray(fight['beats'])) {
-    return { ...fight, beats: [] };
-  }
-  return fight;
+  return { ...fight, beats: [] };
 }
 
 function isValidFightState(x: unknown): boolean {
