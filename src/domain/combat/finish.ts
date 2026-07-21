@@ -5,6 +5,8 @@ import type { StatLine } from './stats';
 import { isGassed, STAMINA_MAX } from './stamina';
 import { createRng } from '../rng';
 import { scoreFight } from './judges';
+import { buildResolvedBeat } from './beat';
+import type { BeatDeltas, BeatStatus } from './beat';
 
 // ── Tuning constants (adjust in Task 11) ─────────────────────────────────────
 export const COMMIT_P = 0.7;
@@ -162,6 +164,31 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
   if (roll < p) {
     // SUCCESS → fight finished. A finish window is only ever KO/submission.
     const method = win.method;   // narrowed to 'KO' | 'submission' by the type
+    const zeroDelta: BeatDeltas = {
+      opponentHead: 0, opponentBody: 0, opponentLeg: 0, opponentStamina: 0,
+      playerHead: 0, playerBody: 0, playerLeg: 0, playerStamina: 0,
+    };
+    const finishBeatStatus: BeatStatus = {
+      opponentBecameRocked: false,
+      playerBecameRocked: false,
+      opponentGassed: isGassed(state.opponent.stamina),
+      playerGassed: isGassed(state.player.stamina),
+    };
+    const finishBeat = buildResolvedBeat({
+      round: state.round,
+      exchange: state.exchange,
+      winner: win.side,
+      dominance: win.side === 'player' ? 10 : -10,
+      moveClass: 'strike',
+      moveId: null,
+      target: 'head',
+      deltas: zeroDelta,
+      status: finishBeatStatus,
+      signatureId: null,
+      isFinish: true,
+      finishMethod: method,
+      outcome: 'landed',
+    });
     return {
       ...state,
       phase: 'finished',
@@ -171,6 +198,7 @@ export function finishStep(state: FightState, choice: FinishChoice): FightState 
         method,
         round: state.round,
       },
+      beats: [...state.beats, finishBeat],
     };
   }
 

@@ -29,6 +29,9 @@ function makeWindowState(overrides: Partial<FightState> = {}): FightState {
     gamePlan: null,
     lastReport: null,
     ground: null,
+    signatureId: 'check-hook',
+    signatureCharge: 0,
+    beats: [],
     ...overrides,
   } as FightState;
   return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
@@ -187,6 +190,22 @@ describe('finish — last-round decision handoff', () => {
     expect(holdRes.round).toBe(1);
     expect(holdRes.round).toBeLessThanOrEqual(holdRes.rounds);
     expect(holdRes.outcome!.round).toBe(holdRes.round);
+  });
+});
+
+// ── I1 RED: successful finishStep must emit a beat with isFinish=true ─────────
+// makeWindowState({ round:2 }) hits the SUCCESS path (roll=0.501 < COMMIT_P=0.7).
+// Before fix: beats=[]; after fix: beats=[finishBeat].
+describe('I1: finishStep beat emission', () => {
+  it('I1 — successful finishStep emits a beat with isFinish=true (domain-only)', () => {
+    const after = finishStep(makeWindowState({ round: 2 }), 'commit');
+    expect(after.phase).toBe('finished');
+    expect(after.outcome?.winner).toBe('player');
+    const koBeats = after.beats.filter(b => b.isFinish);
+    expect(koBeats.length).toBeGreaterThanOrEqual(1);
+    expect(koBeats[0].isFinish).toBe(true);
+    expect(koBeats[0].finishMethod).toBe('KO');
+    expect(koBeats[0].actorId).toBe('player');
   });
 });
 
