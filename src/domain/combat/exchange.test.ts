@@ -531,3 +531,37 @@ describe('M18 ResolvedBeat emission', () => {
     if (!found) console.warn('No seed found where opponent wins signature exchange');
   });
 });
+
+// ── H2 + H3 RED tests ─────────────────────────────────────────────────────────
+
+describe('H2: authoritative beat outcome', () => {
+  it('H2: player takedown beat has outcome "landed" (not "blocked")', () => {
+    const tdPlayer: StatLine = { ...P, takedowns: 99 };
+    const s = startFight({ seed: 'h2-td', fightNumber: 1, playerStatLine: tdPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 20 } } });
+    const r = resolveExchange(s, { kind: 'takedown', takedownType: 'double-leg' });
+    expect(r.phase).toBe('ground');
+    const beat = r.beats[r.beats.length - 1]!;
+    expect(beat.outcome).toBe('landed');
+  });
+});
+
+describe('H3: signature branch moveClass authority', () => {
+  it('H3: opponent takedown during player signature → beat.moveClass is "takedown" not "signature"', () => {
+    const lowStriker: StatLine = { striking: 10, strikingDef: 99, takedowns: 40, takedownDef: 1, submissions: 40, submissionDef: 70, cardio: 75, chin: 99, fightIQ: 60 };
+    const wrestler = { id: 'w', name: 'G', archetype: 'wrestler' as const, statLine: { striking: 1, strikingDef: 1, takedowns: 99, takedownDef: 40, submissions: 80, submissionDef: 50, cardio: 75, chin: 70, fightIQ: 60 } };
+    const s = { ...startFight({ seed: 'h3-td', fightNumber: 1, playerStatLine: lowStriker, opponent: wrestler, signatureId: 'the-left-hand' }), signatureCharge: 100 };
+    const r = resolveExchange(s, { kind: 'signature' });
+    const beat = r.beats[r.beats.length - 1]!;
+    expect(beat.moveClass).toBe('takedown');
+  });
+
+  it('H3: opponent strike counter during player signature (dominance<0) → beat.moveClass is "strike" not "signature"', () => {
+    const weakPlayer: StatLine = { striking: 1, strikingDef: 1, takedowns: 40, takedownDef: 99, submissions: 40, submissionDef: 70, cardio: 75, chin: 99, fightIQ: 1 };
+    const banger = { id: 'h', name: 'H', archetype: 'striker' as const, statLine: { striking: 99, strikingDef: 1, takedowns: 1, takedownDef: 40, submissions: 40, submissionDef: 50, cardio: 75, chin: 70, fightIQ: 99 } };
+    const s = { ...startFight({ seed: 'h3-strike', fightNumber: 1, playerStatLine: weakPlayer, opponent: banger, signatureId: 'the-left-hand' }), signatureCharge: 100 };
+    const r = resolveExchange(s, { kind: 'signature' });
+    const beat = r.beats[r.beats.length - 1]!;
+    expect(beat.moveClass).toBe('strike');
+  });
+});

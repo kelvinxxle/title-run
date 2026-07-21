@@ -16,7 +16,7 @@ import { gamePlanEffect } from './gameplan';
 import { buildRoundReport, type RoundReport } from './report';
 import { TAKEDOWN_PROFILES } from './takedown';
 import { getSignatureMoveById } from './signatures';
-import { buildResolvedBeat, type BeatDeltas, type BeatStatus } from './beat';
+import { buildResolvedBeat, type BeatDeltas, type BeatStatus, type BeatOutcome, type BeatMoveClass } from './beat';
 
 export const EXCHANGES_PER_ROUND = 3;
 
@@ -221,7 +221,8 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       if (oppPlan === 'submission') {
         const report = makeReport(state.round, 'opponent', dominance, playerMove, oppMove, state, pBase, oBase);
         const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
-          moveClass: 'signature', moveId: oppMove.takedownType, target: null,
+          moveClass: 'takedown', moveId: oppMove.takedownType, target: null,
+          outcome: 'landed',
           deltas: makeBeatDeltas(state, pBase, oBase), status: makeBeatStatus(state, pBase, oBase),
           signatureId: null, isFinish: false, finishMethod: null });
         return {
@@ -243,7 +244,8 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
 
       if (preHead < rocked && postHead >= rocked) {
         const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
-          moveClass: 'signature', moveId: oppMove.takedownType, target: 'head',
+          moveClass: 'takedown', moveId: oppMove.takedownType, target: 'head',
+          outcome: 'landed',
           deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
           signatureId: null, isFinish: false, finishMethod: null });
         return {
@@ -257,7 +259,8 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       }
 
       const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
-        moveClass: 'signature', moveId: oppMove.takedownType, target: 'head',
+        moveClass: 'takedown', moveId: oppMove.takedownType, target: 'head',
+        outcome: 'landed',
         deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
         signatureId: null, isFinish: false, finishMethod: null });
       return { ...crossRoundBoundary({ ...state, beats: [...state.beats, beat] }, pGnp, oBase, plan.staminaDelta, [...state.log, tdLogEntry]), lastReport: gnpReport, signatureCharge: 0 };
@@ -322,10 +325,13 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
 
     // Beat construction for normal signature exchange (player wins or opponent strike counter).
     const sigCounterTarget = dominance < 0 && oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : null;
+    const sigBeatMoveClass: BeatMoveClass = dominance > 0 ? 'signature' : 'strike';
+    const sigBeatOutcome: BeatOutcome = dominance === 0 ? 'evaded' : 'landed';
     const sigBeatMoveId: string | null = dominance > 0 ? state.signatureId : (dominance < 0 && oppMove.kind === 'strike' ? oppMove.strike : null);
     const sigBeatTarget = dominance > 0 ? 'head' : sigCounterTarget;
     const sigBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner, dominance,
-      moveClass: 'signature', moveId: sigBeatMoveId, target: sigBeatTarget,
+      moveClass: sigBeatMoveClass, moveId: sigBeatMoveId, target: sigBeatTarget,
+      outcome: sigBeatOutcome,
       deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
       signatureId: winner === 'player' ? state.signatureId : null, isFinish: false, finishMethod: null });
 
@@ -407,6 +413,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const tdSignatureCharge = state.signatureCharge + tdChargeGain;
     const tdBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'player', dominance: takedownCheck!,
       moveClass: 'takedown', moveId: playerMove.takedownType, target: null,
+      outcome: 'landed',
       deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
       signatureId: null, isFinish: false, finishMethod: null });
     // The shot consumed this beat. If it was the last beat, the takedown still SCORES
@@ -443,6 +450,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       const report = makeReport(state.round, 'opponent', dominance, playerMove, oppMove, state, pBase, oBase);
       const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
         moveClass: 'takedown', moveId: oppMove.takedownType, target: null,
+        outcome: 'landed',
         deltas: makeBeatDeltas(state, pBase, oBase), status: makeBeatStatus(state, pBase, oBase),
         signatureId: null, isFinish: false, finishMethod: null });
       return {
@@ -471,6 +479,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
       // Rock → opponent-side KO finish window; round frozen, player defends.
       const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
         moveClass: 'takedown', moveId: oppMove.takedownType, target: 'head',
+        outcome: 'landed',
         deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
         signatureId: null, isFinish: false, finishMethod: null });
       return {
@@ -490,6 +499,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     // No rock → partial damage; advance the round (round-boundary stamina applied).
     const beat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: 'opponent', dominance,
       moveClass: 'takedown', moveId: oppMove.takedownType, target: 'head',
+      outcome: 'landed',
       deltas: makeBeatDeltas(state, pGnp, oBase), status: makeBeatStatus(state, pGnp, oBase),
       signatureId: null, isFinish: false, finishMethod: null });
     return { ...crossRoundBoundary({ ...state, beats: [...state.beats, beat] }, pGnp, oBase, plan.staminaDelta, [...state.log, logEntry]), lastReport: report, signatureCharge: state.signatureCharge }; // FIX B
@@ -521,8 +531,10 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const logNow = [...state.log, stuffedLogEntry];
     const stuffedMoveId = dominance < 0 && oppMove.kind === 'strike' ? oppMove.strike : null;
     const stuffedTarget = dominance < 0 && oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : null;
+    const stuffedBeatOutcome: BeatOutcome = dominance < 0 ? 'landed' : 'evaded';
     const stuffedBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: stuffedWinner, dominance: resolvedDominance,
       moveClass: 'takedown', moveId: stuffedMoveId, target: stuffedTarget,
+      outcome: stuffedBeatOutcome,
       deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
       signatureId: null, isFinish: false, finishMethod: null });
 
@@ -606,8 +618,10 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
 
   const strikeBeatMoveId: string | null = winner !== 'draw' ? (winnerMove.kind === 'strike' ? winnerMove.strike : null) : null;
   const strikeBeatTarget = winner !== 'draw' ? target : null;
+  const strikeBeatOutcome: BeatOutcome = dominance === 0 ? 'evaded' : 'landed';
   const strikeBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner, dominance,
     moveClass: 'strike', moveId: strikeBeatMoveId, target: strikeBeatTarget,
+    outcome: strikeBeatOutcome,
     deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
     signatureId: null, isFinish: false, finishMethod: null });
 

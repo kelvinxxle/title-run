@@ -35,6 +35,7 @@ export interface BuildBeatArgs {
   dominance: number;
   moveClass: BeatMoveClass;
   moveId: string | null;
+  outcome: BeatOutcome;
   target: BeatTarget;
   deltas: BeatDeltas;
   status: BeatStatus;
@@ -43,20 +44,11 @@ export interface BuildBeatArgs {
   finishMethod: 'KO' | 'submission' | null;
 }
 
-const DRAW_EPS = 6;
 export function buildResolvedBeat(a: BuildBeatArgs): ResolvedBeat {
   const actorId: BeatActor = a.winner === 'opponent' ? 'opponent' : 'player';
   const targetId: BeatActor = actorId === 'player' ? 'opponent' : 'player';
-  const dmgToTarget = targetId === 'opponent'
-    ? a.deltas.opponentHead + a.deltas.opponentBody + a.deltas.opponentLeg
-    : a.deltas.playerHead + a.deltas.playerBody + a.deltas.playerLeg;
-  let outcome: BeatOutcome;
-  if (a.isFinish) outcome = 'landed';
-  else if (a.signatureId != null && a.winner === 'player') outcome = 'countered';
-  else if (a.winner === 'draw' || Math.abs(a.dominance) < DRAW_EPS) outcome = 'evaded';
-  else outcome = dmgToTarget > 0 ? 'landed' : 'blocked';
   return { id: `${a.round}-${a.exchange}`, round: a.round, exchange: a.exchange,
-    actorId, targetId, moveClass: a.moveClass, moveId: a.moveId, outcome, target: a.target,
+    actorId, targetId, moveClass: a.moveClass, moveId: a.moveId, outcome: a.outcome, target: a.target,
     deltas: a.deltas, status: a.status, signatureId: a.signatureId,
     isFinish: a.isFinish, finishMethod: a.finishMethod };
 }
