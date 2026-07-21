@@ -179,3 +179,12 @@ export function getSignatureMoveById(id: string): SignatureMove {
   if (!move) throw new Error(`Unknown signature move id: ${id}`);
   return move;
 }
+
+/**
+ * Non-throwing membership check for persistence validation.
+ * Use at the persistence boundary to reject corrupt/stale blobs without crashing.
+ * resolveExchange should still call getSignatureMoveById (which throws) for hard programming errors.
+ */
+export function isKnownSignatureMoveId(id: string): boolean {
+  return _moveById.has(id);
+}
