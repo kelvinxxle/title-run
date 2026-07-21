@@ -9,6 +9,7 @@ import { createRng } from '../rng';
 import { opponentTakedownType } from './takedown';
 import type { ArchetypeId } from './archetypes';
 import type { GroundState } from './ground';
+import type { ResolvedBeat } from './beat';
 
 // ── Core types ───────────────────────────────────────────────────────────────
 
@@ -71,6 +72,8 @@ export interface FightState {
   signatureId: string;
   /** Charge 0..100; fills on winning beats; detonates the signature at 100. */
   signatureCharge: number;
+  /** Append-only cinematic beat log. One entry per resolved exchange. */
+  beats: ResolvedBeat[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -117,6 +120,7 @@ export function startFight(args: {
     ground: null,
     signatureId,
     signatureCharge: 0,
+    beats: [],
   };
 }
 

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import App from './App';
 import { save } from './persistence/runStorageV2';
 import { startRun, applyDraft, startNextFight, finishStep, STAT_IDS, type RunState, type StatLine, type FightState, type SlotFill, type StatId } from './domain/combat';
@@ -19,7 +19,7 @@ function finishWindowFight(): FightState {
     player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 1 },
     opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
-    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
   };
 }
 function finishedFight(winner: 'player' | 'opponent'): FightState {
@@ -28,7 +28,7 @@ function finishedFight(winner: 'player' | 'opponent'): FightState {
     player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0 },
     opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
-    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
   };
 }
 function cornerFight(): FightState {
@@ -43,6 +43,7 @@ function cornerFight(): FightState {
     ground: null,
     signatureId: 'check-hook',
     signatureCharge: 0,
+    beats: [],
     lastReport: {
       round: 1,
       headline: 'You took the round.',
@@ -130,7 +131,7 @@ describe('App (v2 flow)', () => {
         player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0 },
         opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
         window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
-        gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+        gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
       },
     };
     save({ run: lost, bestReign: null });
@@ -190,5 +191,14 @@ describe('App (v2 flow)', () => {
     const reloadedView = screen.getByTestId('fight-view');
     expect(reloadedView).toHaveAttribute('data-round', savedRound);
     expect(reloadedView).toHaveAttribute('data-exchange', savedExchange);
+  });
+});
+
+describe('App ?lab=1', () => {
+  it('renders the ReplayLab when ?lab=1 is in the URL', () => {
+    vi.stubGlobal('location', { ...window.location, search: '?lab=1' });
+    render(<App />);
+    expect(screen.getByTestId('replay-lab')).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });

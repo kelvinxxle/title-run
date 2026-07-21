@@ -9,6 +9,7 @@ import TopAppBar from './components/TopAppBar';
 import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
 import FightView from './screens/FightView';
+import ReplayLab from './screens/ReplayLab';
 
 export interface AppProps { makeSeed?: () => string; }
 
@@ -56,6 +57,10 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
   const showNewRecord = run !== null && run.phase === 'run-over' && computeIsNewRecord(bestReign, run);
 
   function screen() {
+    // Read search params ONCE (no reactivity needed — dev lab only)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('lab') === '1') return <ReplayLab />;
+
     if (run === null || run.phase === 'pre-fight' || run.phase === 'run-over') {
       return (
         <ChampionshipHubScreen

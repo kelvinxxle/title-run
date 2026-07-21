@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { load, save, STORAGE_KEY, SCHEMA_VERSION } from './runStorageV2';
-import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState } from '../domain/combat';
+import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState, type ResolvedBeat } from '../domain/combat';
 import { STAT_IDS, type StatLine, type StatId } from '../domain/combat';
 import type { SlotFill } from '../domain/combat';
 
@@ -36,13 +36,19 @@ function store(run: unknown): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run, bestReign: 0 }));
 }
 
+// M18: normalize runs by clearing beats (since they're not persisted)
+function withoutBeats(run: RunState | null): RunState | null {
+  if (!run || !run.fight) return run;
+  return { ...run, fight: { ...run.fight, beats: [] } };
+}
+
 describe('runStorageV2', () => {
   beforeEach(() => localStorage.clear());
 
   it('round-trips a valid v2 run', () => {
     const run = preFight();
     save({ run, bestReign: 3 });
-    expect(load()).toEqual({ run, bestReign: 3 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 3 });
   });
 
   it('returns defaults when nothing is stored', () => {
@@ -95,14 +101,14 @@ describe('runStorageV2', () => {
   it('round-trips a real mid-fight run and a finished-fight pre-fight run', () => {
     const mid = midFight();
     save({ run: mid, bestReign: 1 });
-    expect(load()).toEqual({ run: mid, bestReign: 1 });
+    expect(load()).toEqual({ run: withoutBeats(mid), bestReign: 1 });
 
     const finishedFight: FightState = {
       seed: 'seed-1', fightNumber: 1, rounds: 3, round: 3, exchange: 1, phase: 'finished',
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: { winner: 'player', method: 'KO', round: 3 }, log: [],
-      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
     };
     const postWin: RunState = {
       seed: 'seed-1', phase: 'pre-fight', fighter: { name: 'A', statLine: LINE, signatureId: 'check-hook' },
@@ -118,7 +124,7 @@ describe('runStorageV2', () => {
     delete legacyFight.gamePlan;
     delete legacyFight.lastReport;
     store({ ...mid, fight: legacyFight });
-    expect(load()).toEqual({ run: { ...mid, fight: { ...(mid.fight as FightState), gamePlan: null, lastReport: null } }, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats({ ...mid, fight: { ...(mid.fight as FightState), gamePlan: null, lastReport: null } }), bestReign: 0 });
   });
 
   it('rejects a finish-window fight with a null window (phase↔payload invariant), and clears the key', () => {
@@ -134,7 +140,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
-      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
     };
     store({ ...preFight(), phase: 'fighting', fight: finished });
     expect(load().run).toBeNull();
@@ -152,7 +158,7 @@ describe('runStorageV2', () => {
     const run = finishWindowRun();
     expect((run.fight as FightState).phase).toBe('finish-window');
     save({ run, bestReign: 0 });
-    expect(load()).toEqual({ run, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 0 });
   });
 
   it('rejects a finish-window fight with an invalid window method (phase↔payload invariant)', () => {
@@ -165,7 +171,7 @@ describe('runStorageV2', () => {
     const run = groundRun();
     expect((run.fight as FightState).phase).toBe('ground');
     save({ run, bestReign: 0 });
-    expect(load()).toEqual({ run, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 0 });
   });
 
   it('rejects a ground fight with a non-null window (phase↔payload invariant), and clears the key', () => {
@@ -254,7 +260,7 @@ describe('runStorageV2', () => {
     expect((run.fight as FightState).exchange).toBe(2);
     expect((run.fight as FightState).player.legDamage).toBe(0);
     save({ run, bestReign: 0 });
-    expect(load()).toEqual({ run, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 0 });
   });
 
   it('rejects an out-of-range exchange (0, 4, 2.5)', () => {
@@ -288,7 +294,7 @@ describe('runStorageV2', () => {
     expect((run.fight as FightState).phase).toBe('ground');
     expect((run.fight as FightState).ground).toEqual({ position: 'half-guard' });
     save({ run, bestReign: 0 });
-    expect(load()).toEqual({ run, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 0 });
   });
 
   it('M16: rejects a ground phase with a null ground field (clears to defaults)', () => {
@@ -424,6 +430,45 @@ describe('runStorageV2', () => {
     // Sanity: the guard must not break valid saves (signatureId='last-stylebender' is in the table).
     const run = midFight();
     save({ run, bestReign: 0 });
-    expect(load()).toEqual({ run, bestReign: 0 });
+    expect(load()).toEqual({ run: withoutBeats(run), bestReign: 0 });
+  });
+
+  // ── M18: beats exclusion (no schema bump) ───────────────────────────────────
+
+  it('does not serialize beats into the persisted blob', () => {
+    const run = midFight();
+    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] as unknown as ResolvedBeat[] } as FightState;
+    save({ run: { ...run, fight: fightWithBeats }, bestReign: 0 });
+    const raw = localStorage.getItem(STORAGE_KEY)!;
+    expect(raw.includes('"beats"')).toBe(false);
+  });
+
+  it('rehydrates a loaded fight with an empty beats array', () => {
+    const run = midFight();
+    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] as unknown as ResolvedBeat[] } as FightState;
+    save({ run: { ...run, fight: fightWithBeats }, bestReign: 0 });
+    const loaded = load();
+    expect(loaded.run?.fight?.beats).toEqual([]);
+  });
+
+  it('a v6 blob without beats still loads as valid', () => {
+    // Manually store a v6 blob without beats key (legacy fixture).
+    const run = midFight();
+    const { beats, ...fightWithoutBeats } = run.fight as any;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: SCHEMA_VERSION, run: { ...run, fight: fightWithoutBeats }, bestReign: 0 }));
+    expect(load().run).not.toBeNull();
+  });
+
+  // H5 RED: hydrateBeats must always reset to [] even when persisted beats is non-empty
+  it('H5: hydrateBeats always resets to empty array even when persisted beats is non-empty', () => {
+    const run = midFight();
+    const raw = JSON.stringify({
+      version: SCHEMA_VERSION,
+      run: { ...run, fight: { ...(run.fight as object), beats: [{ text: 'stale-beat' }] } },
+      bestReign: 0,
+    });
+    localStorage.setItem(STORAGE_KEY, raw);
+    const loaded = load();
+    expect(loaded.run?.fight?.beats).toEqual([]);
   });
 });

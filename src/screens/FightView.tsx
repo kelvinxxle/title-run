@@ -5,6 +5,7 @@ import StrikePanel from '../components/StrikePanel';
 import SignatureMeter from '../components/SignatureMeter';
 import FinishSequencePanel from '../components/FinishSequencePanel';
 import GroundPanel from '../components/GroundPanel';
+import FightReplay from '../replay/FightReplay';
 import OutcomeBanner from '../components/OutcomeBanner';
 import CornerScreen from '../components/CornerScreen';
 import RoundRecap from '../components/RoundRecap';
@@ -70,6 +71,15 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
           fighterId={fighterIdByName(opponent.name)}
         />
       </div>
+
+      <FightReplay
+        beat={fightState.beats.length > 0 ? fightState.beats[fightState.beats.length - 1] : null}
+        playerName={playerName}
+        playerArchetype={archetypeFromStatLine(player.statLine)}
+        opponentName={opponent.name}
+        opponentArchetype={opponent.archetype}
+        presentationSeed={fightState.seed}
+      />
 
       <SignatureMeter charge={fightState.signatureCharge} />
 
