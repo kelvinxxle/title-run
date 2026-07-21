@@ -73,7 +73,7 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
       </div>
 
       <FightReplay
-        beat={fightState.beats?.at(-1) ?? null}
+        beat={fightState.beats.length > 0 ? fightState.beats[fightState.beats.length - 1] : null}
         playerName={playerName}
         playerArchetype={archetypeFromStatLine(player.statLine)}
         opponentName={opponent.name}
