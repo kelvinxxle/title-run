@@ -46,6 +46,7 @@ describe('fightDisplay', () => {
       seed:'s', fightNumber:1, rounds:3, round:2, exchange:1, phase,
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
       window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null,
+      signatureId: 'check-hook', signatureCharge: 0,
     });
     expect(roundLabel(st('in-round'))).toBe('Round 2 of 3');
     expect(roundLabel(st('finish-window'))).toContain('Finish');
@@ -59,6 +60,7 @@ describe('fightDisplay', () => {
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
       window: null, outcome: null, log: [], gamePlan: null, lastReport: null,
       ground: { position: 'mount' },
+      signatureId: 'check-hook', signatureCharge: 0,
     };
     expect(roundLabel(groundSt)).toMatch(/Mount/i);
     expect(roundLabel(groundSt)).toContain('Round 2');
@@ -80,6 +82,7 @@ describe('fightDisplay', () => {
       seed:'s', fightNumber:1, rounds:3, round:2, exchange, phase: 'in-round',
       player: base, opponent: { ...base, name:'R', archetype:'boxer' },
       window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null,
+      signatureId: 'check-hook', signatureCharge: 0,
     });
     expect(exchangeLabel(st(2))).toBe(`Exchange 2 of ${EXCHANGES_PER_ROUND}`);
     expect(exchangeLabel(st(1))).toBe(`Exchange 1 of ${EXCHANGES_PER_ROUND}`);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { startFight, type FightState } from './fightState';
-import { resolveExchange, EXCHANGES_PER_ROUND } from './exchange';
+import { resolveExchange, EXCHANGES_PER_ROUND, signatureReady } from './exchange';
 import { resolveGround } from './groundResolve';
 import type { ExchangeMove } from './intents';
 import type { StatLine } from './stats';
@@ -289,5 +289,160 @@ describe('resolveExchange', () => {
     const ground = resolveExchange(sWithPlan, td);
     expect(ground.phase).toBe('ground');
     expect(ground.gamePlan).toBe('catch-breath'); // plan preserved after entry
+  });
+});
+
+describe('M17 T4: signature charge + detonation', () => {
+  // Helper: play enough beats so the player wins at least one, charging the signature
+  function freshWithSig(signatureId = 'check-hook', charge = 0): FightState {
+    return { ...startFight({ seed: 'sig-seed', fightNumber: 1, playerStatLine: P, opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O }, signatureId }), signatureCharge: charge };
+  }
+
+  it('signatureCharge starts at 0', () => {
+    expect(fresh().signatureCharge).toBe(0);
+  });
+
+  it('winning a beat raises signatureCharge above 0', () => {
+    // Player with dominant stats vs weak opponent, jab → player wins → charge increases
+    const strong: StatLine = { striking: 99, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 99 };
+    const weak: StatLine = { striking: 1, strikingDef: 1, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 1, chin: 1, fightIQ: 1 };
+    const s = startFight({ seed: 'charge-test', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'W', archetype: 'brawler', statLine: weak }, signatureId: 'check-hook' });
+    const after = resolveExchange(s, jab);
+    expect(after.signatureCharge).toBeGreaterThan(0);
+  });
+
+  it('signatureCharge clamps at 100', () => {
+    // With charge starting at 95, a winning beat should bring it to 100, not above
+    const strong: StatLine = { striking: 99, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 99 };
+    const weak: StatLine = { striking: 1, strikingDef: 1, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 1, chin: 1, fightIQ: 1 };
+    const s = { ...startFight({ seed: 'charge-clamp', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'W', archetype: 'brawler', statLine: weak }, signatureId: 'check-hook' }), signatureCharge: 95 };
+    const after = resolveExchange(s, jab);
+    expect(after.signatureCharge).toBeLessThanOrEqual(100);
+  });
+
+  it('signatureReady() returns false when charge < 100', () => {
+    expect(signatureReady(freshWithSig('check-hook', 0))).toBe(false);
+    expect(signatureReady(freshWithSig('check-hook', 99))).toBe(false);
+  });
+
+  it('signatureReady() returns true when charge >= 100', () => {
+    expect(signatureReady(freshWithSig('check-hook', 100))).toBe(true);
+  });
+
+  it('throwing signature when not ready throws a guard error', () => {
+    const notReady = freshWithSig('check-hook', 50);
+    const sigMove: ExchangeMove = { kind: 'signature' };
+    expect(() => resolveExchange(notReady, sigMove)).toThrow();
+  });
+
+  it('detonation uses the signature profile (bigger head damage than powerPunch on same seed)', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const seed = 'det-test';
+    const sBase = startFight({ seed, fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'Glass', archetype: 'brawler', statLine: glass }, signatureId: 'check-hook' });
+    const sReady = { ...sBase, signatureCharge: 100 };
+
+    const pp: ExchangeMove = { kind: 'strike', strike: 'powerPunch' };
+    const sig: ExchangeMove = { kind: 'signature' };
+
+    const afterPP = resolveExchange(sBase, pp);
+    const afterSig = resolveExchange(sReady, sig);
+
+    expect(afterSig.opponent.headDamage).toBeGreaterThan(afterPP.opponent.headDamage);
+  });
+
+  it('detonation resets signatureCharge to 0', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const s = { ...startFight({ seed: 'det-reset', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'Glass', archetype: 'brawler', statLine: glass }, signatureId: 'check-hook' }), signatureCharge: 100 };
+    const after = resolveExchange(s, { kind: 'signature' });
+    expect(after.signatureCharge).toBe(0);
+  });
+
+  it('detonation is deterministic across two runs (same seed + charge → same state)', () => {
+    const strong: StatLine = { striking: 95, strikingDef: 99, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 99, chin: 99, fightIQ: 80 };
+    const glass: StatLine = { striking: 20, strikingDef: 5, takedowns: 1, takedownDef: 1, submissions: 1, submissionDef: 1, cardio: 20, chin: 5, fightIQ: 20 };
+    const sBase = startFight({ seed: 'det-determ', fightNumber: 1, playerStatLine: strong, opponent: { id: 'o', name: 'G', archetype: 'brawler', statLine: glass }, signatureId: 'the-left-hand' });
+    const s = { ...sBase, signatureCharge: 100 };
+    const r1 = resolveExchange(s, { kind: 'signature' });
+    const r2 = resolveExchange(s, { kind: 'signature' });
+    expect(r1.opponent.headDamage).toBe(r2.opponent.headDamage);
+    expect(r1.signatureCharge).toBe(r2.signatureCharge);
+  });
+});
+
+// ── Review fix RED tests ─────────────────────────────────────────────────────
+
+describe('Review FIX A: signature branch opponent-takedown routing + stamina clamp', () => {
+  it('FIX A-1 RED: opponent takedown during signature detonation routes to ground — not bogus head damage', () => {
+    // Player: low striking (10) → weak playerAttackScore; low takedownDef (1) → opponent takedown wins decisively.
+    // Opponent: low striking (1), high takedowns (99), archetype 'wrestler' → opponentMove always picks takedown.
+    // dominance strongly negative → signature branch hits (dominance<0, oppMove.kind='takedown').
+    // Bug: defaults to cPower=1/cTarget='head' → ~37 head damage, stays in-round.
+    // Fix: routes to opponent takedown handler → GnP(8) + crossRoundBoundary → phase='corner', headDamage<20.
+    const lowStriker: StatLine = { striking: 10, strikingDef: 99, takedowns: 40, takedownDef: 1, submissions: 40, submissionDef: 70, cardio: 75, chin: 99, fightIQ: 60 };
+    const highWrestler = { id: 'w', name: 'G', archetype: 'wrestler' as const, statLine: { striking: 1, strikingDef: 1, takedowns: 99, takedownDef: 40, submissions: 80, submissionDef: 50, cardio: 75, chin: 70, fightIQ: 60 } };
+    const s0 = startFight({ seed: 'fix-a-td', fightNumber: 1, playerStatLine: lowStriker, opponent: highWrestler, signatureId: 'check-hook' });
+    const sigState: FightState = { ...s0, signatureCharge: 100 };
+    const after = resolveExchange(sigState, { kind: 'signature' });
+    // Must NOT apply ~37 head damage and stay in-round (the buggy path)
+    expect(after.player.headDamage).toBeLessThan(20);
+    // Must route to opponent ground (submission/GnP → corner or finish-window), never stay in-round at exchange 1
+    expect(after.phase).not.toBe('in-round');
+  });
+
+  it('FIX A-2 RED: player stamina is clamped to ≥0 after body-kick counter during signature detonation', () => {
+    // Player: very low striking (1), very low strikingDef (1), high takedownDef (99) → opp picks strike.
+    // Player stamina forced to 5 (gassed) → opponentMove returns bodyKick (isGassed path).
+    // Opponent: high striking (99), archetype 'striker' → dominant body-kick counter.
+    // Bug: p.stamina -= Math.round(cDmg * 0.5) but never clamped → negative stamina (e.g. -29).
+    // Fix: p.stamina = clampStamina(p.stamina - …) → ≥ 0.
+    const gasPlayer: StatLine = { striking: 1, strikingDef: 1, takedowns: 40, takedownDef: 99, submissions: 40, submissionDef: 70, cardio: 75, chin: 99, fightIQ: 60 };
+    const heavyHitter = { id: 'h', name: 'H', archetype: 'striker' as const, statLine: { striking: 99, strikingDef: 1, takedowns: 1, takedownDef: 40, submissions: 40, submissionDef: 50, cardio: 75, chin: 70, fightIQ: 60 } };
+    const s0 = startFight({ seed: 'fix-a-gas', fightNumber: 1, playerStatLine: gasPlayer, opponent: heavyHitter, signatureId: 'check-hook' });
+    // Force stamina to 5 (gassed — drives opponentMove to bodyKick)
+    const gasState: FightState = { ...s0, player: { ...s0.player, stamina: 5 }, signatureCharge: 100 };
+    const after = resolveExchange(gasState, { kind: 'signature' });
+    expect(after.player.stamina).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('Review FIX B: charge uses per-branch authoritative outcome', () => {
+  it('FIX B-1 RED: landed takedown (takedownCheck>0, dominance<0) earns signature charge', () => {
+    // Player: high takedowns (90), very low strikingDef (1) → takedownCheck always positive,
+    // but opponent striking (99) makes dominance always negative.
+    // Bug: winner derived from dominance (<0) → chargeGain=0 even though shot landed.
+    // Fix: per-branch award on takedown-lands.
+    const tdPlayer: StatLine = { striking: 20, strikingDef: 1, takedowns: 90, takedownDef: 40, submissions: 40, submissionDef: 70, cardio: 75, chin: 70, fightIQ: 60 };
+    const s0 = startFight({ seed: 'fix-b1', fightNumber: 1, playerStatLine: tdPlayer,
+      opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, striking: 99, takedownDef: 20 } }, signatureId: 'check-hook' });
+    const s = { ...s0, signatureCharge: 50 };
+    const after = resolveExchange(s, { kind: 'takedown', takedownType: 'trip' });
+    // Takedown landed (phase='ground'); charge must have increased
+    expect(after.phase).toBe('ground');
+    expect(after.signatureCharge).toBeGreaterThan(50);
+  });
+
+  it('FIX B-2 RED: stuffed takedown (takedownCheck≤0) never earns charge even when raw dominance>0', () => {
+    // Player: very low takedowns (1), very high strikingDef (99) + fightIQ (99) → takedownCheck always deeply negative,
+    // but opponent is also very weak (striking=1, takedowns=1, fightIQ=1) → oppAttackScore negative too →
+    // dominance = takedownCheck − oppAttackScore + IQ ≈ 9.73 + swing → >0 for ~90% of seeds.
+    // Bug: winner='player' (dominance>0) → chargeGain>0 for a stuffed shot.
+    // Fix: stuffed branch always uses state.signatureCharge (no charge).
+    // NOTE: opp.takedowns MUST be set to 1 (low) so the opponent picks strikes, not takedowns.
+    const stuffPlayer: StatLine = { striking: 20, strikingDef: 99, takedowns: 1, takedownDef: 99, submissions: 40, submissionDef: 70, cardio: 75, chin: 70, fightIQ: 99 };
+    let foundStuffed = false;
+    for (let i = 0; i < 50; i++) {
+      const s0 = startFight({ seed: `fix-b2-${i}`, fightNumber: 1, playerStatLine: stuffPlayer,
+        opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: { ...O, takedownDef: 99, striking: 1, takedowns: 1, fightIQ: 1 } }, signatureId: 'check-hook' });
+      const s = { ...s0, signatureCharge: 50 };
+      const after = resolveExchange(s, { kind: 'takedown', takedownType: 'trip' });
+      if (after.phase !== 'ground') {
+        foundStuffed = true;
+        // Stuffed takedown: charge must NOT increase regardless of dominance
+        expect(after.signatureCharge).toBe(50);
+      }
+    }
+    expect(foundStuffed).toBe(true);
   });
 });

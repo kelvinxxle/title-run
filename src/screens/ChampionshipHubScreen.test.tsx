@@ -1,9 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import ChampionshipHubScreen from './ChampionshipHubScreen';
-import { startRun, applyDraft, generateOpponent, STAT_IDS, type RunState, type StatLine } from '../domain/combat';
+import { startRun, applyDraft, generateOpponent, STAT_IDS, type RunState, type StatLine, type SlotFill, type StatId } from '../domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+const MOCK_SLOTS = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 55, sourceFighterId: 'israel-adesanya' }])) as Record<StatId, SlotFill>;
 const noop = () => {};
 
 describe('ChampionshipHubScreen (v2)', () => {
@@ -14,7 +15,7 @@ describe('ChampionshipHubScreen (v2)', () => {
   });
 
   it('pre-fight shows the next opponent + Enter the Octagon', () => {
-    const run = applyDraft(startRun('seedH'), { name: 'Ace', statLine: LINE });
+    const run = applyDraft(startRun('seedH'), { name: 'Ace', statLine: LINE, slots: MOCK_SLOTS });
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} />);
     expect(screen.getByTestId('player-name')).toHaveTextContent('Ace');
     expect(screen.getByTestId('next-opponent')).toBeInTheDocument();
@@ -22,7 +23,7 @@ describe('ChampionshipHubScreen (v2)', () => {
   });
 
   it('pre-fight shows opponent photo and player avatar fallback', () => {
-    const run = applyDraft(startRun('seedH'), { name: 'Ace', statLine: LINE });
+    const run = applyDraft(startRun('seedH'), { name: 'Ace', statLine: LINE, slots: MOCK_SLOTS });
     const opponent = generateOpponent(run.seed, run.fightNumber);
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} />);
     // player (no roster id) → avatar fallback
@@ -34,7 +35,7 @@ describe('ChampionshipHubScreen (v2)', () => {
   });
 
   it('run-over shows record + reign + new-record flourish', () => {
-    const run: RunState = { seed:'x', phase:'run-over', fighter:{name:'Ace',statLine:LINE}, fightNumber:6, record:{wins:5,losses:1}, isChampion:true, defenses:1, fight:null };
+    const run: RunState = { seed:'x', phase:'run-over', fighter:{name:'Ace',statLine:LINE,signatureId:'check-hook'}, fightNumber:6, record:{wins:5,losses:1}, isChampion:true, defenses:1, fight:null };
     render(<ChampionshipHubScreen run={run} onStartRun={noop} onEnterFight={noop} bestReign={0} isNewRecord />);
     expect(screen.getByText('Record 5–1')).toBeInTheDocument();
     expect(screen.getByTestId('new-record')).toBeInTheDocument();
@@ -48,7 +49,7 @@ describe('ChampionshipHubScreen (v2)', () => {
     expect(o5a.id).toBe(o5b.id);
 
     const mk = (seed: string, fightNumber: number): RunState => ({
-      seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
+      seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE, signatureId: 'check-hook' },
       fightNumber, record: { wins: fightNumber - 1, losses: 0 }, isChampion: false, defenses: 0, fight: null,
     });
 
@@ -67,7 +68,7 @@ describe('ChampionshipHubScreen (v2)', () => {
     expect(o1.id).not.toBe(o2.id);
 
     const mk = (seed: string, fightNumber: number): RunState => ({
-      seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE },
+      seed, phase: 'pre-fight', fighter: { name: 'Ace', statLine: LINE, signatureId: 'check-hook' },
       fightNumber, record: { wins: fightNumber - 1, losses: 0 }, isChampion: false, defenses: 0, fight: null,
     });
 

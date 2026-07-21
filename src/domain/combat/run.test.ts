@@ -1,8 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { startRun, applyDraft, startNextFight, settleFight, TITLE_FIGHT } from './run';
-import { ARCHETYPES } from './archetypes';
+import { startDraft, keepStat, availableStatIds, nameFighter, getDraftedFighter } from './draft';
+import type { SlotFill } from './draft';
+import { STAT_IDS } from './stats';
+import type { StatLine, StatId } from './stats';
+import { resolveSignature } from './signatures';
 
-const draftInto = () => applyDraft(startRun('run-seed'), { name: 'Champ', statLine: ARCHETYPES.allrounder });
+// Build a real DraftedFighter with slots for T3 tests
+function buildDraftedFighter(seed: string, name: string) {
+  let d = startDraft(seed);
+  while (d.status === 'drafting') d = keepStat(d, availableStatIds(d)[0]);
+  d = nameFighter(d, name);
+  return getDraftedFighter(d);
+}
+
+const draftInto = () => {
+  const df = buildDraftedFighter('run-seed', 'Champ');
+  return applyDraft(startRun('run-seed'), df);
+};
 
 describe('run flow (no rewards, fresh each fight)', () => {
   it('has no reward phase and no carriedDamage', () => {
@@ -40,15 +55,15 @@ describe('run flow (no rewards, fresh each fight)', () => {
 
   // ── Phase-guard completeness: applyDraft ─────────────────────────────────────
   it('applyDraft only works from the drafting phase', () => {
-    const fighter = { name: 'Champ', statLine: ARCHETYPES.allrounder };
+    const df = buildDraftedFighter('phase-guard-seed', 'Champ');
     // Happy path: drafting → pre-fight with the fighter set.
-    const drafted = applyDraft(startRun('s'), fighter);
+    const drafted = applyDraft(startRun('s'), df);
     expect(drafted.phase).toBe('pre-fight');
     expect(drafted.fighter?.name).toBe('Champ');
     // Guarded: any non-drafting phase must throw (can't overwrite the fighter mid-run).
-    expect(() => applyDraft({ ...drafted, phase: 'pre-fight' }, fighter)).toThrow();
-    expect(() => applyDraft({ ...drafted, phase: 'fighting' }, fighter)).toThrow();
-    expect(() => applyDraft({ ...drafted, phase: 'run-over' }, fighter)).toThrow();
+    expect(() => applyDraft({ ...drafted, phase: 'pre-fight' }, df)).toThrow();
+    expect(() => applyDraft({ ...drafted, phase: 'fighting' }, df)).toThrow();
+    expect(() => applyDraft({ ...drafted, phase: 'run-over' }, df)).toThrow();
   });
 
   // ── Phase-guard completeness: settleFight ────────────────────────────────────
@@ -72,5 +87,70 @@ describe('run flow (no rewards, fresh each fight)', () => {
     const r = startNextFight(draftInto());
     const won = { ...r.fight!, phase: 'finished' as const, outcome: { winner: 'player' as const, method: 'KO' as const, round: 1 } };
     expect(() => settleFight({ ...r, fight: null }, won)).toThrow();
+  });
+});
+
+describe('M17 T3: signatureId threading', () => {
+  it('applyDraft resolves and stores signatureId on RunFighter', () => {
+    const df = buildDraftedFighter('sig-test', 'Champ');
+    const r = applyDraft(startRun('sig-test'), df);
+    expect(r.fighter).not.toBeNull();
+    expect(typeof r.fighter!.signatureId).toBe('string');
+    expect(r.fighter!.signatureId.length).toBeGreaterThan(0);
+  });
+
+  it('signatureId derives from the striking slot sourceFighterId — marquee (conor-mcgregor → the-left-hand)', () => {
+    // Build slots with striking pinned to conor-mcgregor (has a marquee override).
+    // All other slots use israel-adesanya as a valid roster filler.
+    const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 75])) as StatLine;
+    const slots = Object.fromEntries(
+      STAT_IDS.map((s): [StatId, SlotFill] => [
+        s,
+        { value: 75, sourceFighterId: s === 'striking' ? 'conor-mcgregor' : 'israel-adesanya' },
+      ])
+    ) as Record<StatId, SlotFill>;
+    const r = applyDraft(startRun('s'), { name: 'Test', statLine: LINE, slots });
+    // conor-mcgregor's marquee signature is 'the-left-hand'; verify both by resolver and by literal.
+    expect(r.fighter!.signatureId).toBe(resolveSignature('conor-mcgregor').id);
+    expect(r.fighter!.signatureId).toBe('the-left-hand');
+    // Sanity: would fail if resolved from a different slot (israel-adesanya → 'last-stylebender').
+    expect(r.fighter!.signatureId).not.toBe('last-stylebender');
+  });
+
+  it('signatureId derives from the striking slot sourceFighterId — archetype fallback (khabib-nurmagomedov → wrestler → level-change-right)', () => {
+    // khabib is NOT in MARQUEE_SIGNATURE → resolveSignature falls back to ARCHETYPE_SIGNATURE.wrestler.
+    const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 75])) as StatLine;
+    const slots = Object.fromEntries(
+      STAT_IDS.map((s): [StatId, SlotFill] => [
+        s,
+        { value: 75, sourceFighterId: s === 'striking' ? 'khabib-nurmagomedov' : 'israel-adesanya' },
+      ])
+    ) as Record<StatId, SlotFill>;
+    const r = applyDraft(startRun('s'), { name: 'Test', statLine: LINE, slots });
+    expect(r.fighter!.signatureId).toBe(resolveSignature('khabib-nurmagomedov').id);
+    expect(r.fighter!.signatureId).toBe('level-change-right');
+    expect(r.fighter!.signatureId).not.toBe('last-stylebender'); // not the 'striking' filler slot
+  });
+
+  it('startFight receives signatureId and initialises signatureCharge=0 on FightState', () => {
+    const r = startNextFight(draftInto());
+    expect(r.fight).not.toBeNull();
+    expect(typeof r.fight!.signatureId).toBe('string');
+    expect(r.fight!.signatureCharge).toBe(0);
+  });
+
+  it('RunFighter signatureId round-trips through startNextFight', () => {
+    const r = draftInto();
+    const signatureId = r.fighter!.signatureId;
+    const r2 = startNextFight(r);
+    expect(r2.fight!.signatureId).toBe(signatureId);
+  });
+
+  it('all STAT_IDS are present as slots keys in DraftedFighter', () => {
+    const df = buildDraftedFighter('slots-check', 'Test');
+    for (const statId of STAT_IDS) {
+      expect(df.slots[statId]).toBeDefined();
+      expect(typeof df.slots[statId].sourceFighterId).toBe('string');
+    }
   });
 });

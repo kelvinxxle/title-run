@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   startFight, resolveExchange, finishStep, resolveGround, generateOpponent,
   buildStatLine, getFighter, chooseGamePlan, POSITION_SUBMISSION, nextPosition,
+  signatureReady,
 } from './index';
 import type { FightState } from './fightState';
 import type { ExchangeMove, GamePlan } from './intents';
@@ -28,6 +29,7 @@ import type { GroundAction } from './ground';
 const PLAYER = buildStatLine(getFighter('georges-st-pierre'));
 
 function goodIntent(s: FightState): ExchangeMove {
+  if (signatureReady(s)) return { kind: 'signature' };
   const me = s.player.statLine;
   const opp = s.opponent.statLine;
   // Shoot only when wrestling is the clear edge AND dominates striking.
@@ -49,7 +51,8 @@ function goodIntent(s: FightState): ExchangeMove {
   return { kind: 'strike', strike: 'legKick' };
 }
 
-function carelessIntent(): ExchangeMove {
+function carelessIntent(s: FightState): ExchangeMove {
+  if (signatureReady(s)) return { kind: 'signature' };
   return { kind: 'strike', strike: 'powerPunch' };
 }
 
@@ -72,15 +75,16 @@ function goodGround(s: FightState): GroundAction {
 }
 
 // wrestleSpam standing move: always shoot a double-leg (B7 exploit probe).
-function wrestleSpamMove(): ExchangeMove {
+function wrestleSpamMove(s: FightState): ExchangeMove {
+  if (signatureReady(s)) return { kind: 'signature' };
   return { kind: 'takedown', takedownType: 'double-leg' };
 }
 
 // All 4 single-type spam policies for the honest B7 gate (Fix C).
-function singleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'single-leg' }; }
-function doubleLegSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'double-leg' }; }
-function tripSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'trip' }; }
-function bodyLockSpamMove(): ExchangeMove { return { kind: 'takedown', takedownType: 'body-lock' }; }
+function singleLegSpamMove(s: FightState): ExchangeMove { if (signatureReady(s)) return { kind: 'signature' }; return { kind: 'takedown', takedownType: 'single-leg' }; }
+function doubleLegSpamMove(s: FightState): ExchangeMove { if (signatureReady(s)) return { kind: 'signature' }; return { kind: 'takedown', takedownType: 'double-leg' }; }
+function tripSpamMove(s: FightState): ExchangeMove { if (signatureReady(s)) return { kind: 'signature' }; return { kind: 'takedown', takedownType: 'trip' }; }
+function bodyLockSpamMove(s: FightState): ExchangeMove { if (signatureReady(s)) return { kind: 'signature' }; return { kind: 'takedown', takedownType: 'body-lock' }; }
 
 function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'): FightState {
   let s = init;
@@ -90,8 +94,8 @@ function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'
     if (s.phase === 'in-round') {
       let move: ExchangeMove;
       if (policy === 'good') move = goodIntent(s);
-      else if (policy === 'wrestleSpam') move = wrestleSpamMove();
-      else move = carelessIntent();
+      else if (policy === 'wrestleSpam') move = wrestleSpamMove(s);
+      else move = carelessIntent(s);
       s = resolveExchange(s, move);
     } else if (s.phase === 'corner') {
       // Use policy-derived game plan: good play picks strategically, others always pushes pace
@@ -112,12 +116,12 @@ function playFight(init: FightState, policy: 'good' | 'careless' | 'wrestleSpam'
   return s;
 }
 
-function playFightWithMove(init: FightState, moveFunc: () => ExchangeMove): FightState {
+function playFightWithMove(init: FightState, moveFunc: (s: FightState) => ExchangeMove): FightState {
   let s = init;
   let guard = 0;
   while (s.phase !== 'finished') {
     if (guard++ > 300) throw new Error('fight did not terminate');
-    if (s.phase === 'in-round') s = resolveExchange(s, moveFunc());
+    if (s.phase === 'in-round') s = resolveExchange(s, moveFunc(s));
     else if (s.phase === 'corner') s = chooseGamePlan(s, 'push-pace');
     else if (s.phase === 'ground') s = resolveGround(s, goodGround(s));
     else { s = finishStep(s, 'commit'); }
@@ -146,7 +150,7 @@ function simulate(fightNumber: number, policy: 'good' | 'careless' | 'wrestleSpa
   return { winRate: wins / SEEDS, finishRate: finishes / SEEDS };
 }
 
-function simulateSpam(fightNumber: number, moveFunc: () => ExchangeMove): Band {
+function simulateSpam(fightNumber: number, moveFunc: (s: FightState) => ExchangeMove): Band {
   let wins = 0; let finishes = 0;
   for (let i = 0; i < SEEDS; i++) {
     const seed = `balance#spam#${i}`;
@@ -163,37 +167,36 @@ function aggWinRate(bands: Band[]): number {
   return bands.slice(1).reduce((sum, b) => sum + b.winRate, 0) / 10;
 }
 
-// ── M15 T7: BANDs re-derived on the multi-exchange engine + strike palette ──
-// Measured across 300 seeds, fightNumbers 1..10 (EXCHANGES_PER_ROUND=3, palette AI,
-// TAKEDOWN_ATK=1.25 — GSP's elite wrestling threads Tier-5 champions):
-//   fight  1: good wR=0.9967 fR=0.9700 | careless wR=0.3900 fR=0.2367 | gap=0.6067
-//   fight  2: good wR=0.7333 fR=0.7133 | careless wR=0.3067 fR=0.2900 | gap=0.4267
-//   fight  3: good wR=0.9200 fR=0.9167 | careless wR=0.6167 fR=0.5467 | gap=0.3033
-//   fight  4: good wR=0.7300 fR=0.6100 | careless wR=0.5200 fR=0.3967 | gap=0.2100
-//   fight  5: good wR=0.5733 fR=0.5700 | careless wR=0.3300 fR=0.3267 | gap=0.2433
-//   fight  6: good wR=0.6300 fR=0.6100 | careless wR=0.3033 fR=0.2900 | gap=0.3267
-//   fight  7: good wR=0.5367 fR=0.5333 | careless wR=0.3300 fR=0.3267 | gap=0.2067
-//   fight  8: good wR=0.5600 fR=0.5500 | careless wR=0.2833 fR=0.2800 | gap=0.2767
-//   fight  9: good wR=0.5200 fR=0.5200 | careless wR=0.3167 fR=0.3100 | gap=0.2033
-//   fight 10: good wR=0.5833 fR=0.5800 | careless wR=0.2800 fR=0.2733 | gap=0.3033
-//   AGG good finishRate = 0.6573
-// Every band below asserts the PLAN target (docs/superpowers/plans/2026-07-04-…-plan.md,
-// Task 7). No achievable-floor substitutions were needed — all six clear the plan number.
-// M15 gate-fix (forceBodyTarget honored): work-body now redirects good's winning non-body
-// beats to the body — a small live-economy shift (fights 4/8/10 moved ≤0.004; all six bands
-// still clear their plan targets). Table above re-measured across the same 300 seeds.
+// ── FIX-E re-measured: all policies (careless, wrestleSpam, goodIntent) use signature when ready ──
+// Measured across 300 seeds, fightNumbers 1..10, SIGNATURE_CHARGE_GAIN=18, SIGNATURE_CHARGE_DOM=0.15.
+// All 7 bands pass without needing to weaken any constant or tune signature knobs.
+//   fight  1: good wR=0.9867 fR=0.9867 | careless wR=0.4300 fR=0.2600 | wrestleSpam wR=0.9967 fR=0.9967 | gap=0.5567
+//   fight  2: good wR=0.6967 fR=0.6667 | careless wR=0.3067 fR=0.2833 | wrestleSpam wR=0.8033 fR=0.7800 | gap=0.3900
+//   fight  3: good wR=0.8367 fR=0.8133 | careless wR=0.6567 fR=0.5900 | wrestleSpam wR=0.8633 fR=0.8433 | gap=0.1800
+//   fight  4: good wR=0.7400 fR=0.6533 | careless wR=0.5600 fR=0.4500 | wrestleSpam wR=0.5433 fR=0.5233 | gap=0.1800
+//   fight  5: good wR=0.4733 fR=0.4667 | careless wR=0.3633 fR=0.3600 | wrestleSpam wR=0.4233 fR=0.4233 | gap=0.1100
+//   fight  6: good wR=0.5100 fR=0.5067 | careless wR=0.3233 fR=0.3200 | wrestleSpam wR=0.3833 fR=0.3833 | gap=0.1867
+//   fight  7: good wR=0.4867 fR=0.4867 | careless wR=0.3500 fR=0.3500 | wrestleSpam wR=0.3533 fR=0.3533 | gap=0.1367
+//   fight  8: good wR=0.5033 fR=0.4967 | careless wR=0.2967 fR=0.2967 | wrestleSpam wR=0.3000 fR=0.3000 | gap=0.2067
+//   fight  9: good wR=0.4700 fR=0.4700 | careless wR=0.3367 fR=0.3300 | wrestleSpam wR=0.4033 fR=0.4033 | gap=0.1333
+//   fight 10: good wR=0.5333 fR=0.5300 | careless wR=0.2933 fR=0.2933 | wrestleSpam wR=0.3900 fR=0.3900 | gap=0.2400
+//   AGG good finishRate = 0.6077 | AGG good winRate = 0.6237 | AGG wrestleSpam winRate = 0.5460
+//   spam@9: sl=0.3133 dl=0.3800 trip=0.3467 bl=0.2500 MAX=0.3800
+//   spam@10: sl=0.3600 dl=0.4067 trip=0.3867 bl=0.2700 MAX=0.4067
+// Signature knobs (SIGNATURE_CHARGE_GAIN=18, SIGNATURE_CHARGE_DOM=0.15) unchanged:
+//   goodIntent getting the signature raised good wR/fR slightly — all bands still comfortable.
 
 /** BAND 1 — finishes happen: aggregate good finish rate derived floor.
- *  Derived floor: measured 0.6573 − ~0.10 buffer. Plan floor 0.30 (well above). */
-const AGG_FINISH_FLOOR = 0.55; // derived floor: measured 0.6573 − 0.10 buffer
+ *  Derived floor: M17 measured 0.6007 − ~0.05 buffer. Plan floor 0.30 (well above). */
+const AGG_FINISH_FLOOR = 0.55; // M17 measured 0.6007
 
 /** BAND 2 — skill gap at fight 1: good−careless win-rate gap derived floor.
- *  Derived floor: measured 0.6067 − ~0.15 buffer. Plan floor 0.20 (well above). */
-const FIGHT1_GAP_FLOOR = 0.45; // derived floor: measured 0.6067 − 0.15 buffer
+ *  Derived floor: M17 measured gap=0.5567 − ~0.10 buffer. Plan floor 0.20 (well above). */
+const FIGHT1_GAP_FLOOR = 0.45; // M17 measured 0.5567
 
 /** BAND 2 — early dominance guard: good play must dominate fight 1.
- *  Plan guard; measured good@1 winRate=0.9967. */
-const FIGHT1_GOOD_WINRATE_FLOOR = 0.90; // derived floor: measured 0.9967 − ~0.10 buffer
+ *  Plan guard; M17 measured good@1 winRate=0.9867. */
+const FIGHT1_GOOD_WINRATE_FLOOR = 0.90; // M17 measured 0.9867
 
 /** BAND 5 — anti-exploit ceiling: power-punch spam must not reliably win vs Tier-5
  *  (fights 9–10). Plan target 0.42; measured careless@9=0.3167, careless@10=0.2800. */
@@ -206,6 +209,27 @@ const GOOD_FLOOR_LATE = 0.45;
 /** BAND 6 — difficulty ramps: winRate[n+1] ≤ winRate[n] + this buffer, n=1..9,
  *  except the single documented fight 2→3 matchup dip. Plan target 0.12. */
 const RAMP_BUFFER = 0.12;
+
+describe('M17 T6: policies use signature when ready', () => {
+  it('M17 T6 RED: carelessIntent uses signature when signatureCharge = 100', () => {
+    const s0 = startFight({ seed: 'sig-careless', fightNumber: 1, playerStatLine: PLAYER, opponent: generateOpponent('sig-careless', 1), signatureId: 'check-hook' });
+    const readyState = { ...s0, signatureCharge: 100 };
+    // carelessIntent must return { kind: 'signature' } when charge is full
+    expect(carelessIntent(readyState)).toEqual({ kind: 'signature' });
+  });
+
+  it('M17 T6 RED: wrestleSpamMove uses signature when signatureCharge = 100', () => {
+    const s0 = startFight({ seed: 'sig-spam', fightNumber: 1, playerStatLine: PLAYER, opponent: generateOpponent('sig-spam', 1), signatureId: 'check-hook' });
+    const readyState = { ...s0, signatureCharge: 100 };
+    expect(wrestleSpamMove(readyState)).toEqual({ kind: 'signature' });
+  });
+
+  it('M17 FIX-E RED: goodIntent uses signature when signatureCharge = 100', () => {
+    const s0 = startFight({ seed: 'sig-good', fightNumber: 1, playerStatLine: PLAYER, opponent: generateOpponent('sig-good', 1), signatureId: 'check-hook' });
+    const readyState = { ...s0, signatureCharge: 100 };
+    expect(goodIntent(readyState)).toEqual({ kind: 'signature' });
+  });
+});
 
 describe('combat balance bands', () => {
   const good: Band[] = [];

@@ -120,6 +120,55 @@ describe('buildRoundReport', () => {
 
     expect(buildRoundReport(input)).toEqual(buildRoundReport(input));
   });
+
+  it('M17 T5: signature detonation uses the move flavor as headline', () => {
+    const sigFlavor = 'THAT LEFT HAND — you can\'t teach that timing!';
+    const report = buildRoundReport({
+      ...base,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: sigFlavor,
+    });
+    expect(report.headline).toBe(sigFlavor);
+  });
+
+  it('M17 T5: signature detonation detail is SIGNATURE LANDS when opponent head delta is high', () => {
+    const report = buildRoundReport({
+      ...base,
+      playerIntent: { kind: 'signature' },
+      opponentHeadDelta: 20,
+      signatureFlavor: 'BOOMING shot!',
+    });
+    expect(report.detail.toLowerCase()).toContain('signature');
+  });
+
+  it('FIX C RED: opponent-winning signature exchange must NOT use the KO flavor as headline', () => {
+    // When the opponent wins (winner='opponent'), the signature flavor line should NOT appear.
+    // Bug: signatureFlavor is used regardless of winner — the KO flavor is printed even when you lost.
+    // Fix: only use signatureFlavor when winner === 'player'.
+    const report = buildRoundReport({
+      ...base,
+      winner: 'opponent',
+      dominance: -20,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: "THAT LEFT HAND — lights go out!",
+      playerHeadDelta: 15,
+      opponentHeadDelta: 0,
+    });
+    expect(report.headline).not.toBe("THAT LEFT HAND — lights go out!");
+  });
+
+  it('FIX C RED: opponent-winning signature detail must not say "SIGNATURE LANDS"', () => {
+    const report = buildRoundReport({
+      ...base,
+      winner: 'opponent',
+      dominance: -25,
+      playerIntent: { kind: 'signature' },
+      signatureFlavor: 'BOOMING shot!',
+      playerHeadDelta: 20,
+      opponentHeadDelta: 0,
+    });
+    expect(report.detail.toUpperCase()).not.toContain('SIGNATURE LANDS');
+  });
 });
 
 import { buildGroundReport } from './report';

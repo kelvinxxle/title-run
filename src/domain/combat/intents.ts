@@ -43,15 +43,17 @@ export const GAME_PLAN_BLURBS: Record<GamePlan,string> = {
 
 export type ExchangeMove =
   | { kind: 'strike'; strike: StrikeId }
-  | { kind: 'takedown'; takedownType: TakedownType };
+  | { kind: 'takedown'; takedownType: TakedownType }
+  | { kind: 'signature' };
 
-export const MOVE_KIND_LABELS: Record<'strike' | 'takedown', string> = {
+export const MOVE_KIND_LABELS: Record<'strike' | 'takedown' | 'signature', string> = {
   strike: 'Strike',
   takedown: 'Takedown',
+  signature: 'Signature',
 };
 
 export function movePhase(m: ExchangeMove): Phase {
-  return m.kind === 'strike' ? 'strike' : 'wrestle';
+  return m.kind === 'takedown' ? 'wrestle' : 'strike';
 }
 
 export function isTakedown(m: ExchangeMove): m is Extract<ExchangeMove, { kind: 'takedown' }> {

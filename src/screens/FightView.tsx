@@ -1,7 +1,8 @@
-import { type FightState, type ExchangeMove, type FinishChoice, type GroundAction, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND } from '../domain/combat';
+import { type FightState, type ExchangeMove, type FinishChoice, type GroundAction, type GamePlan, archetypeFromStatLine, fighterIdByName, EXCHANGES_PER_ROUND, signatureReady } from '../domain/combat';
 import { bodyPct, headState, healthPct, staminaPct, roundLabel } from '../fightDisplay';
 import FighterHealthCard from '../components/FighterHealthCard';
 import StrikePanel from '../components/StrikePanel';
+import SignatureMeter from '../components/SignatureMeter';
 import FinishSequencePanel from '../components/FinishSequencePanel';
 import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
@@ -20,6 +21,7 @@ interface Props {
 
 export default function FightView({ fightState, playerName, onMove, onFinishStep, onGroundAction, onChooseGamePlan, onContinue }: Props) {
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
+  const sigReady = signatureReady(fightState);
 
   // Damage flash: show deltas from the last resolved round
   const playerFlash = lastReport
@@ -69,12 +71,15 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
         />
       </div>
 
+      <SignatureMeter charge={fightState.signatureCharge} />
+
       {phase === 'in-round' && (
         <StrikePanel
           statLine={player.statLine}
           exchange={fightState.exchange}
           exchangesPerRound={EXCHANGES_PER_ROUND}
           onMove={onMove}
+          sigReady={sigReady}
         />
       )}
       {phase === 'corner' && (

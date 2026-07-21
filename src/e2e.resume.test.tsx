@@ -5,14 +5,15 @@ import { save, load } from './persistence/runStorageV2';
 import {
   startRun, applyDraft, startNextFight, startFight, resolveExchange, resolveGround, finishStep,
   ARCHETYPES,
-  STAT_IDS, type RunState, type StatLine, type ExchangeMove,
+  STAT_IDS, type RunState, type StatLine, type ExchangeMove, type SlotFill, type StatId,
 } from './domain/combat';
 
 const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 55])) as StatLine;
+const MOCK_SLOTS = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 55, sourceFighterId: 'israel-adesanya' }])) as Record<StatId, SlotFill>;
 const JAB: ExchangeMove = { kind: 'strike', strike: 'jab' };
 
 function midFightRun(): RunState {
-  let run: RunState = applyDraft(startRun('resume-seed'), { name: 'Tester', statLine: LINE });
+  let run: RunState = applyDraft(startRun('resume-seed'), { name: 'Tester', statLine: LINE, slots: MOCK_SLOTS });
   run = startNextFight(run);
   // advance one round while still in-round (pick-apart/head is low-pressure — no early finish here)
   if (run.fight && run.fight.phase === 'in-round') run = { ...run, fight: resolveExchange(run.fight, JAB) };
@@ -38,7 +39,7 @@ function groundRun(): RunState {
   if (parked.phase !== 'ground' || parked.ground === null || parked.outcome !== null) {
     throw new Error(`expected a parked ground fight, got phase=${parked.phase}`);
   }
-  const run: RunState = applyDraft(startRun(GROUND_SEED), { name: 'Grappler', statLine: GRAPPLER });
+  const run: RunState = applyDraft(startRun(GROUND_SEED), { name: 'Grappler', statLine: GRAPPLER, slots: MOCK_SLOTS });
   return { ...run, phase: 'fighting', fight: parked };
 }
 

@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { runStatusLabel } from './TopAppBar';
-import { startRun, applyDraft, type RunState } from '../domain/combat';
+import { startRun, applyDraft, type RunState, STAT_IDS, type SlotFill, type StatId } from '../domain/combat';
 
 const PLAYER = { striking:82, strikingDef:92, takedowns:98, takedownDef:80, submissions:97, submissionDef:88, cardio:90, chin:88, fightIQ:78 };
-const base = (o: Partial<RunState> = {}): RunState => ({ ...applyDraft(startRun('run-42'), { name: 'K', statLine: PLAYER }), ...o });
+const MOCK_SLOTS = Object.fromEntries(STAT_IDS.map((s) => [s, { value: 80, sourceFighterId: 'israel-adesanya' }])) as Record<StatId, SlotFill>;
+const base = (o: Partial<RunState> = {}): RunState => ({ ...applyDraft(startRun('run-42'), { name: 'K', statLine: PLAYER, slots: MOCK_SLOTS }), ...o });
 
 describe('runStatusLabel', () => {
   it('is empty with no run', () => { expect(runStatusLabel(null)).toBe(''); });

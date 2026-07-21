@@ -16,6 +16,7 @@ interface Props {
   exchangesPerRound: number;
   onMove: (m: ExchangeMove) => void;
   disabled?: boolean;
+  sigReady?: boolean;
 }
 
 export default function StrikePanel({
@@ -24,6 +25,7 @@ export default function StrikePanel({
   exchangesPerRound,
   onMove,
   disabled = false,
+  sigReady = false,
 }: Props) {
   return (
     <div data-testid="strike-panel" className="w-full flex flex-col gap-sm">
@@ -71,6 +73,19 @@ export default function StrikePanel({
           </button>
         ))}
       </div>
+
+      {sigReady && (
+        <button
+          type="button"
+          data-testid="strike-signature"
+          disabled={disabled}
+          onClick={() => onMove({ kind: 'signature' })}
+          className="w-full flex flex-col items-center gap-1 p-sm bg-primary text-on-primary border-2 border-primary animate-pulse font-display text-xl uppercase tracking-widest disabled:opacity-50"
+        >
+          <span>⚡ SIGNATURE STRIKE ⚡</span>
+          <span className="font-mono text-xs tracking-widest opacity-80">UNLEASH IT NOW</span>
+        </button>
+      )}
 
       <p className="font-mono text-xs text-on-surface-variant text-center uppercase tracking-widest">
         Exchange {exchange} of {exchangesPerRound}

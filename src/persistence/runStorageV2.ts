@@ -1,8 +1,8 @@
 import type { RunState, RunPhase } from '../domain/combat';
-import { STAT_IDS, INITIAL_STEPS, GAME_PLANS, EXCHANGES_PER_ROUND, POSITION_LADDER } from '../domain/combat';
+import { STAT_IDS, INITIAL_STEPS, GAME_PLANS, EXCHANGES_PER_ROUND, POSITION_LADDER, isKnownSignatureMoveId } from '../domain/combat';
 
 export const STORAGE_KEY = 'title-run:v2';
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface LoadedState { run: RunState | null; bestReign: number | null; }
 
@@ -98,6 +98,10 @@ function isValidFightState(x: unknown): boolean {
   const gamePlan = x['gamePlan'];
   if (!(gamePlan === null || (typeof gamePlan === 'string' && (GAME_PLANS as readonly string[]).includes(gamePlan)))) return false;
   if (!isValidRoundReport(x['lastReport'])) return false;
+  // M17: signatureId must be a non-empty string AND a known move id; signatureCharge ∈ [0, 100].
+  if (typeof x['signatureId'] !== 'string' || (x['signatureId'] as string).length === 0 || !isKnownSignatureMoveId(x['signatureId'] as string)) return false;
+  const sc = x['signatureCharge'];
+  if (!Number.isFinite(sc) || (sc as number) < 0 || (sc as number) > 100) return false;
   // Ground field validation
   const ground = x['ground'];
   if (ground !== null) {
@@ -136,6 +140,8 @@ function isValidRun(run: unknown): run is RunState | null {
     const f = r['fighter'] as Record<string, unknown>;
     if (typeof f['name'] !== 'string') return false;
     if (!isValidStatLine(f['statLine'])) return false;
+    // M17: RunFighter gains signatureId — must be a non-empty known move id.
+    if (typeof f['signatureId'] !== 'string' || (f['signatureId'] as string).length === 0 || !isKnownSignatureMoveId(f['signatureId'] as string)) return false;
   }
   if (r['fight'] !== null && !isValidFightState(r['fight'])) return false;
   // Phase ↔ fighter invariant: 'drafting' is the only fighterless phase; every other

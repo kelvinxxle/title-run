@@ -67,6 +67,10 @@ export interface FightState {
   gamePlan: GamePlan | null;
   lastReport: RoundReport | null;
   ground: GroundState | null;
+  /** The player's equipped signature move id (resolved once at applyDraft). */
+  signatureId: string;
+  /** Charge 0..100; fills on winning beats; detonates the signature at 100. */
+  signatureCharge: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,9 +96,10 @@ export function startFight(args: {
   seed: string;
   fightNumber: number;
   playerStatLine: StatLine;
+  signatureId?: string;
   opponent: OpponentLike;
 }): FightState {
-  const { seed, fightNumber, playerStatLine, opponent } = args;
+  const { seed, fightNumber, playerStatLine, signatureId = 'check-hook', opponent } = args;
   return {
     seed,
     fightNumber,
@@ -110,6 +115,8 @@ export function startFight(args: {
     gamePlan: null,
     lastReport: null,
     ground: null,
+    signatureId,
+    signatureCharge: 0,
   };
 }
 
