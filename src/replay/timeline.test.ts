@@ -151,3 +151,49 @@ describe('H4: signature timeline sig-fire + target reaction + terminal idle', ()
     expect(['reel', 'hit-head']).toContain(pose);
   });
 });
+
+// ── I3 RED: computeFinalPose returns 'idle' for the actorId after non-sig beats ─
+import { startFight } from '../domain/combat/fightState';
+import { resolveExchange } from '../domain/combat/exchange';
+
+describe('I3: idle terminal pose on recover', () => {
+  it('I3a — computeFinalPose returns idle for actor on a real landed strike beat', () => {
+    // Dominant player (striking=90) vs weak opponent (strikingDef=30) → player always wins.
+    const s = startFight({
+      seed: 'i3a-seed', fightNumber: 1,
+      playerStatLine: { striking: 90, strikingDef: 75, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 80, chin: 75, fightIQ: 80 },
+      opponent: { id: 'o', name: 'T', archetype: 'striker', statLine: { striking: 30, strikingDef: 30, takedowns: 20, takedownDef: 30, submissions: 20, submissionDef: 30, cardio: 50, chin: 50, fightIQ: 40 } },
+    });
+    const after = resolveExchange(s, { kind: 'strike', strike: 'jab' });
+    const beat = after.beats.find(b => b.outcome === 'landed' && b.actorId === 'player');
+    if (!beat) throw new Error('no landed player beat found with seed i3a-seed');
+    const { events } = buildBeatTimeline(beat, 'i3a-pres');
+    expect(computeFinalPose(events, 'player')).toBe('idle');
+  });
+
+  it('I3b — computeFinalPose returns idle for actor on an evaded beat', () => {
+    // Use the existing evadedBeat fixture (actorId=opponent, outcome=evaded)
+    const { events } = buildBeatTimeline(evadedBeat, 'i3b-pres');
+    expect(computeFinalPose(events, evadedBeat.actorId)).toBe('idle');
+  });
+});
+
+// ── I6 RED: body-strike flash/shake must have intensity > 0 ──────────────────
+describe('I6: body-strike intensity', () => {
+  it('I6 — body-strike (bodyKick) beat has flash and shake with intensity > 0', () => {
+    // Player.striking=80 vs opponent.strikingDef=30 → player always wins bodyKick exchange.
+    const s = startFight({
+      seed: 'i6-body-1', fightNumber: 1,
+      playerStatLine: { striking: 80, strikingDef: 75, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 80, chin: 75, fightIQ: 80 },
+      opponent: { id: 'o', name: 'T', archetype: 'striker', statLine: { striking: 30, strikingDef: 30, takedowns: 20, takedownDef: 40, submissions: 20, submissionDef: 30, cardio: 50, chin: 60, fightIQ: 40 } },
+    });
+    const after = resolveExchange(s, { kind: 'strike', strike: 'bodyKick' });
+    const bodyBeat = after.beats.find(b => b.target === 'body' && b.actorId === 'player' && b.deltas.opponentBody > 0);
+    if (!bodyBeat) throw new Error('no body-landed player beat with seed i6-body-1');
+    const { events } = buildBeatTimeline(bodyBeat, 'i6-pres');
+    const flashEvent = events.find(e => e.kind === 'flash');
+    const shakeEvent = events.find(e => e.kind === 'shake');
+    expect(flashEvent?.intensity).toBeGreaterThan(0);
+    expect(shakeEvent?.intensity).toBeGreaterThan(0);
+  });
+});

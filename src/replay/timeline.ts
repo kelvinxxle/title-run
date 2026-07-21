@@ -76,23 +76,23 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
   } else if (beat.outcome === 'evaded') {
     push('windup', 70, beat.actorId, { pose: strikePose(beat.moveId) });
     push('slip', 100, beat.targetId, { pose: 'slip' });
-    push('recover', 100, beat.actorId);
+    push('recover', 100, beat.actorId, { pose: 'idle' });
 
   } else if (beat.outcome === 'blocked') {
     push('windup', 70, beat.actorId, { pose: strikePose(beat.moveId) });
     push('strike', 60, beat.actorId);
     push('block', 80, beat.targetId, { pose: 'guard' });
     push('shake', 40, beat.actorId, { intensity: 0.3 });
-    push('recover', 100, beat.actorId);
+    push('recover', 100, beat.actorId, { pose: 'idle' });
 
   } else {
     // strike + landed (or countered non-signature)
     const windupDur = 60 + rng() * 20;
     const zone = toZone(beat.target);
-    const headDelta = beat.targetId === 'opponent'
-      ? beat.deltas.opponentHead
-      : beat.deltas.playerHead;
-    const intensity = Math.min(1, headDelta / 30);
+    const rawDelta = zone === 'head'
+      ? (beat.targetId === 'opponent' ? beat.deltas.opponentHead : beat.deltas.playerHead)
+      : (beat.targetId === 'opponent' ? beat.deltas.opponentBody : beat.deltas.playerBody);
+    const intensity = Math.min(1, rawDelta / 30);
     const reactionPose: PoseName = targetBecameRocked(beat)
       ? 'reel'
       : (zone === 'head' ? 'hit-head' : 'hit-body');
@@ -109,7 +109,7 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
       push('hitstop', 150, beat.actorId);
     }
 
-    push('recover', 120, beat.actorId);
+    push('recover', 120, beat.actorId, { pose: 'idle' });
   }
 
   return { totalMs: t, events };
