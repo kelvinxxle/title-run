@@ -5,6 +5,7 @@ import { STARTER_ROSTER } from '../domain/combat';
 describe('heroFraming', () => {
   it('returns the face-biased default for an un-overridden fighter', () => {
     expect(heroFraming('conor-mcgregor')).toBe(DEFAULT_HERO_FRAMING);
+    // Canary: pin the literal so a change to DEFAULT_HERO_FRAMING is caught loudly.
     expect(heroFraming('unknown-id')).toBe('50% 20%');
   });
 

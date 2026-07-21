@@ -14,6 +14,7 @@ describe('shipped fighter images', () => {
     });
     it(`keeps public/fighters/${f.id}.jpg web-lean (<=600KB)`, () => {
       const p = `public/fighters/${f.id}.jpg`;
+      expect(fs.existsSync(p)).toBe(true);
       expect(fs.statSync(p).size).toBeLessThanOrEqual(600 * 1024);
     });
   }
