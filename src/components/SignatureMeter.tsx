@@ -7,7 +7,15 @@ export default function SignatureMeter({ charge }: Props) {
   const isReady = pct >= 100;
 
   return (
-    <div data-testid="signature-meter" className="w-full flex flex-col gap-1">
+    <div
+      data-testid="signature-meter"
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      aria-label="Signature charge"
+      className="w-full flex flex-col gap-1"
+    >
       <div className="flex justify-between items-center">
         <span className={`font-mono text-xs uppercase tracking-widest ${isReady ? 'text-primary ready' : 'text-on-surface-variant'}`}>
           Signature

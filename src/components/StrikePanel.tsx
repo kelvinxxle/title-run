@@ -16,7 +16,6 @@ interface Props {
   exchangesPerRound: number;
   onMove: (m: ExchangeMove) => void;
   disabled?: boolean;
-  signatureCharge?: number;
   sigReady?: boolean;
 }
 

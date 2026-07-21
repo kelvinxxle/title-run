@@ -79,7 +79,6 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
           exchange={fightState.exchange}
           exchangesPerRound={EXCHANGES_PER_ROUND}
           onMove={onMove}
-          signatureCharge={fightState.signatureCharge}
           sigReady={sigReady}
         />
       )}
