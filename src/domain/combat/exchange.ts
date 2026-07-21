@@ -16,7 +16,7 @@ import { gamePlanEffect } from './gameplan';
 import { buildRoundReport, type RoundReport } from './report';
 import { TAKEDOWN_PROFILES } from './takedown';
 import { getSignatureMoveById } from './signatures';
-import { buildResolvedBeat, type ResolvedBeat, type BeatDeltas, type BeatStatus } from './beat';
+import { buildResolvedBeat, type BeatDeltas, type BeatStatus } from './beat';
 
 export const EXCHANGES_PER_ROUND = 3;
 

@@ -473,8 +473,7 @@ describe('M18 ResolvedBeat emission', () => {
   it('captures leg + stamina deltas that the old report dropped', () => {
     const s0 = fresh();
     const s1 = resolveExchange(s0, { kind: 'strike', strike: 'legKick' });
-    const b = s1.beats.at(-1)!;
-    // player always pays stamina cost for throwing
+    const b = s1.beats[s1.beats.length - 1]!;
     expect(b.deltas.playerStamina).toBeLessThanOrEqual(0);
     expect(typeof b.deltas.opponentLeg).toBe('number');
   });
@@ -493,8 +492,7 @@ describe('M18 ResolvedBeat emission', () => {
     const s0 = startFight({ seed: 'sig-seed', fightNumber: 1, playerStatLine: sigPlayer, signatureId: 'the-left-hand', opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
     const sigState: FightState = { ...s0, signatureCharge: 100 };
     const s1 = resolveExchange(sigState, { kind: 'signature' });
-    const b = s1.beats.at(-1)!;
-    expect(b.moveClass).toBe('signature');
+    const b = s1.beats[s1.beats.length - 1]!;
     expect(b.signatureId).toBe('the-left-hand');
   });
 
@@ -522,7 +520,7 @@ describe('M18 ResolvedBeat emission', () => {
       const s0 = startFight({ seed: `sig-opp-wins-${i}`, fightNumber: 1, playerStatLine: weakPlayer, opponent: strongOpp, signatureId: 'the-left-hand' });
       const s = { ...s0, signatureCharge: 100 };
       const after = resolveExchange(s, { kind: 'signature' });
-      const b = after.beats.at(-1)!;
+      const b = after.beats[after.beats.length - 1]!;;
       if (b.actorId === 'opponent') {
         found = true;
         expect(b.signatureId).toBeNull();

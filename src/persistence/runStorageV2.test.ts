@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { load, save, STORAGE_KEY, SCHEMA_VERSION } from './runStorageV2';
-import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState } from '../domain/combat';
+import { startRun, applyDraft, startNextFight, resolveExchange, type RunState, type ExchangeMove, type FightState, type ResolvedBeat } from '../domain/combat';
 import { STAT_IDS, type StatLine, type StatId } from '../domain/combat';
 import type { SlotFill } from '../domain/combat';
 
@@ -140,7 +140,7 @@ describe('runStorageV2', () => {
       player: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 2 },
       opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
       window: null, outcome: null, log: [],
-      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+      gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
     };
     store({ ...preFight(), phase: 'fighting', fight: finished });
     expect(load().run).toBeNull();
@@ -437,7 +437,7 @@ describe('runStorageV2', () => {
 
   it('does not serialize beats into the persisted blob', () => {
     const run = midFight();
-    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] };
+    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] as unknown as ResolvedBeat[] } as FightState;
     save({ run: { ...run, fight: fightWithBeats }, bestReign: 0 });
     const raw = localStorage.getItem(STORAGE_KEY)!;
     expect(raw.includes('"beats"')).toBe(false);
@@ -445,7 +445,7 @@ describe('runStorageV2', () => {
 
   it('rehydrates a loaded fight with an empty beats array', () => {
     const run = midFight();
-    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] };
+    const fightWithBeats = { ...run.fight, beats: [{ text: 'one-beat' }] as unknown as ResolvedBeat[] } as FightState;
     save({ run: { ...run, fight: fightWithBeats }, bestReign: 0 });
     const loaded = load();
     expect(loaded.run?.fight?.beats).toEqual([]);
