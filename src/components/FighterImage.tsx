@@ -8,6 +8,7 @@ export interface FighterImageProps {
   seed?: string;
   size?: number;
   variant?: 'portrait' | 'hero';
+  objectPosition?: string;
 }
 
 export default function FighterImage({
@@ -17,6 +18,7 @@ export default function FighterImage({
   seed,
   size = 48,
   variant = 'portrait',
+  objectPosition = '50% 20%',
 }: FighterImageProps): JSX.Element {
   const [failedId, setFailedId] = useState<string | undefined>(undefined);
   const avatarSeed = seed ?? fighterId ?? name;
@@ -42,7 +44,8 @@ export default function FighterImage({
         src={src}
         alt={name}
         onError={() => setFailedId(fighterId)}
-        className="absolute inset-0 h-full w-full object-cover object-top"
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition }}
       />
     );
   }
@@ -56,7 +59,7 @@ export default function FighterImage({
       height={size}
       onError={() => setFailedId(fighterId)}
       className="rounded object-cover"
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, objectPosition }}
     />
   );
 }

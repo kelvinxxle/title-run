@@ -12,6 +12,11 @@ describe('shipped fighter images', () => {
       expect(fs.existsSync(p)).toBe(true);
       expect(fs.statSync(p).size).toBeGreaterThan(1000);
     });
+    it(`keeps public/fighters/${f.id}.jpg web-lean (<=600KB)`, () => {
+      const p = `public/fighters/${f.id}.jpg`;
+      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.statSync(p).size).toBeLessThanOrEqual(600 * 1024);
+    });
   }
   it('writes a CREDITS.md', () => {
     expect(fs.existsSync('public/fighters/CREDITS.md')).toBe(true);
