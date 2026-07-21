@@ -8,7 +8,7 @@ const base = (over: Partial<FightState> = {}): FightState => {
     seed: 's', fightNumber: 1, rounds: 3, round: 1, exchange: 1, phase: 'in-round',
     player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0 },
     opponent: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage:0, bodyDamage:0, stamina:100, legDamage: 0, roundScore:0, name:'Rival', archetype:'Boxer' },
-    window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null, ...over,
+    window: null, outcome: null, log: [], gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [], ...over,
   } as FightState;
   return { ...merged, gamePlan: merged.gamePlan ?? null, lastReport: merged.lastReport ?? null };
 };
@@ -144,4 +144,9 @@ describe('FightView', () => {
     // player corner stays a procedural avatar (no roster id)
     expect(within(screen.getByTestId('fighter-card-player')).queryByTestId('fighter-photo')).toBeNull();
     expect(within(screen.getByTestId('fighter-card-player')).getByLabelText(/portrait$/)).toBeInTheDocument();
+  });
+
+  it('mounts data-testid="fight-replay" between health cards and signature meter', () => {
+    render(<FightView fightState={base()} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.getByTestId('fight-replay')).toBeInTheDocument();
   });

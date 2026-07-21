@@ -5,12 +5,12 @@ import StrikePanel from '../components/StrikePanel';
 import SignatureMeter from '../components/SignatureMeter';
 import FinishSequencePanel from '../components/FinishSequencePanel';
 import GroundPanel from '../components/GroundPanel';
+import FightReplay from '../replay/FightReplay';
 import OutcomeBanner from '../components/OutcomeBanner';
 import CornerScreen from '../components/CornerScreen';
 import RoundRecap from '../components/RoundRecap';
 
 interface Props {
-  fightState: FightState;
   playerName: string;
   onMove: (m: ExchangeMove) => void;
   onFinishStep: (choice: FinishChoice) => void;
@@ -70,6 +70,15 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
           fighterId={fighterIdByName(opponent.name)}
         />
       </div>
+
+      <FightReplay
+        beat={fightState.beats?.at(-1) ?? null}
+        playerName={playerName}
+        playerArchetype={archetypeFromStatLine(player.statLine)}
+        opponentName={opponent.name}
+        opponentArchetype={opponent.archetype}
+        presentationSeed={fightState.seed}
+      />
 
       <SignatureMeter charge={fightState.signatureCharge} />
 
