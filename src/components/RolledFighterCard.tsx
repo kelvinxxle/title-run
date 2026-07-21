@@ -3,6 +3,7 @@ import { STAT_IDS, type StatId } from '../domain/combat';
 import { getFighter } from '../domain/combat';
 import { suggestedStatId, type DraftState } from '../domain/combat';
 import FighterImage from './FighterImage';
+import { heroFraming } from './heroFraming';
 
 interface RolledFighterCardProps {
   state: DraftState;
@@ -19,7 +20,7 @@ export default function RolledFighterCard({ state, onKeep }: RolledFighterCardPr
   return (
     <div className="w-full max-w-lg bg-surface-container border-2 border-outline p-md">
       <div data-testid="draft-hero" className="relative h-64 w-[calc(100%+48px)] -ml-md -mt-md mb-md overflow-hidden border-b-2 border-outline">
-        <FighterImage fighterId={fighter.id} name={fighter.name} archetype={fighter.archetype} variant="hero" />
+        <FighterImage fighterId={fighter.id} name={fighter.name} archetype={fighter.archetype} variant="hero" objectPosition={heroFraming(fighter.id)} />
         <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
           <h3 className="font-display text-4xl uppercase leading-none text-primary drop-shadow">
