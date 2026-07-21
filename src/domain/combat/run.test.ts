@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { startRun, applyDraft, startNextFight, settleFight, TITLE_FIGHT } from './run';
 import { startDraft, keepStat, availableStatIds, nameFighter, getDraftedFighter } from './draft';
+import type { SlotFill } from './draft';
 import { STAT_IDS } from './stats';
+import type { StatLine, StatId } from './stats';
+import { resolveSignature } from './signatures';
 
 // Build a real DraftedFighter with slots for T3 tests
 function buildDraftedFighter(seed: string, name: string) {
@@ -96,17 +99,37 @@ describe('M17 T3: signatureId threading', () => {
     expect(r.fighter!.signatureId.length).toBeGreaterThan(0);
   });
 
-  it('signatureId matches the expected resolution from the striking slot source', () => {
-    // Conor McGregor's signature = 'the-left-hand' (marquee override)
-    // Build a draft where the 'striking' slot comes from conor-mcgregor by seeding appropriately.
-    // We use 'startDraft' which picks from the roster deterministically.
-    // Instead, we build a manual draft state directly via keepStat + known seed logic.
-    // Use a simpler approach: verify the signatureId is deterministic (same seed → same id).
-    const df1 = buildDraftedFighter('deterministic-sig', 'Fighter A');
-    const df2 = buildDraftedFighter('deterministic-sig', 'Fighter A');
-    const r1 = applyDraft(startRun('s'), df1);
-    const r2 = applyDraft(startRun('s'), df2);
-    expect(r1.fighter!.signatureId).toBe(r2.fighter!.signatureId);
+  it('signatureId derives from the striking slot sourceFighterId — marquee (conor-mcgregor → the-left-hand)', () => {
+    // Build slots with striking pinned to conor-mcgregor (has a marquee override).
+    // All other slots use israel-adesanya as a valid roster filler.
+    const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 75])) as StatLine;
+    const slots = Object.fromEntries(
+      STAT_IDS.map((s): [StatId, SlotFill] => [
+        s,
+        { value: 75, sourceFighterId: s === 'striking' ? 'conor-mcgregor' : 'israel-adesanya' },
+      ])
+    ) as Record<StatId, SlotFill>;
+    const r = applyDraft(startRun('s'), { name: 'Test', statLine: LINE, slots });
+    // conor-mcgregor's marquee signature is 'the-left-hand'; verify both by resolver and by literal.
+    expect(r.fighter!.signatureId).toBe(resolveSignature('conor-mcgregor').id);
+    expect(r.fighter!.signatureId).toBe('the-left-hand');
+    // Sanity: would fail if resolved from a different slot (israel-adesanya → 'last-stylebender').
+    expect(r.fighter!.signatureId).not.toBe('last-stylebender');
+  });
+
+  it('signatureId derives from the striking slot sourceFighterId — archetype fallback (khabib-nurmagomedov → wrestler → level-change-right)', () => {
+    // khabib is NOT in MARQUEE_SIGNATURE → resolveSignature falls back to ARCHETYPE_SIGNATURE.wrestler.
+    const LINE = Object.fromEntries(STAT_IDS.map((s) => [s, 75])) as StatLine;
+    const slots = Object.fromEntries(
+      STAT_IDS.map((s): [StatId, SlotFill] => [
+        s,
+        { value: 75, sourceFighterId: s === 'striking' ? 'khabib-nurmagomedov' : 'israel-adesanya' },
+      ])
+    ) as Record<StatId, SlotFill>;
+    const r = applyDraft(startRun('s'), { name: 'Test', statLine: LINE, slots });
+    expect(r.fighter!.signatureId).toBe(resolveSignature('khabib-nurmagomedov').id);
+    expect(r.fighter!.signatureId).toBe('level-change-right');
+    expect(r.fighter!.signatureId).not.toBe('last-stylebender'); // not the 'striking' filler slot
   });
 
   it('startFight receives signatureId and initialises signatureCharge=0 on FightState', () => {
