@@ -565,3 +565,36 @@ describe('H3: signature branch moveClass authority', () => {
     expect(beat.moveClass).toBe('strike');
   });
 });
+
+// ── I2 RED: player signature win outcome must be 'countered' ─────────────────
+describe('I2: sigBeatOutcome countered', () => {
+  it('I2 — player signature detonation beat has outcome "countered" not "landed"', () => {
+    const sigPlayer: StatLine = { striking: 99, strikingDef: 70, takedowns: 40, takedownDef: 80, submissions: 40, submissionDef: 70, cardio: 75, chin: 70, fightIQ: 80 };
+    const s0 = startFight({ seed: 'sig-seed', fightNumber: 1, playerStatLine: sigPlayer, signatureId: 'the-left-hand', opponent: { id: 'o', name: 'Foe', archetype: 'striker', statLine: O } });
+    const sigState: FightState = { ...s0, signatureCharge: 100 };
+    const s1 = resolveExchange(sigState, { kind: 'signature' });
+    const b = s1.beats[s1.beats.length - 1]!;
+    // Player sig won (signatureId set) → outcome must be 'countered'
+    if (b.signatureId === 'the-left-hand') {
+      expect(b.outcome).toBe('countered');
+    }
+  });
+});
+
+// ── I5 RED: stuffed takedown countered by strike must have moveClass 'strike' ─
+describe('I5: stuffed-takedown moveClass', () => {
+  it('I5 — stuffed-takedown-countered-by-strike beat has moveClass "strike"', () => {
+    // Player.takedowns=30 vs opponent.takedownDef=90 → takedownCheck always < 0 (always stuffed).
+    // Opponent.striking=85 vs player.strikingDef=75 → opponent always wins (dominance << 0).
+    // Opponent.takedowns=30 vs player.takedownDef=85 → AI always chooses strike (strikeEdge > wrestleEdge).
+    const i5Player: StatLine = { striking: 40, strikingDef: 75, takedowns: 30, takedownDef: 85, submissions: 40, submissionDef: 70, cardio: 80, chin: 99, fightIQ: 70 };
+    const i5Opp = { id: 'o', name: 'KO Artist', archetype: 'striker' as const, statLine: { striking: 85, strikingDef: 60, takedowns: 30, takedownDef: 90, submissions: 40, submissionDef: 50, cardio: 70, chin: 70, fightIQ: 70 } };
+    const s = startFight({ seed: 'i5-test', fightNumber: 1, playerStatLine: i5Player, opponent: i5Opp });
+    const after = resolveExchange(s, { kind: 'takedown', takedownType: 'double-leg' });
+    const beat = after.beats[after.beats.length - 1]!;
+    // Opponent always wins with a strike counter → moveClass should be 'strike'
+    expect(beat.outcome).toBe('landed');    // opponent landed the counter
+    expect(beat.actorId).toBe('opponent'); // opponent won
+    expect(beat.moveClass).toBe('strike');  // decisive move was opponent's counter-strike
+  });
+});

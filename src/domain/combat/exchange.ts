@@ -326,7 +326,7 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     // Beat construction for normal signature exchange (player wins or opponent strike counter).
     const sigCounterTarget = dominance < 0 && oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : null;
     const sigBeatMoveClass: BeatMoveClass = dominance > 0 ? 'signature' : 'strike';
-    const sigBeatOutcome: BeatOutcome = dominance === 0 ? 'evaded' : 'landed';
+    const sigBeatOutcome: BeatOutcome = dominance > 0 ? 'countered' : dominance < 0 ? 'landed' : 'evaded';
     const sigBeatMoveId: string | null = dominance > 0 ? state.signatureId : (dominance < 0 && oppMove.kind === 'strike' ? oppMove.strike : null);
     const sigBeatTarget = dominance > 0 ? 'head' : sigCounterTarget;
     const sigBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner, dominance,
@@ -532,8 +532,9 @@ export function resolveExchange(state: FightState, playerMove: ExchangeMove): Fi
     const stuffedMoveId = dominance < 0 && oppMove.kind === 'strike' ? oppMove.strike : null;
     const stuffedTarget = dominance < 0 && oppMove.kind === 'strike' ? STRIKES[oppMove.strike].target : null;
     const stuffedBeatOutcome: BeatOutcome = dominance < 0 ? 'landed' : 'evaded';
+    const stuffedMoveClass: BeatMoveClass = dominance < 0 && oppMove.kind === 'strike' ? 'strike' : 'takedown';
     const stuffedBeat = buildResolvedBeat({ round: state.round, exchange: state.exchange, winner: stuffedWinner, dominance: resolvedDominance,
-      moveClass: 'takedown', moveId: stuffedMoveId, target: stuffedTarget,
+      moveClass: stuffedMoveClass, moveId: stuffedMoveId, target: stuffedTarget,
       outcome: stuffedBeatOutcome,
       deltas: makeBeatDeltas(state, p, o), status: makeBeatStatus(state, p, o),
       signatureId: null, isFinish: false, finishMethod: null });
