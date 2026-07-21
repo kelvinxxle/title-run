@@ -198,14 +198,29 @@ describe('FightReplay', () => {
       cbs.forEach(cb => cb(0));
     });
 
-    // Pump 16ms frames. After each frame check that we haven't ended too early.
-    // The hitstop is at 440ms game time and lasts 120ms wall time.
-    // With the fix: game clock stops at 440, then resumes after 120ms wall time.
-    // With or without the fix, during the hitstop frames data-playing stays 'true'.
+    // APPROACH: large-delta leftover test — directly guards the I4 leftover-application fix.
+    //
+    // Signature timeline: hitstop tMs=440, durMs=120, totalMs=1160.
+    //
+    // Phase 1 pumps 28 × 16ms small frames (wall ts=448ms).
+    //   I4 straddle stop: game enters hitstop at exactly 440ms; hitstopWallTime=8ms.
+    //   Thus: need remaining to exit = 120-8 = 112ms.
+    //
+    // Phase 2 pumps ONE 800ms frame.
+    //   WITH I4 (leftover applied):
+    //     hitstop needs 112ms more; 800>=112 → expires.
+    //     game = 440+120 = 560ms. remaining = 800-112 = 688ms.
+    //     game += 688 = 1248ms ≥ 1160ms → DONE → 'false'  ✓ passes
+    //   WITHOUT leftover (bug: remaining set to 0 after hitstop expiry):
+    //     hitstop expires same; game=560ms. remaining = 0 (discarded).
+    //     game=560ms < 1160ms → still playing → 'true'  ✗ fails → RED
+    //
+    // The assertion at Phase 2 is the regression guard for I4's leftover-application fix.
+
     let ts = 0;
-    // Pump frames up through the full animation (totalMs=1160 + hitstop=120 wall = ~1280ms worth)
-    const totalFrames = Math.ceil((1160 + 120 + 80) / 16); // overshoot by ~80ms
-    for (let i = 0; i < totalFrames; i++) {
+
+    // Phase 1: pump 28 × 16ms frames (ts=448ms).
+    for (let i = 0; i < 28; i++) {
       ts += 16;
       await act(async () => {
         const cbs = [...rafCallbacks.values()];
@@ -213,8 +228,29 @@ describe('FightReplay', () => {
         cbs.forEach(cb => cb(ts));
       });
     }
+    // ts=448ms. game≈440ms (in hitstop, hitstopWallTime=8ms). Animation still playing.
+    expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('true');
 
-    // After enough 16ms frames to cover totalMs + hitstop wall time, animation must be done.
+    // Phase 2: ONE large 800ms frame (ts=1248ms) — DISCRIMINATING CHECKPOINT.
+    // I4: applies 688ms leftover → game=1248ms ≥ totalMs → DONE.
+    // Without leftover fix: game stays at 560ms → NOT done → 'true'.
+    ts += 800; // ts === 1248ms
+    await act(async () => {
+      const cbs = [...rafCallbacks.values()];
+      rafCallbacks.clear();
+      cbs.forEach(cb => cb(ts));
+    });
+    expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('false');
+
+    // Phase 3: pump 20 more frames to confirm still done.
+    for (let i = 0; i < 20; i++) {
+      ts += 16;
+      await act(async () => {
+        const cbs = [...rafCallbacks.values()];
+        rafCallbacks.clear();
+        cbs.forEach(cb => cb(ts));
+      });
+    }
     expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('false');
   });
 
