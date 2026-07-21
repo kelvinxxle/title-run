@@ -43,4 +43,25 @@ describe('FighterImage', () => {
     // procedural avatar must NOT be visible for the new fighter
     expect(screen.queryByLabelText('Jon Jones portrait')).toBeNull();
   });
+
+  it('applies a default face-biased object-position, overridable via prop', () => {
+    const { rerender } = render(
+      <FighterImage fighterId="jon-jones" name="Jon Jones" archetype="allrounder" variant="hero" />,
+    );
+    expect((screen.getByTestId('fighter-photo') as HTMLImageElement).style.objectPosition).toBe(
+      '50% 20%',
+    );
+    rerender(
+      <FighterImage
+        fighterId="jon-jones"
+        name="Jon Jones"
+        archetype="allrounder"
+        variant="hero"
+        objectPosition="50% 8%"
+      />,
+    );
+    expect((screen.getByTestId('fighter-photo') as HTMLImageElement).style.objectPosition).toBe(
+      '50% 8%',
+    );
+  });
 });
