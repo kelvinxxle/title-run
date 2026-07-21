@@ -57,18 +57,21 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
   }
 
   if (beat.moveClass === 'signature' && beat.signatureId !== null) {
-    // Opponent telegraphs the cross (windup) → actor slips → actor fires signature → impact
+    // Opponent telegraphs the cross (windup) → actor slips → actor loads and fires signature → impact → target reacts
+    const sigReactionPose: PoseName = targetBecameRocked(beat) ? 'reel' : 'hit-head';
     push('windup', 80, beat.targetId, { pose: 'cross' });
     push('slip', 120, beat.actorId, { pose: 'slip' });
-    push('strike', 100, beat.actorId, { pose: 'sig-load' });
+    push('strike', 60, beat.actorId, { pose: 'sig-load' });
+    push('strike', 80, beat.actorId, { pose: 'sig-fire' });
     push('impact', 60, beat.targetId, { zone: 'head', intensity: 1 });
     push('flash', 40, beat.targetId, { zone: 'head', intensity: 1 });
     push('hitstop', 120, beat.actorId);
     push('shake', 60, beat.actorId, { intensity: 0.9 });
+    push('reaction', 120, beat.targetId, { pose: sigReactionPose });
     if (beat.isFinish) {
       push('knockdown', 300, beat.targetId, { pose: 'down' });
     }
-    push('recover', 200, beat.actorId);
+    push('recover', 120, beat.actorId, { pose: 'idle' });
 
   } else if (beat.outcome === 'evaded') {
     push('windup', 70, beat.actorId, { pose: strikePose(beat.moveId) });

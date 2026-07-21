@@ -124,11 +124,11 @@ describe('FightReplay', () => {
       cbs.forEach(cb => cb(0));
     });
 
-    // Frame 2 – advance to ts=380: flash event spans tMs=360..400 on opponent/head
+    // Frame 2 – advance to ts=420: flash event spans tMs=400..440 on opponent/head (after H4 sig-fire addition)
     await act(async () => {
       const cbs = [...rafCallbacks.values()];
       rafCallbacks.clear();
-      cbs.forEach(cb => cb(380));
+      cbs.forEach(cb => cb(420));
     });
 
     // FighterRig renders data-testid="flash-head" when flashHead=true

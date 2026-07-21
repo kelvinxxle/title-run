@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildBeatTimeline } from './timeline';
+import { buildBeatTimeline, computeFinalPose } from './timeline';
 import type { ResolvedBeat } from '../domain/combat/beat';
 import type { StatLine } from '../domain/combat/stats';
 
@@ -128,5 +128,26 @@ describe('buildBeatTimeline', () => {
     expect(t.events.some(e => (e as { pose?: string }).pose === 'sig-load')).toBe(false);
     // Should fall through to regular strike branch (has windup + impact)
     expect(t.events.some(e => e.kind === 'impact')).toBe(true);
+  });
+});
+
+// ── H4 RED tests ──────────────────────────────────────────────────────────────
+
+describe('H4: signature timeline sig-fire + target reaction + terminal idle', () => {
+  it('H4: signature timeline includes a sig-fire pose event', () => {
+    const t = buildBeatTimeline(sigCounterLeft, 'p');
+    expect(t.events.some(e => (e as { pose?: string }).pose === 'sig-fire')).toBe(true);
+  });
+
+  it('H4: computeFinalPose returns "idle" for player on a signature beat', () => {
+    const t = buildBeatTimeline(sigCounterLeft, 'p');
+    expect(computeFinalPose(t.events, 'player')).toBe('idle');
+  });
+
+  it('H4: computeFinalPose returns "reel" or "hit-head" for opponent on a non-KO rocked signature beat', () => {
+    // sigCounterLeft has opponentBecameRocked: true, isFinish: false
+    const t = buildBeatTimeline(sigCounterLeft, 'p');
+    const pose = computeFinalPose(t.events, 'opponent');
+    expect(['reel', 'hit-head']).toContain(pose);
   });
 });
