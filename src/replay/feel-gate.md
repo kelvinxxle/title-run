@@ -73,7 +73,24 @@ The `buildBeatTimeline` for `signatureId === 'the-left-hand'` produces:
 | recover    | 740         | 120           | Player resets to idle                      |
 | **Total**  |             | **860 ms**    | (non-KO)                                   |
 
-If `isFinish: true`, a knockdown event (pose: `down`) is appended (+300 ms), giving **1160 ms total**.
+If `isFinish: true`, a knockdown event (pose: `down`) is inserted before recover (+300 ms), giving **1160 ms total**.
+
+### Normal cross (landed, non-signature) — reference
+
+| Phase    | Offset (ms)     | Duration (ms)      | Description                        |
+|----------|-----------------|--------------------|------------------------------------|
+| windup   | 0               | 60–80 (rng)        | Strike load                        |
+| strike   | 60–80           | 80                 | Punch fires                        |
+| impact   | 140–160         | 60                 | Contact flash on target            |
+| flash    | 200–220         | 40                 | Impact flash overlay               |
+| shake    | 240–260         | 50                 | Camera shake                       |
+| reaction | 290–310         | 100                | Target reacts (hit-head/reel)      |
+| recover  | 390–410         | 120                | Actor resets to idle               |
+| **Total**|                 | **510–530 ms**     | No hitstop on non-KO cross         |
+
+With KO finish (`isFinish: true`): knockdown (+300 ms) + hitstop (+150 ms) inserted before recover → **960–980 ms total**.
+
+Ratio: 860 / 520 ≈ **1.65× vs normal cross** (signature has distinct slip + load + 2× hitstop duration).
 
 ### `computeFinalPose` results (reduced-motion snapshot)
 
@@ -82,9 +99,7 @@ If `isFinish: true`, a knockdown event (pose: `down`) is appended (+300 ms), giv
 | Player    | `idle`        | `idle`  |
 | Opponent  | `reel` (rocked) or `hit-head` (normal) | `down` |
 
-A normal landed cross (no signature) produces ~422 ms total with no slip phase and only 60 ms hitstop.
-The signature is **~2.04× longer** with a pre-counter slip, a distinct load→fire sequence, and **2× the hitstop duration** — this is the
-rhythmic fingerprint the feel-gate is measuring.
+**I1 fix note**: real KO gameplay now emits an `isFinish: true` beat from `finishStep`, so the knockdown event IS visible in live gameplay (not just the synthetic fixture).
 
 ## Gate Status
 

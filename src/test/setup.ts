@@ -4,6 +4,7 @@ import { afterEach } from 'vitest';
 // FightReplay uses window.matchMedia for reduced-motion. JSDOM does not implement it.
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
+  configurable: true,
   value: (query: string) => ({
     matches: false,
     media: query,
