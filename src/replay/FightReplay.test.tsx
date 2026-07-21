@@ -135,6 +135,42 @@ describe('FightReplay', () => {
     expect(screen.getByTestId('flash-head')).toBeTruthy();
   });
 
+  it('H1: animation completes past hitstop — data-playing becomes false after totalMs wall-clock', async () => {
+    mockReducedMotion(false);
+
+    const rafCallbacks = new Map<number, FrameRequestCallback>();
+    let rafNextId = 1;
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      const id = rafNextId++;
+      rafCallbacks.set(id, cb);
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      rafCallbacks.delete(id);
+    });
+
+    render(<FightReplay {...defaultProps} beat={sigKoBeat} />);
+
+    // Frame at ts=0 (init, delta=0)
+    await act(async () => {
+      const cbs = [...rafCallbacks.values()];
+      rafCallbacks.clear();
+      cbs.forEach(cb => cb(0));
+    });
+
+    // Pump 10 frames × 200ms = 2000ms >> totalMs (~1080ms).
+    // Bug: game clock freezes at hitstop tMs=400; data-playing stays 'true' forever.
+    for (let i = 1; i <= 10; i++) {
+      await act(async () => {
+        const cbs = [...rafCallbacks.values()];
+        rafCallbacks.clear();
+        cbs.forEach(cb => cb(i * 200));
+      });
+    }
+
+    expect(screen.getByTestId('fight-replay').getAttribute('data-playing')).toBe('false');
+  });
+
   it('is deterministic: same beat+seed → same end DOM (snapshot)', () => {
     mockReducedMotion(true);
 

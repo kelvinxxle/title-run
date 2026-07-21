@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import FighterRig from '../components/FighterRig';
-import { buildBeatTimeline } from './timeline';
+import { buildBeatTimeline, computeFinalPose } from './timeline';
 import type { BeatEvent } from './timeline';
 import type { ResolvedBeat, BeatActor } from '../domain/combat/beat';
 import type { PoseName } from './poses';
@@ -19,7 +19,6 @@ export interface FightReplayProps {
   opponentName: string;
   opponentArchetype: string;
   presentationSeed: string;
-  autoPlay?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,14 +55,6 @@ const IDLE_STATE: AnimState = {
 // Pure helpers (no side-effects, no Date.now, no Math.random)
 // ---------------------------------------------------------------------------
 
-function computeFinalPose(events: BeatEvent[], actor: BeatActor): PoseName {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const e = events[i];
-    if (e.actor === actor && e.pose != null) return e.pose;
-  }
-  return 'idle';
-}
-
 function currentPose(events: BeatEvent[], actor: BeatActor, elapsed: number): PoseName {
   let pose: PoseName = 'idle';
   for (const e of events) {
@@ -77,12 +68,6 @@ function flashActive(events: BeatEvent[], actor: BeatActor, zone: 'head' | 'body
   return events.some(
     e => e.kind === 'flash' && e.actor === actor && e.zone === zone &&
       elapsed >= e.tMs && elapsed < e.tMs + e.durMs,
-  );
-}
-
-function hitstopActive(events: BeatEvent[], elapsed: number): boolean {
-  return events.some(
-    e => e.kind === 'hitstop' && elapsed >= e.tMs && elapsed < e.tMs + e.durMs,
   );
 }
 
@@ -136,6 +121,7 @@ export default function FightReplay({
 
   const rafIdRef = useRef<number | null>(null);
   const gameElapsedRef = useRef<number>(0);
+  const hitstopWallTimeRef = useRef<number>(0);
   const prevRafTsRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -175,6 +161,7 @@ export default function FightReplay({
 
     // Normal animation path via requestAnimationFrame
     gameElapsedRef.current = 0;
+    hitstopWallTimeRef.current = 0;
     prevRafTsRef.current = null;
 
     // Show initial state (t=0) + mark playing
@@ -189,8 +176,22 @@ export default function FightReplay({
       const delta = rafTs - prevRafTsRef.current;
       prevRafTsRef.current = rafTs;
 
-      // Hitstop: freeze game clock while the event is active
-      if (!hitstopActive(events, gameElapsedRef.current)) {
+      // Hitstop: accumulate real wall-clock time while the event is active.
+      // Once wall-clock debt >= durMs, jump game clock past the hitstop window.
+      const hsEvent = events.find(
+        e => e.kind === 'hitstop' &&
+          gameElapsedRef.current >= e.tMs &&
+          gameElapsedRef.current < e.tMs + e.durMs,
+      );
+
+      if (hsEvent) {
+        hitstopWallTimeRef.current += delta;
+        if (hitstopWallTimeRef.current >= hsEvent.durMs) {
+          gameElapsedRef.current = hsEvent.tMs + hsEvent.durMs;
+          hitstopWallTimeRef.current = 0;
+        }
+        // Else: stay frozen (don't advance game clock this frame)
+      } else {
         gameElapsedRef.current += delta;
       }
 

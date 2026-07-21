@@ -18,6 +18,14 @@ export interface BeatEvent {
 
 export interface BeatTimeline { totalMs: number; events: BeatEvent[] }
 
+export function computeFinalPose(events: BeatEvent[], actor: BeatActor): PoseName {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.actor === actor && e.pose != null) return e.pose;
+  }
+  return 'idle';
+}
+
 function toZone(target: 'head' | 'body' | 'legs' | null): 'head' | 'body' {
   return target === 'head' ? 'head' : 'body';
 }
