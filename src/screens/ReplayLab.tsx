@@ -29,6 +29,7 @@ const LAB_BEATS = buildLabClip();
 
 export default function ReplayLab() {
   const [idx, setIdx] = useState(0);
+  const [replayKey, setReplayKey] = useState(0);
   const beat = LAB_BEATS[idx] ?? null;
 
   return (
@@ -41,6 +42,7 @@ export default function ReplayLab() {
         </pre>
       )}
       <FightReplay
+        key={replayKey}
         beat={beat}
         playerName="Conor McGregor"
         playerArchetype="striker"
@@ -60,7 +62,7 @@ export default function ReplayLab() {
         <button
           type="button"
           data-testid="replay-replay"
-          onClick={() => setIdx(idx)}
+          onClick={() => setReplayKey(k => k + 1)}
           className="px-4 py-2 bg-primary text-on-primary rounded"
         >Replay</button>
         <button

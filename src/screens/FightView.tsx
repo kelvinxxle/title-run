@@ -11,6 +11,7 @@ import CornerScreen from '../components/CornerScreen';
 import RoundRecap from '../components/RoundRecap';
 
 interface Props {
+  fightState: FightState;
   playerName: string;
   onMove: (m: ExchangeMove) => void;
   onFinishStep: (choice: FinishChoice) => void;
