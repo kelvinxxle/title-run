@@ -25,17 +25,16 @@ function buildLabClip(): ResolvedBeat[] {
   return s.beats;
 }
 
-const LAB_BEATS = buildLabClip();
-
 export default function ReplayLab() {
+  const [labBeats] = useState<ResolvedBeat[]>(() => buildLabClip());
   const [idx, setIdx] = useState(0);
   const [replayKey, setReplayKey] = useState(0);
-  const beat = LAB_BEATS[idx] ?? null;
+  const beat = labBeats[idx] ?? null;
 
   return (
     <div data-testid="replay-lab" className="p-4 flex flex-col items-center gap-4 bg-background min-h-screen">
       <h1 className="font-display text-2xl text-on-surface">Replay Lab</h1>
-      <p className="text-sm text-on-surface-variant">Beat {idx + 1} / {LAB_BEATS.length}</p>
+      <p className="text-sm text-on-surface-variant">Beat {idx + 1} / {labBeats.length}</p>
       {beat && (
         <pre className="text-xs text-on-surface-variant bg-surface p-2 rounded max-w-lg overflow-auto">
           {JSON.stringify({ moveClass: beat.moveClass, moveId: beat.moveId, outcome: beat.outcome, signatureId: beat.signatureId, isFinish: beat.isFinish }, null, 2)}
@@ -49,7 +48,6 @@ export default function ReplayLab() {
         opponentName="Lab Opponent"
         opponentArchetype="striker"
         presentationSeed={LAB_SEED + '#' + idx}
-        autoPlay
       />
       <div className="flex gap-2">
         <button
@@ -68,8 +66,8 @@ export default function ReplayLab() {
         <button
           type="button"
           data-testid="replay-next"
-          disabled={idx >= LAB_BEATS.length - 1}
-          onClick={() => setIdx(i => Math.min(LAB_BEATS.length - 1, i + 1))}
+          disabled={idx >= labBeats.length - 1}
+          onClick={() => setIdx(i => Math.min(labBeats.length - 1, i + 1))}
           className="px-4 py-2 bg-surface text-on-surface rounded disabled:opacity-50"
         >Next</button>
       </div>

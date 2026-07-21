@@ -59,20 +59,31 @@ After completing the clip scrub:
 
 The `buildBeatTimeline` for `signatureId === 'the-left-hand'` produces:
 
-| Phase      | Offset (ms) | Duration (ms) | Description                               |
-|------------|-------------|---------------|-------------------------------------------|
-| windup     | 0           | 80            | Load weight back                          |
-| slip       | 80          | 120           | Slip the opponent's lead hand             |
-| strike     | 200         | 80            | Fire the left straight                    |
-| impact     | 280         | 60            | Contact — big flash                       |
-| flash      | 280         | 60            | Full-body bright overlay                  |
-| hitstop    | 340         | 120           | Clock freeze (both rigs hold on impact)   |
-| shake      | 340         | 120           | Screen shake starts during hitstop        |
-| recover    | 460         | 320           | Opponent crumples, player resets          |
-| **Total**  |             | **780 ms**    |                                           |
+| Phase      | Offset (ms) | Duration (ms) | Description                                |
+|------------|-------------|---------------|--------------------------------------------|
+| windup     | 0           | 80            | Opponent telegraphs cross                  |
+| slip       | 80          | 120           | Player slips the opponent's lead hand      |
+| sig-load   | 200         | 60            | Player loads the left straight             |
+| sig-fire   | 260         | 80            | Player fires the counter-left              |
+| impact     | 340         | 60            | Contact — big flash                        |
+| flash      | 400         | 40            | Full-body bright overlay                   |
+| hitstop    | 440         | 120           | Clock freeze (both rigs hold on impact)    |
+| shake      | 560         | 60            | Screen shake                               |
+| reaction   | 620         | 120           | Opponent staggers (reel / hit-head)        |
+| recover    | 740         | 120           | Player resets to idle                      |
+| **Total**  |             | **860 ms**    | (non-KO)                                   |
+
+If `isFinish: true`, a knockdown event (pose: `down`) is appended (+300 ms), giving **1160 ms total**.
+
+### `computeFinalPose` results (reduced-motion snapshot)
+
+| Character | Non-KO pose   | KO pose |
+|-----------|---------------|---------|
+| Player    | `idle`        | `idle`  |
+| Opponent  | `reel` (rocked) or `hit-head` (normal) | `down` |
 
 A normal landed cross (no signature) produces ~422 ms total with no slip phase and only 60 ms hitstop.
-The signature is **~1.85× longer** with a pre-counter slip and **2× the hitstop duration** — this is the
+The signature is **~2.04× longer** with a pre-counter slip, a distinct load→fire sequence, and **2× the hitstop duration** — this is the
 rhythmic fingerprint the feel-gate is measuring.
 
 ## Gate Status
