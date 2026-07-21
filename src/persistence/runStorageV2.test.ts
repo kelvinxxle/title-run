@@ -402,4 +402,28 @@ describe('runStorageV2', () => {
     expect(load()).toEqual({ run: null, bestReign: null });
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
+
+  // ── FIX G1: persistence must reject unknown (non-empty) signatureId ──────────
+
+  it('G1 RED: rejects FightState with non-empty but unknown signatureId', () => {
+    // 'not-a-real-move' passes the current non-empty-string check → load() succeeds (BUG).
+    // After FIX G1 (isKnownSignatureMoveId guard), it must be rejected → load().run === null.
+    const run = midFight();
+    const fight = run.fight as FightState;
+    store({ ...run, fight: { ...fight, signatureId: 'not-a-real-move' } });
+    expect(load().run).toBeNull();
+  });
+
+  it('G1 RED: rejects RunFighter with non-empty but unknown signatureId', () => {
+    const run = preFight();
+    store({ ...run, fighter: { name: 'A', statLine: LINE, signatureId: 'not-a-real-move' } });
+    expect(load().run).toBeNull();
+  });
+
+  it('G1: accepts FightState and RunFighter with a valid known signatureId (no false reject)', () => {
+    // Sanity: the guard must not break valid saves (signatureId='last-stylebender' is in the table).
+    const run = midFight();
+    save({ run, bestReign: 0 });
+    expect(load()).toEqual({ run, bestReign: 0 });
+  });
 });
