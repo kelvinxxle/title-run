@@ -19,3 +19,4 @@ export * from './takedown';
 export * from './groundEngine';
 export * from './groundResolve';
 export * from './signatures';
+export * from './beat';
