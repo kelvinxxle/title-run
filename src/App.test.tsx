@@ -19,7 +19,7 @@ function finishWindowFight(): FightState {
     player: { statLine: LINE, headDamage: 10, bodyDamage: 0, stamina: 40, legDamage: 0, roundScore: 1 },
     opponent: { statLine: LINE, headDamage: 60, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: { side: 'player', method: 'KO', stepsLeft: 2 }, outcome: null, log: [],
-    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
   };
 }
 function finishedFight(winner: 'player' | 'opponent'): FightState {
@@ -28,7 +28,7 @@ function finishedFight(winner: 'player' | 'opponent'): FightState {
     player: { statLine: LINE, headDamage: winner === 'opponent' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0 },
     opponent: { statLine: LINE, headDamage: winner === 'player' ? 60 : 5, bodyDamage: 0, stamina: 30, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
     window: null, outcome: { winner, method: 'KO', round: 3 }, log: [],
-    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+    gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
   };
 }
 function cornerFight(): FightState {
@@ -43,6 +43,7 @@ function cornerFight(): FightState {
     ground: null,
     signatureId: 'check-hook',
     signatureCharge: 0,
+    beats: [],
     lastReport: {
       round: 1,
       headline: 'You took the round.',
@@ -130,7 +131,7 @@ describe('App (v2 flow)', () => {
         player: { statLine: LINE, headDamage: 40, bodyDamage: 0, stamina: 20, legDamage: 0, roundScore: 0 },
         opponent: { statLine: LINE, headDamage: 5, bodyDamage: 0, stamina: 50, legDamage: 0, roundScore: 0, name: 'Rival', archetype: 'brawler' },
         window: null, outcome: { winner: 'opponent', method: 'KO', round: 3 }, log: [],
-        gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0,
+        gamePlan: null, lastReport: null, ground: null, signatureId: 'check-hook', signatureCharge: 0, beats: [],
       },
     };
     save({ run: lost, bestReign: null });
@@ -192,3 +193,4 @@ describe('App (v2 flow)', () => {
     expect(reloadedView).toHaveAttribute('data-exchange', savedExchange);
   });
 });
+
