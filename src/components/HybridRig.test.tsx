@@ -27,7 +27,7 @@ describe('HybridRig body', () => {
     const { container } = renderRig({ cornerColor: '#e23b2e' });
     const thigh = container.querySelector('[data-part="thighLead"]');
     expect(thigh).not.toBeNull();
-    // trunk color is derived from the palette, not the raw cornerColor; assert it is a solid fill
+    // trunk uses cornerColor directly — corner-color is the documented exception to Octagon Elite tokens
     expect(thigh!.getAttribute('fill')).toMatch(/^#/);
   });
 
