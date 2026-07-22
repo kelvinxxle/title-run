@@ -22,6 +22,9 @@ function strikeFamily(id: StrikeId): MoveFamily {
   }
 }
 
+// Must be kept in sync with StrikeId (strikes.ts). strikeFamily() above gives
+// compile-time exhaustiveness for the switch body, but this set is a runtime
+// guard and TypeScript cannot enforce they match.
 const STRIKE_IDS: ReadonlySet<string> = new Set([
   'jab', 'powerPunch', 'elbow', 'bodyKick', 'legKick', 'knee',
 ]);
