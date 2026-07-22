@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { POSES, type PoseName, type Pose } from './poses';
+import { POSES, type PoseName } from './poses';
 
 const ALL_NAMES: PoseName[] = [
   'idle', 'guard', 'jab', 'cross', 'hook', 'slip', 'hit-head', 'hit-body',
