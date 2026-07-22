@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildBeatTimeline, computeFinalPose } from './timeline';
 import type { ResolvedBeat } from '../domain/combat/beat';
+import { buildResolvedBeat } from '../domain/combat/beat';
 import type { StatLine } from '../domain/combat/stats';
 
 // Fixtures from task brief
@@ -195,5 +196,49 @@ describe('I6: body-strike intensity', () => {
     const shakeEvent = events.find(e => e.kind === 'shake');
     expect(flashEvent?.intensity).toBeGreaterThan(0);
     expect(shakeEvent?.intensity).toBeGreaterThan(0);
+  });
+});
+
+// ── M19-B RED tests: kicks and leg reactions ───────────────────────────────────
+
+function legKickBeat() {
+  return buildResolvedBeat({
+    round: 1, exchange: 1, winner: 'player', dominance: 4,
+    moveClass: 'strike', moveId: 'legKick', outcome: 'landed', target: 'legs',
+    deltas: { playerHead: 0, playerBody: 0, playerLeg: 0, playerStamina: 0,
+              opponentHead: 0, opponentBody: 0, opponentLeg: 18, opponentStamina: 2 },
+    status: { playerBecameRocked: false, opponentBecameRocked: false, playerGassed: false, opponentGassed: false },
+    signatureId: null, isFinish: false, finishMethod: null,
+  });
+}
+
+describe('M19-B timeline: kicks and legs', () => {
+  it('legKick emits a leg-zone flash and a hit-leg reaction (not a body reaction)', () => {
+    const { events } = buildBeatTimeline(legKickBeat(), 'seed');
+    expect(events.some(e => e.kind === 'flash' && e.zone === 'legs')).toBe(true);
+    expect(events.some(e => e.kind === 'reaction' && e.pose === 'hit-leg')).toBe(true);
+  });
+
+  it('a kick actor uses kick-load/kick-contact poses, not punch poses', () => {
+    const { events } = buildBeatTimeline(legKickBeat(), 'seed');
+    const actorPoses = events.filter(e => e.actor === 'player' && e.pose != null).map(e => e.pose);
+    expect(actorPoses).toContain('kick-load');
+    expect(actorPoses).toContain('kick-contact');
+    expect(actorPoses).not.toContain('cross');
+  });
+
+  it('a jab actor uses punch poses', () => {
+    const beat = buildResolvedBeat({
+      round: 1, exchange: 1, winner: 'player', dominance: 3,
+      moveClass: 'strike', moveId: 'jab', outcome: 'landed', target: 'head',
+      deltas: { playerHead: 0, playerBody: 0, playerLeg: 0, playerStamina: 0,
+                opponentHead: 12, opponentBody: 0, opponentLeg: 0, opponentStamina: 1 },
+      status: { playerBecameRocked: false, opponentBecameRocked: false, playerGassed: false, opponentGassed: false },
+      signatureId: null, isFinish: false, finishMethod: null,
+    });
+    const { events } = buildBeatTimeline(beat, 'seed');
+    const actorPoses = events.filter(e => e.actor === 'player' && e.pose != null).map(e => e.pose);
+    expect(actorPoses).toContain('punch-load');
+    expect(actorPoses).toContain('punch-contact');
   });
 });
