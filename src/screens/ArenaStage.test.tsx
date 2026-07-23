@@ -41,4 +41,10 @@ describe('ArenaStage', () => {
       <ArenaStage mode="ko-down" play={play} {...ids} hud={null} roundLabel="ROUND 3" />);
     expect(container.querySelector('[data-rig="opponent"]')!.getAttribute('data-pose')).toBe('down');
   });
+
+  it('only exposes the idle bob group under the arena-idle wrapper', () => {
+    const { container } = render(
+      <ArenaStage mode="standing-idle" play={IDLE_PLAYBACK} {...ids} hud={null} roundLabel="ROUND 1" />);
+    expect(container.querySelector('.arena-idle .rig-bob')).not.toBeNull();
+  });
 });

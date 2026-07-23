@@ -1,1 +1,16 @@
-/* arena-idle.css — idle bob keyframes added in Task 7 */
+/* arena-idle.css — idle bob keyframes (CSS only, no JS) */
+
+@keyframes rig-bob {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+.arena-idle .rig-bob {
+  animation: rig-bob 2s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rig-bob { animation: none !important; }
+}
