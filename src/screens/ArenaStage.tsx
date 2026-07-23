@@ -3,6 +3,7 @@ import { HybridRig } from '../components/HybridRig';
 import type { PlaybackState } from '../replay/useBeatPlayback';
 import type { VisualMode } from './arenaVisualMode';
 import type { ArchetypeId } from '../domain/combat/archetypes';
+import type { PoseName } from '../replay/poses';
 
 interface Identity { fighterId?: string; name: string; archetype: ArchetypeId; cornerColor: string; }
 interface ArenaStageProps {
@@ -16,6 +17,11 @@ interface ArenaStageProps {
 
 export function ArenaStage({ mode, play, player, opponent, hud, roundLabel }: ArenaStageProps) {
   const wrapClass = 'arena-stage' + (mode === 'standing-idle' ? ' arena-idle' : '');
+
+  const resolvePose = (raw: PoseName): PoseName => (mode === 'standing-idle' ? 'idle' : raw);
+  const pPose = resolvePose(play.playerPose);
+  const oPose = resolvePose(play.opponentPose);
+
   return (
     <div className={wrapClass} data-mode={mode}
          style={{ position: 'relative', background: 'radial-gradient(120% 80% at 50% 0%,#241d14 0%,#14110c 55%,#131313 100%)' }}>
@@ -40,19 +46,26 @@ export function ArenaStage({ mode, play, player, opponent, hud, roundLabel }: Ar
           <g transform="translate(50,0)">
             <HybridRig side="player" facing="right"
               fighterId={player.fighterId} name={player.name} archetype={player.archetype} cornerColor={player.cornerColor}
-              pose={play.playerPose}
+              pose={pPose}
               flashHead={play.flashHeadPlayer} flashBody={play.flashBodyPlayer} flashLeg={play.flashLegPlayer}
-              downed={play.playerPose === 'down'} />
+              downed={pPose === 'down'} />
           </g>
           <g transform="translate(160,0)">
             <HybridRig side="opponent" facing="left"
               fighterId={opponent.fighterId} name={opponent.name} archetype={opponent.archetype} cornerColor={opponent.cornerColor}
-              pose={play.opponentPose}
+              pose={oPose}
               flashHead={play.flashHeadOpponent} flashBody={play.flashBodyOpponent} flashLeg={play.flashLegOpponent}
-              downed={play.opponentPose === 'down'} />
+              downed={oPose === 'down'} />
           </g>
         </g>
       </svg>
+      {mode === 'mat' && (
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
+                      background:'rgba(19,19,19,.55)', zIndex:7,
+                      fontFamily:'Space Mono, monospace', letterSpacing:'.15em', color:'#d0c5af', fontSize:13 }}>
+          ON THE MAT
+        </div>
+      )}
     </div>
   );
 }

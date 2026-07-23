@@ -42,9 +42,23 @@ describe('ArenaStage', () => {
     expect(container.querySelector('[data-rig="opponent"]')!.getAttribute('data-pose')).toBe('down');
   });
 
+  it('forces idle stance when settled (standing-idle), ignoring the diagnostic hurt final pose', () => {
+    const play = { ...IDLE_PLAYBACK, opponentPose: 'hit-head' as const, playerPose: 'hit-head' as const };
+    const { container } = render(<ArenaStage mode="standing-idle" play={play} {...ids} hud={null} roundLabel="ROUND 1" />);
+    expect(container.querySelector('[data-rig="opponent"]')!.getAttribute('data-pose')).toBe('idle');
+    expect(container.querySelector('[data-rig="player"]')!.getAttribute('data-pose')).toBe('idle');
+  });
+
+  it('keeps the loser down in ko-down (raw down pose preserved)', () => {
+    const play = { ...IDLE_PLAYBACK, opponentPose: 'down' as const };
+    const { container } = render(<ArenaStage mode="ko-down" play={play} {...ids} hud={null} roundLabel="ROUND 3" />);
+    expect(container.querySelector('[data-rig="opponent"]')!.getAttribute('data-pose')).toBe('down');
+  });
+
   it('only exposes the idle bob group under the arena-idle wrapper', () => {
     const { container } = render(
       <ArenaStage mode="standing-idle" play={IDLE_PLAYBACK} {...ids} hud={null} roundLabel="ROUND 1" />);
     expect(container.querySelector('.arena-idle .rig-bob')).not.toBeNull();
   });
 });
+
