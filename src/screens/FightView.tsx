@@ -8,6 +8,10 @@ import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
 import CornerScreen from '../components/CornerScreen';
 import RoundRecap from '../components/RoundRecap';
+import { useBeatPlayback } from '../replay/useBeatPlayback';
+import { ArenaStage } from './ArenaStage';
+import { arenaVisualMode } from './arenaVisualMode';
+import type { ArchetypeId } from '../domain/combat/archetypes';
 
 interface Props {
   fightState: FightState;
@@ -31,6 +35,27 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
     ? { head: lastReport.opponentHeadDelta, body: lastReport.opponentBodyDelta }
     : undefined;
 
+  // Arena playback wiring (beats may be absent on old fixtures — read defensively)
+  const currentBeat = fightState.beats != null && fightState.beats.length > 0
+    ? fightState.beats[fightState.beats.length - 1]
+    : null;
+  const play = useBeatPlayback(currentBeat, fightState.seed);
+  const mode = arenaVisualMode(phase, play.isPlaying, currentBeat);
+
+  // Fighter layer — cornerColor is documented exception to token rule (spec-approved glove colors)
+  const playerIdentity = {
+    fighterId: undefined,
+    name: playerName,
+    archetype: archetypeFromStatLine(player.statLine),
+    cornerColor: '#e23b2e', // red corner
+  };
+  const opponentIdentity = {
+    fighterId: fighterIdByName(opponent.name),
+    name: opponent.name,
+    archetype: opponent.archetype as ArchetypeId,
+    cornerColor: '#2f6fb0', // blue corner
+  };
+
   return (
     <section
       data-testid="fight-view"
@@ -40,7 +65,6 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
       data-player-head={player.headDamage}
       className="p-md flex flex-col gap-md items-center"
     >
-      <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
         <FighterHealthCard
           side="player"
@@ -71,45 +95,58 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
         />
       </div>
 
+      <ArenaStage
+        mode={mode}
+        play={play}
+        player={playerIdentity}
+        opponent={opponentIdentity}
+        roundLabel={roundLabel(fightState)}
+        hud={null}
+      />
+
       <SignatureMeter charge={fightState.signatureCharge} />
 
-      {phase === 'in-round' && (
-        <StrikePanel
-          statLine={player.statLine}
-          exchange={fightState.exchange}
-          exchangesPerRound={EXCHANGES_PER_ROUND}
-          onMove={onMove}
-          sigReady={sigReady}
-        />
-      )}
-      {phase === 'corner' && (
-        <CornerScreen
-          report={lastReport}
-          log={log}
-          rounds={rounds}
-          nextRound={fightState.round}
-          onChoosePlan={onChooseGamePlan}
-        />
-      )}
-      {phase === 'finish-window' && win && (
-        <FinishSequencePanel window={win} onChoice={onFinishStep} />
-      )}
-      {phase === 'ground' && fightState.ground && (
-        <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
-      )}
-      {phase === 'finished' && outcome && (
-        <div className="w-full flex flex-col items-center gap-sm">
-          {lastReport && <RoundRecap report={lastReport} />}
-          <OutcomeBanner outcome={outcome} heading={`${playerName} vs ${opponent.name}`} />
-          <button
-            type="button"
-            data-testid="fight-continue"
-            onClick={onContinue}
-            className="w-full h-14 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide"
-          >
-            Continue
-          </button>
-        </div>
+      {!play.isPlaying && (
+        <>
+          {phase === 'in-round' && (
+            <StrikePanel
+              statLine={player.statLine}
+              exchange={fightState.exchange}
+              exchangesPerRound={EXCHANGES_PER_ROUND}
+              onMove={onMove}
+              sigReady={sigReady}
+            />
+          )}
+          {phase === 'corner' && (
+            <CornerScreen
+              report={lastReport}
+              log={log}
+              rounds={rounds}
+              nextRound={fightState.round}
+              onChoosePlan={onChooseGamePlan}
+            />
+          )}
+          {phase === 'finish-window' && win && (
+            <FinishSequencePanel window={win} onChoice={onFinishStep} />
+          )}
+          {phase === 'ground' && fightState.ground && (
+            <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
+          )}
+          {phase === 'finished' && outcome && (
+            <div className="w-full flex flex-col items-center gap-sm">
+              {lastReport && <RoundRecap report={lastReport} />}
+              <OutcomeBanner outcome={outcome} heading={`${playerName} vs ${opponent.name}`} />
+              <button
+                type="button"
+                data-testid="fight-continue"
+                onClick={onContinue}
+                className="w-full h-14 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

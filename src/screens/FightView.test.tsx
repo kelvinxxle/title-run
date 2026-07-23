@@ -2,6 +2,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
+import { buildResolvedBeat } from '../domain/combat/beat';
 
 const base = (over: Partial<FightState> = {}): FightState => {
   const merged: FightState = {
@@ -125,6 +126,32 @@ describe('FightView', () => {
     const opp2SVG = opp2Avatars[1].outerHTML;
 
     expect(opp1SVG).not.toBe(opp2SVG);
+  });
+
+  // T8: control-lock tests
+  const landedBeat = buildResolvedBeat({
+    round: 1, exchange: 2, winner: 'player', dominance: 4,
+    moveClass: 'strike', moveId: 'jab', outcome: 'landed', target: 'head',
+    deltas: { playerHead:0, playerBody:0, playerLeg:0, playerStamina:2, opponentHead:12, opponentBody:0, opponentLeg:0, opponentStamina:1 },
+    status: { playerBecameRocked:false, opponentBecameRocked:false, playerGassed:false, opponentGassed:false },
+    signatureId: null, isFinish:false, finishMethod:null,
+  });
+
+  it('locks all panels while a beat is playing (2nd decision impossible mid-playback)', () => {
+    const onMove = vi.fn();
+    const st = base({ beats: [landedBeat] });
+    render(<FightView fightState={st} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.queryByTestId('strike-panel')).toBeNull();          // locked
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-round', '1'); // arena still mounted
+  });
+
+  it('unlocks immediately under prefers-reduced-motion', () => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const spy = vi.spyOn(window, 'matchMedia').mockReturnValue({ ...mql, matches: true } as MediaQueryList);
+    const st = base({ beats: [landedBeat] });
+    render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.getByTestId('strike-panel')).toBeInTheDocument(); // reduced-motion → not playing → shown
+    spy.mockRestore();
   });
 });
 
