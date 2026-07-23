@@ -35,8 +35,8 @@ describe('HybridRig body', () => {
     const { container } = renderRig({ facing: 'right' });
     const facing = container.querySelector('[data-layer="facing"]');
     expect(facing!.getAttribute('transform')).toContain('scale(-1,1)');
-    const head = container.querySelector('[data-j="head"]');
-    expect(head!.getAttribute('transform')).toContain('scale(-1,1)');
+    const head = container.querySelector('[data-j="head"]') as HTMLElement;
+    expect(head.style.transform).toContain('scale(-1,1)');
   });
 
   it('does NOT mirror when facing left (opponent)', () => {
@@ -47,9 +47,9 @@ describe('HybridRig body', () => {
 
   it('sets each joint target transform from RIG_POSES (instant path in jsdom)', () => {
     const { container } = renderRig({ pose: 'kick-contact' });
-    const thighRear = container.querySelector('[data-j="thighRear"]');
+    const thighRear = container.querySelector('[data-j="thighRear"]') as HTMLElement;
     // kick-contact thighRear = 62deg (see rigPoses.ts)
-    expect(thighRear!.getAttribute('transform')).toContain('rotate(62');
+    expect(thighRear.style.transform).toContain('rotate(62deg)');
   });
 
   it('applies a single 80deg root rotation when downed (no double-rotation)', () => {
@@ -57,9 +57,30 @@ describe('HybridRig body', () => {
     const root = container.querySelector('[data-rig="player"]');
     const t = root!.getAttribute('transform') ?? '';
     expect(t).toContain('rotate(80');
-    // torso pose itself stays shallow (Task 1): assert torso not also ~80
-    const torso = container.querySelector('[data-j="torso"]');
-    expect(torso!.getAttribute('transform')).not.toContain('rotate(80');
+    // torso pose itself stays shallow (Task 1): assert torso CSS style not also ~80
+    const torso = container.querySelector('[data-j="torso"]') as HTMLElement;
+    expect(torso.style.transform).not.toContain('rotate(80');
+  });
+});
+
+// FIX-1 RED: joints must expose CSS-valid transforms so Chrome WAAPI can interpolate
+describe('HybridRig WAAPI CSS transform validity', () => {
+  it('joint elements carry CSS-valid style.transform (px for translate, deg for rotate, no 3-arg SVG rotate)', () => {
+    const { container } = renderRig({ pose: 'kick-contact' });
+    const torso = container.querySelector('[data-j="torso"]') as HTMLElement;
+    const t = torso.style.transform;
+    expect(t).toMatch(/\dpx/);    // translate must use px units
+    expect(t).toMatch(/\ddeg/);   // rotate must use deg units
+    expect(t).not.toMatch(/rotate\([^)]*,[^)]*,[^)]*\)/); // no 3-arg SVG rotate
+  });
+
+  it('head joint CSS transform has scale(-1,1) and deg for right-facing rig (no 3-arg SVG rotate)', () => {
+    const { container } = renderRig({ facing: 'right', pose: 'idle' });
+    const head = container.querySelector('[data-j="head"]') as HTMLElement;
+    const t = head.style.transform;
+    expect(t).toContain('scale(-1,1)');
+    expect(t).toMatch(/\ddeg/);
+    expect(t).not.toMatch(/rotate\([^)]*,[^)]*,[^)]*\)/);
   });
 });
 
@@ -89,7 +110,8 @@ describe('HybridRig photo head', () => {
     const { container: b } = renderRig({ side: 'player', fighterId: 'jon-jones' });
     const idA = a.querySelector('clipPath')!.getAttribute('id');
     const idB = b.querySelector('clipPath')!.getAttribute('id');
-    expect(idA).toBe('rig-clip-player');
-    expect(idB).toBe('rig-clip-player');
+    // Cleanup A: keyed by (side, fighterId) to avoid collisions
+    expect(idA).toBe('rig-clip-player-jon-jones');
+    expect(idB).toBe('rig-clip-player-jon-jones');
   });
 });

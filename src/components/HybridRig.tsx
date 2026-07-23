@@ -35,16 +35,22 @@ function prefersReducedMotion(): boolean {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function jointTransform(facing: 'left' | 'right', joint: keyof typeof BASE, deg: number): string {
+/**
+ * Returns a CSS-valid transform string for a joint element.
+ * translate(Xpx,Ypx) rotate(Ddeg) is equivalent to SVG translate(X,Y) rotate(D,0,0)
+ * when combined with transformBox:'view-box' + transformOrigin:'0px 0px'.
+ */
+function jointCSSTransform(facing: 'left' | 'right', joint: keyof typeof BASE, deg: number): string {
   const [bx, by] = BASE[joint];
   const headExtra = joint === 'head' && facing === 'right' ? ' scale(-1,1)' : '';
-  return `translate(${bx},${by}) rotate(${deg},0,0)${headExtra}`;
+  return `translate(${bx}px,${by}px) rotate(${deg}deg)${headExtra}`;
 }
 
 export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
   const { side, name, archetype, cornerColor, pose, facing, flashHead, flashBody, flashLeg, downed } = props;
   const rootRef = useRef<SVGGElement | null>(null);
   const prevPose = useRef<PoseName>(pose);
+  const animationsRef = useRef<Map<string, Animation>>(new Map());
   const [failedId, setFailedId] = useState<string | null>(null);
   const showPhoto = props.fighterId != null && failedId !== props.fighterId;
 
@@ -56,19 +62,37 @@ export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
   const rp = RIG_POSES[pose];
   const isDown = downed || pose === 'down';
 
+  // CSS joint style: transformBox:'view-box' + transformOrigin:'0px 0px' makes the pivot
+  // at the SVG viewport origin (0,0), so transform-origin pre/post translate are no-ops
+  // and translate(Xpx,Ypx) rotate(Ddeg) is identical to SVG translate(X,Y) rotate(D,0,0).
+  const js = (j: keyof typeof BASE, deg: number) => ({
+    transform: jointCSSTransform(facing, j, deg),
+    transformBox: 'view-box' as const,
+    transformOrigin: '0px 0px',
+  });
+
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || prevPose.current === pose) return;
     const from = RIG_POSES[prevPose.current];
     prevPose.current = pose;
+
+    // Cancel previous animations so the static CSS style.transform takes effect (esp. reduced-motion)
+    for (const [, anim] of animationsRef.current) {
+      if (typeof anim.cancel === 'function') anim.cancel();
+    }
+    animationsRef.current.clear();
+
     if (prefersReducedMotion()) return;
+
     for (const j of JOINTS) {
       const el = root.querySelector(`[data-j="${j}"]`) as SVGGElement | null;
       if (!el || typeof el.animate !== 'function') continue;
-      el.animate(
-        [{ transform: jointTransform(facing, j, from[j]) }, { transform: jointTransform(facing, j, rp[j]) }],
+      const anim = el.animate(
+        [{ transform: jointCSSTransform(facing, j, from[j]) }, { transform: jointCSSTransform(facing, j, rp[j]) }],
         { duration: 150, easing: 'cubic-bezier(.34,1.2,.4,1)', fill: 'forwards' },
       );
+      animationsRef.current.set(j, anim);
     }
   }, [pose, facing, rp]);
 
@@ -95,10 +119,11 @@ export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
   const upper = () => <rect x={-6} y={-4} width={12} height={40} rx={0} fill={skin} />;
   const fore = () => (<><rect x={-5} y={-2} width={10} height={30} rx={0} fill={skin} />{glv()}</>);
 
-  const clipId = `rig-clip-${side}`;
+  // Cleanup A: key clip-path id by (side, fighterId) to avoid collisions when same side appears twice in a document
+  const clipId = `rig-clip-${side}-${props.fighterId ?? 'custom'}`;
   const frame = props.fighterId ? rigHeadFraming(props.fighterId) : { y: -40, scale: 1 };
   const head = (
-    <g data-j="head" transform={jointTransform(facing, 'head', rp.head)}>
+    <g data-j="head" style={js('head', rp.head)}>
       <defs>
         <clipPath id={clipId}><circle cx={0} cy={0} r={30} /></clipPath>
       </defs>
@@ -124,27 +149,27 @@ export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
         <ellipse cx={90} cy={288} rx={46} ry={12} fill="rgba(0,0,0,.35)" />
         <g className="rig-bob">
           <g data-part="body" transform={`translate(0,${rp.bodyY})`}>
-            <g data-j="thighRear" transform={jointTransform(facing, 'thighRear', rp.thighRear)}>
+            <g data-j="thighRear" style={js('thighRear', rp.thighRear)}>
               {thigh('thighRear')}
-              <g data-j="shinRear" transform={jointTransform(facing, 'shinRear', rp.shinRear)}>{shinSegment()}</g>
+              <g data-j="shinRear" style={js('shinRear', rp.shinRear)}>{shinSegment()}</g>
             </g>
-            <g data-j="thighLead" transform={jointTransform(facing, 'thighLead', rp.thighLead)}>
+            <g data-j="thighLead" style={js('thighLead', rp.thighLead)}>
               {thigh('thighLead')}
-              <g data-j="shinLead" transform={jointTransform(facing, 'shinLead', rp.shinLead)}>{shinSegment()}</g>
+              <g data-j="shinLead" style={js('shinLead', rp.shinLead)}>{shinSegment()}</g>
             </g>
             <path d="M71,195 Q90,191 109,195 L108,214 Q90,219 72,214 Z" fill={trunk} />
             {flashLeg && <rect data-flash="leg" x={62} y={196} width={56} height={70} rx={0} fill="#fff" opacity={0.4} />}
-            <g data-j="torso" transform={jointTransform(facing, 'torso', rp.torso)}>
-              <g data-j="armRear" transform={jointTransform(facing, 'armRear', rp.armRear)}>
+            <g data-j="torso" style={js('torso', rp.torso)}>
+              <g data-j="armRear" style={js('armRear', rp.armRear)}>
                 {upper()}
-                <g data-j="foreRear" transform={jointTransform(facing, 'foreRear', rp.foreRear)}>{fore()}</g>
+                <g data-j="foreRear" style={js('foreRear', rp.foreRear)}>{fore()}</g>
               </g>
               <path d="M-17,2 L-22,-78 Q0,-90 22,-78 L17,2 Q0,8 -17,2 Z" fill={torsoFill} />
               {flashBody && <rect data-flash="body" x={-22} y={-90} width={44} height={98} rx={0} fill="#fff" opacity={0.4} />}
               <rect x={-7} y={-98} width={14} height={22} rx={0} fill={skin} />
-              <g data-j="armLead" transform={jointTransform(facing, 'armLead', rp.armLead)}>
+              <g data-j="armLead" style={js('armLead', rp.armLead)}>
                 {upper()}
-                <g data-j="foreLead" transform={jointTransform(facing, 'foreLead', rp.foreLead)}>{fore()}</g>
+                <g data-j="foreLead" style={js('foreLead', rp.foreLead)}>{fore()}</g>
               </g>
               {head}
             </g>
