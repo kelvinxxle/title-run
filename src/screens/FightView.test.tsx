@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
 import { buildResolvedBeat } from '../domain/combat/beat';
+import { healthPct } from '../fightDisplay';
 
 const base = (over: Partial<FightState> = {}): FightState => {
   const merged: FightState = {
@@ -152,6 +153,17 @@ describe('FightView', () => {
     render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
     expect(screen.getByTestId('strike-panel')).toBeInTheDocument(); // reduced-motion → not playing → shown
     spy.mockRestore();
+  });
+
+  it('holds displayed HP until the punch lands (no early bar drop)', () => {
+    const onMove = vi.fn();
+    const pre = base();                                    // opponent full HP, settled
+    const { rerender } = render(<FightView fightState={pre} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    const post = base({ beats: [landedBeat], opponent: { ...pre.opponent, headDamage: 40 } });
+    rerender(<FightView fightState={post} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    // isPlaying true, t=0 (no flash yet) → opponent HP bar still shows the PRE value (held)
+    const oppHealthMeter = within(screen.getByTestId('fighter-card-opponent')).getAllByRole('meter')[0];
+    expect(oppHealthMeter.getAttribute('aria-valuenow')).toBe(String(Math.round(healthPct(pre.opponent) * 100)));
   });
 });
 

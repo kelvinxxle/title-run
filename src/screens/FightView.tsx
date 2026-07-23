@@ -11,7 +11,10 @@ import RoundRecap from '../components/RoundRecap';
 import { useBeatPlayback } from '../replay/useBeatPlayback';
 import { ArenaStage } from './ArenaStage';
 import { arenaVisualMode } from './arenaVisualMode';
+import { useCommittedFight } from './useCommittedFight';
 import type { ArchetypeId } from '../domain/combat/archetypes';
+import type { ResolvedBeat } from '../domain/combat/beat';
+import { useRef } from 'react';
 
 interface Props {
   fightState: FightState;
@@ -42,6 +45,20 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
   const play = useBeatPlayback(currentBeat, fightState.seed);
   const mode = arenaVisualMode(phase, play.isPlaying, currentBeat);
 
+  // Impact latch: once any flash fires during THIS beat, HP is committed for the rest of that beat
+  const beatRef = useRef<ResolvedBeat | null>(null);
+  const impactSeen = useRef(false);
+  // Detect a NEW beat arriving this render — on that same render, play.isPlaying is still
+  // false (the useEffect hasn't fired yet). Hold the pre-beat snapshot by forcing committed=false.
+  const newBeatArrived = beatRef.current !== currentBeat && currentBeat !== null;
+  if (beatRef.current !== currentBeat) { beatRef.current = currentBeat; impactSeen.current = false; }
+  const anyFlash =
+    play.flashHeadPlayer || play.flashBodyPlayer || (play.flashLegPlayer ?? false) ||
+    play.flashHeadOpponent || play.flashBodyOpponent || (play.flashLegOpponent ?? false);
+  if (anyFlash) impactSeen.current = true;
+  const committed = newBeatArrived ? false : (!play.isPlaying || impactSeen.current);
+  const shown = useCommittedFight(fightState, committed);
+
   // Fighter layer — cornerColor is documented exception to token rule (spec-approved glove colors)
   const playerIdentity = {
     fighterId: undefined,
@@ -69,12 +86,12 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
         <FighterHealthCard
           side="player"
           name={playerName}
-          subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`}
+          subtitle={`Stamina ${Math.round(staminaPct(shown.player) * 100)}%`}
           badge="YOU"
-          healthPct={healthPct(player)}
-          bodyPct={bodyPct(player)}
-          staminaPct={staminaPct(player)}
-          headStateLabel={headState(player)}
+          healthPct={healthPct(shown.player)}
+          bodyPct={bodyPct(shown.player)}
+          staminaPct={staminaPct(shown.player)}
+          headStateLabel={headState(shown.player)}
           damageFlash={playerFlash}
           avatarSeed={playerName}
           archetype={archetypeFromStatLine(player.statLine)}
@@ -84,10 +101,10 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
           name={opponent.name}
           subtitle={opponent.archetype}
           badge="OPP"
-          healthPct={healthPct(opponent)}
-          bodyPct={bodyPct(opponent)}
-          staminaPct={staminaPct(opponent)}
-          headStateLabel={headState(opponent)}
+          healthPct={healthPct(shown.opponent)}
+          bodyPct={bodyPct(shown.opponent)}
+          staminaPct={staminaPct(shown.opponent)}
+          headStateLabel={headState(shown.opponent)}
           damageFlash={opponentFlash}
           avatarSeed={opponent.name}
           archetype={opponent.archetype}
