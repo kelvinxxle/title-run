@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
@@ -191,5 +192,41 @@ describe('FightView', () => {
     const card = screen.getByTestId('fighter-card-player');
     expect(card).toHaveAttribute('data-head-state', headState(st.player));
     expect(within(card).getAllByRole('meter').length).toBe(3);
+  });
+
+  // FIX-2 RED: StrictMode must not commit the post-beat state before playback begins
+  it('[FIX2-RED] StrictMode: HP bar holds pre-beat value even when isPlaying=false on new beat', () => {
+    const pre = base();
+    const { rerender } = render(
+      <StrictMode>
+        <FightView fightState={pre} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />
+      </StrictMode>,
+    );
+    const post = base({ beats: [landedBeat], opponent: { ...pre.opponent, headDamage: 40 } });
+    rerender(
+      <StrictMode>
+        <FightView fightState={post} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />
+      </StrictMode>,
+    );
+    const oppHealthMeter = within(screen.getByTestId('fighter-card-opponent')).getAllByRole('meter')[0];
+    expect(oppHealthMeter.getAttribute('aria-valuenow')).toBe(String(Math.round(healthPct(pre.opponent) * 100)));
+  });
+
+  // FIX-3 RED: damage badge must not show before the HP bar commits
+  it('[FIX3-RED] damage badge is absent while held (pre-impact, before committed)', () => {
+    const pre = base();
+    const { rerender } = render(
+      <FightView fightState={pre} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />,
+    );
+    const postWithReport = base({
+      beats: [landedBeat],
+      opponent: { ...pre.opponent, headDamage: 40 },
+      lastReport: { round: 1, headline: '', detail: '', winner: 'player', playerHeadDelta: 0, playerBodyDelta: 0, opponentHeadDelta: 40, opponentBodyDelta: 0 },
+    });
+    rerender(
+      <FightView fightState={postWithReport} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />,
+    );
+    // While playing (beat just arrived, no flash yet): damage badge should be absent
+    expect(screen.queryByTestId('dmg-opponent-head')).toBeNull();
   });
 });

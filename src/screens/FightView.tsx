@@ -13,8 +13,6 @@ import { ArenaStage } from './ArenaStage';
 import { arenaVisualMode } from './arenaVisualMode';
 import { useCommittedFight } from './useCommittedFight';
 import type { ArchetypeId } from '../domain/combat/archetypes';
-import type { ResolvedBeat } from '../domain/combat/beat';
-import { useRef } from 'react';
 
 interface Props {
   fightState: FightState;
@@ -30,14 +28,6 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
   const sigReady = signatureReady(fightState);
 
-  // Damage flash: show deltas from the last resolved round
-  const playerFlash = lastReport
-    ? { head: lastReport.playerHeadDelta, body: lastReport.playerBodyDelta }
-    : undefined;
-  const opponentFlash = lastReport
-    ? { head: lastReport.opponentHeadDelta, body: lastReport.opponentBodyDelta }
-    : undefined;
-
   // Arena playback wiring (beats may be absent on old fixtures — read defensively)
   const currentBeat = fightState.beats != null && fightState.beats.length > 0
     ? fightState.beats[fightState.beats.length - 1]
@@ -45,19 +35,20 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
   const play = useBeatPlayback(currentBeat, fightState.seed);
   const mode = arenaVisualMode(phase, play.isPlaying, currentBeat);
 
-  // Impact latch: once any flash fires during THIS beat, HP is committed for the rest of that beat
-  const beatRef = useRef<ResolvedBeat | null>(null);
-  const impactSeen = useRef(false);
-  // Detect a NEW beat arriving this render — on that same render, play.isPlaying is still
-  // false (the useEffect hasn't fired yet). Hold the pre-beat snapshot by forcing committed=false.
-  const newBeatArrived = beatRef.current !== currentBeat && currentBeat !== null;
-  if (beatRef.current !== currentBeat) { beatRef.current = currentBeat; impactSeen.current = false; }
   const anyFlash =
     play.flashHeadPlayer || play.flashBodyPlayer || (play.flashLegPlayer ?? false) ||
     play.flashHeadOpponent || play.flashBodyOpponent || (play.flashLegOpponent ?? false);
-  if (anyFlash) impactSeen.current = true;
-  const committed = newBeatArrived ? false : (!play.isPlaying || impactSeen.current);
-  const shown = useCommittedFight(fightState, committed);
+
+  // FIX 2: StrictMode-safe HUD hold — state-driven, committed only after release
+  const { shown, committed } = useCommittedFight(fightState, currentBeat, !play.isPlaying || anyFlash);
+
+  // FIX 3: damage badges gate on the same commit as the HP bars (no pre-impact leakage)
+  const playerFlash = committed && lastReport
+    ? { head: lastReport.playerHeadDelta, body: lastReport.playerBodyDelta }
+    : undefined;
+  const opponentFlash = committed && lastReport
+    ? { head: lastReport.opponentHeadDelta, body: lastReport.opponentBodyDelta }
+    : undefined;
 
   // Fighter layer — cornerColor is documented exception to token rule (spec-approved glove colors)
   const playerIdentity = {
