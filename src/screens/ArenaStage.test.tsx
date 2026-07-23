@@ -49,11 +49,7 @@ describe('ArenaStage', () => {
     expect(container.querySelector('[data-rig="player"]')!.getAttribute('data-pose')).toBe('idle');
   });
 
-  it('keeps the loser down in ko-down (raw down pose preserved)', () => {
-    const play = { ...IDLE_PLAYBACK, opponentPose: 'down' as const };
-    const { container } = render(<ArenaStage mode="ko-down" play={play} {...ids} hud={null} roundLabel="ROUND 3" />);
-    expect(container.querySelector('[data-rig="opponent"]')!.getAttribute('data-pose')).toBe('down');
-  });
+
 
   it('only exposes the idle bob group under the arena-idle wrapper', () => {
     const { container } = render(

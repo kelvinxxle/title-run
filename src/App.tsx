@@ -14,7 +14,9 @@ import ArenaDemo from './screens/ArenaDemo';
 export interface AppProps { makeSeed?: () => string; }
 
 // Dev-only: detect ?arena=demo before the component mounts to avoid conditional hook calls.
-const IS_ARENA_DEMO = typeof window !== 'undefined' &&
+// Guard with import.meta.env.DEV so the deployed prod site does not expose the harness.
+const IS_ARENA_DEMO = import.meta.env.DEV &&
+  typeof window !== 'undefined' &&
   new URLSearchParams(window.location.search).get('arena') === 'demo';
 
 export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
