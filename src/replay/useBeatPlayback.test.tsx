@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, renderHook } from '@testing-library/react';
 import FightReplay from './FightReplay';
+import { useBeatPlayback } from './useBeatPlayback';
 import type { ResolvedBeat } from '../domain/combat/beat';
+import { buildResolvedBeat } from '../domain/combat/beat';
 
 const sigKoBeat: ResolvedBeat = {
   id: '2-3', round: 2, exchange: 3,
@@ -103,5 +105,28 @@ describe('playback characterization (pre-extraction baseline)', () => {
         },
       ]
     `);
+  });
+});
+
+describe('M19-B: leg-flash surface in PlaybackState', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('surfaces a leg flash for a legKick landed beat during its flash window', async () => {
+    const cbs = setup();
+    const beat = buildResolvedBeat({
+      round: 1, exchange: 1, winner: 'player', dominance: 4,
+      moveClass: 'strike', moveId: 'legKick', outcome: 'landed', target: 'legs',
+      deltas: { playerHead: 0, playerBody: 0, playerLeg: 0, playerStamina: 0,
+                opponentHead: 0, opponentBody: 0, opponentLeg: 18, opponentStamina: 2 },
+      status: { playerBecameRocked: false, opponentBecameRocked: false, playerGassed: false, opponentGassed: false },
+      signatureId: null, isFinish: false, finishMethod: null,
+    });
+    const { result } = renderHook(() => useBeatPlayback(beat, 'leg-flash-seed'));
+    // First frame: delta=0, gameElapsed=0
+    await act(async () => { pump(cbs, 0); });
+    // Second frame: delta=230ms — within the leg-flash window (~200-260ms depending on rng)
+    await act(async () => { pump(cbs, 230); });
+    expect(result.current.flashLegOpponent).toBe(true);
+    expect(result.current.flashHeadOpponent).toBe(false);
   });
 });

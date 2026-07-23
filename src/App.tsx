@@ -9,8 +9,15 @@ import TopAppBar from './components/TopAppBar';
 import ChampionshipHubScreen from './screens/ChampionshipHubScreen';
 import DraftScreen from './screens/DraftScreen';
 import FightView from './screens/FightView';
+import ArenaDemo from './screens/ArenaDemo';
 
 export interface AppProps { makeSeed?: () => string; }
+
+// Dev-only: detect ?arena=demo before the component mounts to avoid conditional hook calls.
+// Guard with import.meta.env.DEV so the deployed prod site does not expose the harness.
+const IS_ARENA_DEMO = import.meta.env.DEV &&
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('arena') === 'demo';
 
 export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
   const [store] = useState(() => load());
@@ -96,7 +103,7 @@ export default function App({ makeSeed = () => String(Date.now()) }: AppProps) {
     );
   }
 
-  return (
+  return IS_ARENA_DEMO ? <ArenaDemo /> : (
     <div className="min-h-screen flex flex-col bg-background">
       <TopAppBar run={run} />
       <main className="flex-1">{screen()}</main>
