@@ -199,7 +199,42 @@ describe('I6: body-strike intensity', () => {
   });
 });
 
-// ── M19-B RED tests: kicks and leg reactions ───────────────────────────────────
+// ── FIX-4 RED: takedown beats must NOT produce punch poses ────────────────────
+
+describe('FIX-4: takedown beats use neutral choreography, not punch poses', () => {
+  function makeTakedownBeat(): ResolvedBeat {
+    return buildResolvedBeat({
+      round: 1, exchange: 1, winner: 'player', dominance: 3,
+      moveClass: 'takedown', moveId: 'single-leg', outcome: 'landed', target: 'body',
+      deltas: { playerHead: 0, playerBody: 0, playerLeg: 0, playerStamina: 0,
+                opponentHead: 0, opponentBody: 0, opponentLeg: 0, opponentStamina: 0 },
+      status: { playerBecameRocked: false, opponentBecameRocked: false, playerGassed: false, opponentGassed: false },
+      signatureId: null, isFinish: false, finishMethod: null,
+    });
+  }
+
+  it('takedown beat produces NO punch-load or punch-contact poses', () => {
+    const { events } = buildBeatTimeline(makeTakedownBeat(), 'seed');
+    const poses = events.filter(e => e.pose != null).map(e => e.pose);
+    expect(poses).not.toContain('punch-load');
+    expect(poses).not.toContain('punch-contact');
+  });
+
+  it('damageless takedown produces NO flash or shake events', () => {
+    const { events } = buildBeatTimeline(makeTakedownBeat(), 'seed');
+    expect(events.some(e => e.kind === 'flash')).toBe(false);
+  });
+
+  it('moveFamily takedown is honored by buildBeatTimeline (not collapsed to punch)', () => {
+    const td = makeTakedownBeat();
+    expect(td.moveClass).toBe('takedown');
+    const { events } = buildBeatTimeline(td, 'seed');
+    // Actor should use guard/level-change, not punch poses
+    const actorPoses = events.filter(e => e.actor === td.actorId && e.pose != null).map(e => e.pose);
+    expect(actorPoses).not.toContain('punch-load');
+    expect(actorPoses).not.toContain('punch-contact');
+  });
+});
 
 function legKickBeat() {
   return buildResolvedBeat({

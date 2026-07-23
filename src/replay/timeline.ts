@@ -82,6 +82,16 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
     }
     push('recover', 120, beat.actorId, { pose: 'idle' });
 
+  } else if (family === 'takedown') {
+    // Neutral level-change + clinch — no punch/kick poses, no flash for damageless takes
+    push('windup', 80, beat.actorId, { pose: 'guard' });
+    push('strike', 100, beat.actorId, { pose: 'slip' }); // actor shoots/dips
+    push('block', 80, beat.targetId, { pose: 'guard' }); // target defends/braces
+    if (beat.isFinish) {
+      push('knockdown', 300, beat.targetId, { pose: 'down' });
+    }
+    push('recover', 120, beat.actorId, { pose: 'idle' });
+
   } else if (beat.outcome === 'evaded') {
     push('windup', 70, beat.actorId, { pose: loadPose(strikeFam) });
     push('slip', 100, beat.targetId, { pose: 'slip' });
