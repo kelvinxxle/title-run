@@ -1,8 +1,9 @@
-import { memo, useLayoutEffect, useRef } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { RIG_POSES, type RigPose } from '../replay/rigPoses';
 import type { PoseName } from '../replay/poses';
 import { fighterPalette } from './fighterPalette';
 import type { ArchetypeId } from '../domain/combat/archetypes';
+import { rigHeadFraming } from './rigHeadFraming';
 
 export interface HybridRigProps {
   side: 'player' | 'opponent';
@@ -44,6 +45,8 @@ export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
   const { side, name, archetype, cornerColor, pose, facing, flashHead, flashBody, flashLeg, downed } = props;
   const rootRef = useRef<SVGGElement | null>(null);
   const prevPose = useRef<PoseName>(pose);
+  const [failedId, setFailedId] = useState<string | null>(null);
+  const showPhoto = props.fighterId != null && failedId !== props.fighterId;
 
   const pal = fighterPalette(props.fighterId ?? name, archetype);
   const trunk = cornerColor;   // corner-colored trunk/shorts — documented exception to Octagon Elite tokens
@@ -92,10 +95,24 @@ export const HybridRig = memo(function HybridRig(props: HybridRigProps) {
   const upper = () => <rect x={-6} y={-4} width={12} height={40} rx={0} fill={skin} />;
   const fore = () => (<><rect x={-5} y={-2} width={10} height={30} rx={0} fill={skin} />{glv()}</>);
 
+  const clipId = `rig-clip-${side}`;
+  const frame = props.fighterId ? rigHeadFraming(props.fighterId) : { y: -40, scale: 1 };
   const head = (
     <g data-j="head" transform={jointTransform(facing, 'head', rp.head)}>
+      <defs>
+        <clipPath id={clipId}><circle cx={0} cy={0} r={30} /></clipPath>
+      </defs>
       <circle cx={0} cy={0} r={33} fill="#0b0b0d" />
-      <circle cx={0} cy={0} r={30} fill={skin} />
+      {showPhoto ? (
+        <image
+          href={`${import.meta.env.BASE_URL}fighters/${props.fighterId}.jpg`}
+          x={-33 * frame.scale} y={frame.y} width={66 * frame.scale} height={80 * frame.scale}
+          clipPath={`url(#${clipId})`} preserveAspectRatio="xMidYMin slice"
+          onError={() => setFailedId(props.fighterId ?? null)}
+        />
+      ) : (
+        <circle cx={0} cy={0} r={30} fill={skin} />
+      )}
       <circle cx={0} cy={0} r={30} fill="none" stroke="rgba(255,255,255,.55)" strokeWidth={2} />
       {flashHead && <circle data-flash="head" cx={0} cy={0} r={30} fill="#fff" opacity={0.55} />}
     </g>
