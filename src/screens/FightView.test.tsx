@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
 import { buildResolvedBeat } from '../domain/combat/beat';
-import { healthPct } from '../fightDisplay';
+import { headState, healthPct } from '../fightDisplay';
 
 const base = (over: Partial<FightState> = {}): FightState => {
   const merged: FightState = {
@@ -165,7 +165,6 @@ describe('FightView', () => {
     const oppHealthMeter = within(screen.getByTestId('fighter-card-opponent')).getAllByRole('meter')[0];
     expect(oppHealthMeter.getAttribute('aria-valuenow')).toBe(String(Math.round(healthPct(pre.opponent) * 100)));
   });
-});
 
   it('shows a real photo for a roster opponent and avatar fallback for the player', () => {
     // Jon Jones IS in the roster; 'Me' is a custom name NOT in the roster
@@ -184,3 +183,13 @@ describe('FightView', () => {
     expect(within(screen.getByTestId('fighter-card-player')).queryByTestId('fighter-photo')).toBeNull();
     expect(within(screen.getByTestId('fighter-card-player')).getByLabelText(/portrait$/)).toBeInTheDocument();
   });
+
+  // T11: HUD info parity — head-state + body/stamina meters survive arena insertion
+  it('preserves HUD info parity (head-state + body/stamina meters retained)', () => {
+    const st = base({ player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage: 40, bodyDamage:0, stamina: 20, legDamage: 0, roundScore:0 } });
+    render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    const card = screen.getByTestId('fighter-card-player');
+    expect(card).toHaveAttribute('data-head-state', headState(st.player));
+    expect(within(card).getAllByRole('meter').length).toBe(3);
+  });
+});

@@ -4,6 +4,7 @@ import type { PlaybackState } from '../replay/useBeatPlayback';
 import type { VisualMode } from './arenaVisualMode';
 import type { ArchetypeId } from '../domain/combat/archetypes';
 import type { PoseName } from '../replay/poses';
+import { colors, fonts } from '../theme/tokens';
 
 interface Identity { fighterId?: string; name: string; archetype: ArchetypeId; cornerColor: string; }
 interface ArenaStageProps {
@@ -30,12 +31,14 @@ export function ArenaStage({ mode, play, player, opponent, hud, roundLabel }: Ar
                     display: 'flex', justifyContent: 'space-between' }}>
         {hud}
       </div>
+      {/* Round label — Octagon Elite chrome: Anton/gold/no-radius */}
       <div style={{ position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center', zIndex: 6,
-                    fontFamily: 'Anton, sans-serif', letterSpacing: '.06em', color: '#f2ca50', fontSize: 13 }}>
+                    fontFamily: `${fonts.display}, sans-serif`, letterSpacing: '.06em',
+                    color: colors.primary, fontSize: 13 }}>
         {roundLabel}
       </div>
       <svg viewBox="0 0 390 300" width="100%" role="img" aria-label="Fight arena"
-           style={{ display: 'block', maxHeight: 300 }}>
+           style={{ display: 'block', maxHeight: 'min(40vh, 300px)' }}>
         <defs>
           <radialGradient id="arena-shad" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="rgba(0,0,0,.55)" /><stop offset="100%" stopColor="rgba(0,0,0,0)" />
@@ -60,9 +63,11 @@ export function ArenaStage({ mode, play, player, opponent, hud, roundLabel }: Ar
         </g>
       </svg>
       {mode === 'mat' && (
+        // Octagon Elite chrome: Space Mono / on-surface-variant / no-radius / surface overlay
         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
                       background:'rgba(19,19,19,.55)', zIndex:7,
-                      fontFamily:'Space Mono, monospace', letterSpacing:'.15em', color:'#d0c5af', fontSize:13 }}>
+                      fontFamily:`${fonts.mono}, monospace`, letterSpacing:'.15em',
+                      color: colors['on-surface-variant'], fontSize:13 }}>
           ON THE MAT
         </div>
       )}
