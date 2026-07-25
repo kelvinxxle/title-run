@@ -1,19 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import { POSES, type PoseName } from './poses';
 
-const ALL_NAMES: PoseName[] = [
-  'idle', 'guard', 'jab', 'cross', 'hook', 'slip', 'hit-head', 'hit-body',
-  'reel', 'down', 'sig-load', 'sig-fire',
-  'punch-load', 'punch-contact', 'kick-load', 'kick-contact', 'hit-leg',
-];
+/**
+ * The name list below is a `Record<PoseName, true>`, so TypeScript fails the build if a new
+ * PoseName is added to the union without being covered here. That is deliberate: a pose that
+ * exists in the type but has no geometry silently renders as `undefined` in the rig.
+ */
+const NAME_COVERAGE: Record<PoseName, true> = {
+  idle: true, guard: true, jab: true, cross: true, hook: true, slip: true,
+  'hit-head': true, 'hit-body': true, reel: true, down: true, 'sig-load': true, 'sig-fire': true,
+  'punch-load': true, 'punch-contact': true, 'kick-load': true, 'kick-contact': true, 'hit-leg': true,
+  'jab-load': true, 'jab-contact': true,
+  'powerPunch-load': true, 'powerPunch-contact': true,
+  'elbow-load': true, 'elbow-contact': true,
+  'legKick-load': true, 'legKick-contact': true,
+  'bodyKick-load': true, 'bodyKick-contact': true,
+  'knee-load': true, 'knee-contact': true,
+  'finish-load': true, 'finish-contact': true,
+};
+
+const ALL_NAMES = Object.keys(NAME_COVERAGE) as PoseName[];
 
 const NEW_NAMES: PoseName[] = [
   'punch-load', 'punch-contact', 'kick-load', 'kick-contact', 'hit-leg',
 ];
 
 describe('POSES record', () => {
-  it('has an entry for all 17 PoseName values', () => {
-    expect(Object.keys(POSES).length).toBe(17);
+  it('has an entry for every PoseName value', () => {
+    expect(Object.keys(POSES).length).toBe(ALL_NAMES.length);
     for (const name of ALL_NAMES) {
       expect(POSES).toHaveProperty(name);
     }

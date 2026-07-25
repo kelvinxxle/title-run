@@ -2,14 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { RIG_POSES, type RigPose } from './rigPoses';
 import { POSES, type PoseName } from './poses';
 
-const ALL_NAMES: PoseName[] = [
-  'idle', 'guard', 'jab', 'cross', 'hook', 'slip', 'hit-head', 'hit-body',
-  'reel', 'down', 'sig-load', 'sig-fire',
-  'punch-load', 'punch-contact', 'kick-load', 'kick-contact', 'hit-leg',
-];
+const ALL_NAMES = Object.keys(RIG_POSES) as PoseName[];
 
 describe('rig poses', () => {
-  it('POSES (old model) has an entry for every PoseName incl. the 5 new ones', () => {
+  it('POSES (old model) has an entry for every PoseName incl. the per-strike ones', () => {
     for (const n of ALL_NAMES) expect(POSES[n]).toBeDefined();
   });
 

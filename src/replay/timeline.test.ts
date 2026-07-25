@@ -254,15 +254,19 @@ describe('M19-B timeline: kicks and legs', () => {
     expect(events.some(e => e.kind === 'reaction' && e.pose === 'hit-leg')).toBe(true);
   });
 
-  it('a kick actor uses kick-load/kick-contact poses, not punch poses', () => {
+  // M19-C: kick actors now use the specific kick's poses rather than the shared kick-family
+  // pair. The invariant that survives is that a kick never borrows punch choreography.
+  it('a kick actor uses that kick\'s own load/contact poses, never punch poses', () => {
     const { events } = buildBeatTimeline(legKickBeat(), 'seed');
     const actorPoses = events.filter(e => e.actor === 'player' && e.pose != null).map(e => e.pose);
-    expect(actorPoses).toContain('kick-load');
-    expect(actorPoses).toContain('kick-contact');
+    expect(actorPoses).toContain('legKick-load');
+    expect(actorPoses).toContain('legKick-contact');
     expect(actorPoses).not.toContain('cross');
+    expect(actorPoses).not.toContain('punch-load');
+    expect(actorPoses).not.toContain('punch-contact');
   });
 
-  it('a jab actor uses punch poses', () => {
+  it('a jab actor uses the jab\'s own poses, never kick poses', () => {
     const beat = buildResolvedBeat({
       round: 1, exchange: 1, winner: 'player', dominance: 3,
       moveClass: 'strike', moveId: 'jab', outcome: 'landed', target: 'head',
@@ -273,7 +277,9 @@ describe('M19-B timeline: kicks and legs', () => {
     });
     const { events } = buildBeatTimeline(beat, 'seed');
     const actorPoses = events.filter(e => e.actor === 'player' && e.pose != null).map(e => e.pose);
-    expect(actorPoses).toContain('punch-load');
-    expect(actorPoses).toContain('punch-contact');
+    expect(actorPoses).toContain('jab-load');
+    expect(actorPoses).toContain('jab-contact');
+    expect(actorPoses).not.toContain('kick-load');
+    expect(actorPoses).not.toContain('kick-contact');
   });
 });
