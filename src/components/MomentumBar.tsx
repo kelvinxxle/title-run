@@ -21,7 +21,7 @@ export default function MomentumBar({ log, rounds }: Props) {
           <span
             key={i}
             data-winner={winner}
-            className={`h-3 w-6 rounded-sm ${color} transition-colors duration-300`}
+            className={`h-3 w-6 rounded-sm ${color} motion-safe:transition-colors motion-safe:duration-300`}
           />
         );
       })}

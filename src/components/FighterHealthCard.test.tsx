@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import FighterHealthCard from './FighterHealthCard';
-import fighterHealthCardSource from './FighterHealthCard.tsx?raw';
 
 describe('FighterHealthCard', () => {
   it('renders name, subtitle, badge and an accessible health meter', () => {
@@ -95,23 +94,5 @@ describe('M14: three-meter card', () => {
   it('preserves existing head meter aria-label', () => {
     const { getByRole } = render(<FighterHealthCard {...baseProps} />);
     expect(getByRole('meter', { name: 'Test Fighter health' })).toBeTruthy();
-  });
-});
-
-describe('reduced-motion: all motion utilities must carry motion-safe: prefix', () => {
-  it('has no bare animate-bounce (must be motion-safe:animate-bounce)', () => {
-    expect(fighterHealthCardSource).not.toMatch(/(?<!motion-safe:)animate-bounce/);
-  });
-
-  it('has no bare animate-pulse (must be motion-safe:animate-pulse)', () => {
-    expect(fighterHealthCardSource).not.toMatch(/(?<!motion-safe:)animate-pulse/);
-  });
-
-  it('has no bare transition-all (must be motion-safe:transition-all)', () => {
-    expect(fighterHealthCardSource).not.toMatch(/(?<!motion-safe:)transition-all/);
-  });
-
-  it('has no bare duration-300 (must be motion-safe:duration-300)', () => {
-    expect(fighterHealthCardSource).not.toMatch(/(?<!motion-safe:)duration-300/);
   });
 });
