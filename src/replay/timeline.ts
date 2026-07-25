@@ -1,6 +1,7 @@
 import type { ResolvedBeat, BeatActor } from '../domain/combat/beat';
 import type { PoseName } from './poses';
 import { createRng } from '../domain/rng';
+import { moveFamily } from './moveFamily';
 
 export type BeatEventKind =
   | 'windup' | 'strike' | 'slip' | 'impact' | 'block' | 'reaction' | 'knockdown' | 'recover'
@@ -13,7 +14,7 @@ export interface BeatEvent {
   actor: BeatActor;
   pose?: PoseName;
   intensity?: number;
-  zone?: 'head' | 'body';
+  zone?: 'head' | 'body' | 'legs';
 }
 
 export interface BeatTimeline { totalMs: number; events: BeatEvent[] }
@@ -26,13 +27,18 @@ export function computeFinalPose(events: BeatEvent[], actor: BeatActor): PoseNam
   return 'idle';
 }
 
-function toZone(target: 'head' | 'body' | 'legs' | null): 'head' | 'body' {
-  return target === 'head' ? 'head' : 'body';
+function toZone(target: 'head' | 'body' | 'legs' | null): 'head' | 'body' | 'legs' {
+  if (target === 'legs') return 'legs';
+  if (target === 'head') return 'head';
+  return 'body';
 }
 
-function strikePose(moveId: string | null): PoseName {
-  if (moveId === 'jab' || moveId === 'cross' || moveId === 'hook') return moveId;
-  return 'cross';
+function loadPose(family: 'punch' | 'kick'): PoseName {
+  return family === 'kick' ? 'kick-load' : 'punch-load';
+}
+
+function contactPose(family: 'punch' | 'kick'): PoseName {
+  return family === 'kick' ? 'kick-contact' : 'punch-contact';
 }
 
 function targetBecameRocked(beat: ResolvedBeat): boolean {
@@ -46,11 +52,14 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
   const events: BeatEvent[] = [];
   let t = 0;
 
+  const family = moveFamily(beat.moveId, beat.moveClass);
+  const strikeFam: 'punch' | 'kick' = family === 'kick' ? 'kick' : 'punch';
+
   function push(
     kind: BeatEventKind,
     dur: number,
     actor: BeatActor,
-    opts?: { pose?: PoseName; intensity?: number; zone?: 'head' | 'body' },
+    opts?: { pose?: PoseName; intensity?: number; zone?: 'head' | 'body' | 'legs' },
   ): void {
     events.push({ tMs: t, durMs: dur, kind, actor, ...opts });
     t += dur;
@@ -73,14 +82,24 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
     }
     push('recover', 120, beat.actorId, { pose: 'idle' });
 
+  } else if (family === 'takedown') {
+    // Neutral level-change + clinch — no punch/kick poses, no flash for damageless takes
+    push('windup', 80, beat.actorId, { pose: 'guard' });
+    push('strike', 100, beat.actorId, { pose: 'slip' }); // actor shoots/dips
+    push('block', 80, beat.targetId, { pose: 'guard' }); // target defends/braces
+    if (beat.isFinish) {
+      push('knockdown', 300, beat.targetId, { pose: 'down' });
+    }
+    push('recover', 120, beat.actorId, { pose: 'idle' });
+
   } else if (beat.outcome === 'evaded') {
-    push('windup', 70, beat.actorId, { pose: strikePose(beat.moveId) });
+    push('windup', 70, beat.actorId, { pose: loadPose(strikeFam) });
     push('slip', 100, beat.targetId, { pose: 'slip' });
     push('recover', 100, beat.actorId, { pose: 'idle' });
 
   } else if (beat.outcome === 'blocked') {
-    push('windup', 70, beat.actorId, { pose: strikePose(beat.moveId) });
-    push('strike', 60, beat.actorId);
+    push('windup', 70, beat.actorId, { pose: loadPose(strikeFam) });
+    push('strike', 60, beat.actorId, { pose: contactPose(strikeFam) });
     push('block', 80, beat.targetId, { pose: 'guard' });
     push('shake', 40, beat.actorId, { intensity: 0.3 });
     push('recover', 100, beat.actorId, { pose: 'idle' });
@@ -91,14 +110,18 @@ export function buildBeatTimeline(beat: ResolvedBeat, presentationSeed: string):
     const zone = toZone(beat.target);
     const rawDelta = zone === 'head'
       ? (beat.targetId === 'opponent' ? beat.deltas.opponentHead : beat.deltas.playerHead)
-      : (beat.targetId === 'opponent' ? beat.deltas.opponentBody : beat.deltas.playerBody);
+      : zone === 'legs'
+        ? (beat.targetId === 'opponent' ? beat.deltas.opponentLeg : beat.deltas.playerLeg)
+        : (beat.targetId === 'opponent' ? beat.deltas.opponentBody : beat.deltas.playerBody);
     const intensity = Math.min(1, rawDelta / 30);
     const reactionPose: PoseName = targetBecameRocked(beat)
       ? 'reel'
-      : (zone === 'head' ? 'hit-head' : 'hit-body');
+      : zone === 'legs' ? 'hit-leg'
+      : zone === 'head' ? 'hit-head'
+      : 'hit-body';
 
-    push('windup', windupDur, beat.actorId, { pose: strikePose(beat.moveId) });
-    push('strike', 80, beat.actorId);
+    push('windup', windupDur, beat.actorId, { pose: loadPose(strikeFam) });
+    push('strike', 80, beat.actorId, { pose: contactPose(strikeFam) });
     push('impact', 60, beat.targetId, { zone, intensity });
     push('flash', 40, beat.targetId, { zone, intensity });
     push('shake', 50, beat.actorId, { intensity: intensity * 0.7 });

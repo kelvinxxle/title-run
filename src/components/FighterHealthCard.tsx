@@ -44,12 +44,12 @@ function SegmentedBar({
       aria-valuemin={0}
       aria-valuemax={100}
       data-testid={testId}
-      className="flex gap-[2px] transition-all duration-300"
+      className="flex gap-[2px] motion-safe:transition-all motion-safe:duration-300"
     >
       {Array.from({ length: SEGMENTS }, (_, i) => (
         <span
           key={i}
-          className={`${height} flex-1 transition-all duration-300 ${i < filled ? fillColor : 'bg-surface-container-highest'}`}
+          className={`${height} flex-1 motion-safe:transition-all motion-safe:duration-300 ${i < filled ? fillColor : 'bg-surface-container-highest'}`}
         />
       ))}
     </div>
@@ -89,7 +89,7 @@ export default function FighterHealthCard({
     <div
       data-testid={`fighter-card-${side}`}
       data-head-state={headStateLabel}
-      className={`flex-1 bg-surface-container ${accent} p-md flex flex-col gap-xs ${headStateLabel === 'rocked' ? 'animate-pulse' : ''}`}
+      className={`flex-1 bg-surface-container ${accent} p-md flex flex-col gap-xs ${headStateLabel === 'rocked' ? 'motion-safe:animate-pulse' : ''}`}
     >
       <div className="flex items-start justify-between gap-xs">
         {avatarSeed && archetype ? (
@@ -112,7 +112,7 @@ export default function FighterHealthCard({
         <div className="mb-[2px] flex items-center justify-between">
           <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant">HEAD</span>
           {damageFlash && damageFlash.head > 0 && (
-            <span data-testid={`dmg-${side}-head`} className="font-mono text-xs text-red-400 animate-bounce">
+            <span data-testid={`dmg-${side}-head`} className="font-mono text-xs text-red-400 motion-safe:animate-bounce">
               −
               {damageFlash.head}
             </span>

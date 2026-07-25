@@ -8,6 +8,11 @@ import GroundPanel from '../components/GroundPanel';
 import OutcomeBanner from '../components/OutcomeBanner';
 import CornerScreen from '../components/CornerScreen';
 import RoundRecap from '../components/RoundRecap';
+import { useBeatPlayback } from '../replay/useBeatPlayback';
+import { ArenaStage } from './ArenaStage';
+import { arenaVisualMode } from './arenaVisualMode';
+import { useCommittedFight } from './useCommittedFight';
+import type { ArchetypeId } from '../domain/combat/archetypes';
 
 interface Props {
   fightState: FightState;
@@ -23,13 +28,41 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
   const { player, opponent, phase, window: win, outcome, log, rounds, lastReport } = fightState;
   const sigReady = signatureReady(fightState);
 
-  // Damage flash: show deltas from the last resolved round
-  const playerFlash = lastReport
+  // Arena playback wiring (beats may be absent on old fixtures — read defensively)
+  const currentBeat = fightState.beats != null && fightState.beats.length > 0
+    ? fightState.beats[fightState.beats.length - 1]
+    : null;
+  const play = useBeatPlayback(currentBeat, fightState.seed);
+  const mode = arenaVisualMode(phase, play.isPlaying, currentBeat);
+
+  const anyFlash =
+    play.flashHeadPlayer || play.flashBodyPlayer || (play.flashLegPlayer ?? false) ||
+    play.flashHeadOpponent || play.flashBodyOpponent || (play.flashLegOpponent ?? false);
+
+  // FIX 2: StrictMode-safe HUD hold — state-driven, committed only after release
+  const { shown, committed } = useCommittedFight(fightState, currentBeat, !play.isPlaying || anyFlash);
+
+  // FIX 3: damage badges gate on the same commit as the HP bars (no pre-impact leakage)
+  const playerFlash = committed && lastReport
     ? { head: lastReport.playerHeadDelta, body: lastReport.playerBodyDelta }
     : undefined;
-  const opponentFlash = lastReport
+  const opponentFlash = committed && lastReport
     ? { head: lastReport.opponentHeadDelta, body: lastReport.opponentBodyDelta }
     : undefined;
+
+  // Fighter layer — cornerColor is documented exception to token rule (spec-approved glove colors)
+  const playerIdentity = {
+    fighterId: undefined,
+    name: playerName,
+    archetype: archetypeFromStatLine(player.statLine),
+    cornerColor: '#e23b2e', // red corner
+  };
+  const opponentIdentity = {
+    fighterId: fighterIdByName(opponent.name),
+    name: opponent.name,
+    archetype: opponent.archetype as ArchetypeId,
+    cornerColor: '#2f6fb0', // blue corner
+  };
 
   return (
     <section
@@ -40,17 +73,16 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
       data-player-head={player.headDamage}
       className="p-md flex flex-col gap-md items-center"
     >
-      <p className="font-mono text-xs uppercase tracking-widest text-on-surface-variant">{roundLabel(fightState)}</p>
       <div className="w-full flex gap-sm">
         <FighterHealthCard
           side="player"
           name={playerName}
-          subtitle={`Stamina ${Math.round(staminaPct(player) * 100)}%`}
+          subtitle={`Stamina ${Math.round(staminaPct(shown.player) * 100)}%`}
           badge="YOU"
-          healthPct={healthPct(player)}
-          bodyPct={bodyPct(player)}
-          staminaPct={staminaPct(player)}
-          headStateLabel={headState(player)}
+          healthPct={healthPct(shown.player)}
+          bodyPct={bodyPct(shown.player)}
+          staminaPct={staminaPct(shown.player)}
+          headStateLabel={headState(shown.player)}
           damageFlash={playerFlash}
           avatarSeed={playerName}
           archetype={archetypeFromStatLine(player.statLine)}
@@ -60,10 +92,10 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
           name={opponent.name}
           subtitle={opponent.archetype}
           badge="OPP"
-          healthPct={healthPct(opponent)}
-          bodyPct={bodyPct(opponent)}
-          staminaPct={staminaPct(opponent)}
-          headStateLabel={headState(opponent)}
+          healthPct={healthPct(shown.opponent)}
+          bodyPct={bodyPct(shown.opponent)}
+          staminaPct={staminaPct(shown.opponent)}
+          headStateLabel={headState(shown.opponent)}
           damageFlash={opponentFlash}
           avatarSeed={opponent.name}
           archetype={opponent.archetype}
@@ -71,45 +103,58 @@ export default function FightView({ fightState, playerName, onMove, onFinishStep
         />
       </div>
 
+      <ArenaStage
+        mode={mode}
+        play={play}
+        player={playerIdentity}
+        opponent={opponentIdentity}
+        roundLabel={roundLabel(fightState)}
+        hud={null}
+      />
+
       <SignatureMeter charge={fightState.signatureCharge} />
 
-      {phase === 'in-round' && (
-        <StrikePanel
-          statLine={player.statLine}
-          exchange={fightState.exchange}
-          exchangesPerRound={EXCHANGES_PER_ROUND}
-          onMove={onMove}
-          sigReady={sigReady}
-        />
-      )}
-      {phase === 'corner' && (
-        <CornerScreen
-          report={lastReport}
-          log={log}
-          rounds={rounds}
-          nextRound={fightState.round}
-          onChoosePlan={onChooseGamePlan}
-        />
-      )}
-      {phase === 'finish-window' && win && (
-        <FinishSequencePanel window={win} onChoice={onFinishStep} />
-      )}
-      {phase === 'ground' && fightState.ground && (
-        <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
-      )}
-      {phase === 'finished' && outcome && (
-        <div className="w-full flex flex-col items-center gap-sm">
-          {lastReport && <RoundRecap report={lastReport} />}
-          <OutcomeBanner outcome={outcome} heading={`${playerName} vs ${opponent.name}`} />
-          <button
-            type="button"
-            data-testid="fight-continue"
-            onClick={onContinue}
-            className="w-full h-14 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide"
-          >
-            Continue
-          </button>
-        </div>
+      {!play.isPlaying && (
+        <>
+          {phase === 'in-round' && (
+            <StrikePanel
+              statLine={player.statLine}
+              exchange={fightState.exchange}
+              exchangesPerRound={EXCHANGES_PER_ROUND}
+              onMove={onMove}
+              sigReady={sigReady}
+            />
+          )}
+          {phase === 'corner' && (
+            <CornerScreen
+              report={lastReport}
+              log={log}
+              rounds={rounds}
+              nextRound={fightState.round}
+              onChoosePlan={onChooseGamePlan}
+            />
+          )}
+          {phase === 'finish-window' && win && (
+            <FinishSequencePanel window={win} onChoice={onFinishStep} />
+          )}
+          {phase === 'ground' && fightState.ground && (
+            <GroundPanel ground={fightState.ground} onGroundAction={onGroundAction} />
+          )}
+          {phase === 'finished' && outcome && (
+            <div className="w-full flex flex-col items-center gap-sm">
+              {lastReport && <RoundRecap report={lastReport} />}
+              <OutcomeBanner outcome={outcome} heading={`${playerName} vs ${opponent.name}`} />
+              <button
+                type="button"
+                data-testid="fight-continue"
+                onClick={onContinue}
+                className="w-full h-14 bg-primary text-on-primary font-display text-2xl uppercase tracking-wide"
+              >
+                Continue
+              </button>
+            </div>
+          )}
+        </>
       )}
     </section>
   );

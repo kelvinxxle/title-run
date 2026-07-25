@@ -15,6 +15,8 @@ export interface PlaybackState {
   flashBodyPlayer: boolean;
   flashHeadOpponent: boolean;
   flashBodyOpponent: boolean;
+  flashLegPlayer: boolean;
+  flashLegOpponent: boolean;
   shakeX: number;
   isPlaying: boolean;
   finalPosePlayer: PoseName;
@@ -28,11 +30,15 @@ const IDLE_STATE: PlaybackState = {
   flashBodyPlayer: false,
   flashHeadOpponent: false,
   flashBodyOpponent: false,
+  flashLegPlayer: false,
+  flashLegOpponent: false,
   shakeX: 0,
   isPlaying: false,
   finalPosePlayer: 'idle',
   finalPoseOpponent: 'idle',
 };
+
+export const IDLE_PLAYBACK: PlaybackState = IDLE_STATE;
 
 // ---------------------------------------------------------------------------
 // Pure helpers (no side-effects, no Date.now, no Math.random)
@@ -47,7 +53,7 @@ function currentPose(events: BeatEvent[], actor: BeatActor, elapsed: number): Po
   return pose;
 }
 
-function flashActive(events: BeatEvent[], actor: BeatActor, zone: 'head' | 'body', elapsed: number): boolean {
+function flashActive(events: BeatEvent[], actor: BeatActor, zone: 'head' | 'body' | 'legs', elapsed: number): boolean {
   return events.some(
     e => e.kind === 'flash' && e.actor === actor && e.zone === zone &&
       elapsed >= e.tMs && elapsed < e.tMs + e.durMs,
@@ -79,6 +85,8 @@ function snapshotState(
     flashBodyPlayer: flashActive(events, 'player', 'body', t),
     flashHeadOpponent: flashActive(events, 'opponent', 'head', t),
     flashBodyOpponent: flashActive(events, 'opponent', 'body', t),
+    flashLegPlayer: flashActive(events, 'player', 'legs', t),
+    flashLegOpponent: flashActive(events, 'opponent', 'legs', t),
     shakeX: done ? 0 : shakeOffset(events, t),
     isPlaying: !done,
     finalPosePlayer,
@@ -125,6 +133,8 @@ export function useBeatPlayback(beat: ResolvedBeat | null, presentationSeed: str
         flashBodyPlayer: false,
         flashHeadOpponent: false,
         flashBodyOpponent: false,
+        flashLegPlayer: false,
+        flashLegOpponent: false,
         shakeX: 0,
         isPlaying: false,
         finalPosePlayer,

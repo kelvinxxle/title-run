@@ -80,7 +80,7 @@ export default function StrikePanel({
           data-testid="strike-signature"
           disabled={disabled}
           onClick={() => onMove({ kind: 'signature' })}
-          className="w-full flex flex-col items-center gap-1 p-sm bg-primary text-on-primary border-2 border-primary animate-pulse font-display text-xl uppercase tracking-widest disabled:opacity-50"
+          className="w-full flex flex-col items-center gap-1 p-sm bg-primary text-on-primary border-2 border-primary motion-safe:animate-pulse font-display text-xl uppercase tracking-widest disabled:opacity-50"
         >
           <span>⚡ SIGNATURE STRIKE ⚡</span>
           <span className="font-mono text-xs tracking-widest opacity-80">UNLEASH IT NOW</span>

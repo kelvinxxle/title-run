@@ -1,6 +1,7 @@
 export type PoseName =
   | 'idle' | 'guard' | 'jab' | 'cross' | 'hook' | 'slip'
-  | 'hit-head' | 'hit-body' | 'reel' | 'down' | 'sig-load' | 'sig-fire';
+  | 'hit-head' | 'hit-body' | 'reel' | 'down' | 'sig-load' | 'sig-fire'
+  | 'punch-load' | 'punch-contact' | 'kick-load' | 'kick-contact' | 'hit-leg';
 
 export interface Pose {
   torsoRotate: number;
@@ -24,4 +25,9 @@ export const POSES: Record<PoseName, Pose> = {
   down:       { torsoRotate: 80,  headX: 10,  headY: 10, leadArm: { rotate: 120, extend: 0.5  }, rearArm: { rotate: 100, extend: 0.5  }, lean: 20 },
   'sig-load': { torsoRotate: -5,  headX: -4,  headY: 0,  leadArm: { rotate: 30,  extend: 0.3  }, rearArm: { rotate: 40,  extend: 0.4  }, lean: -6 },
   'sig-fire': { torsoRotate: 10,  headX: 3,   headY: 0,  leadArm: { rotate: 60,  extend: 0.4  }, rearArm: { rotate: -10, extend: 0.95 }, lean: 15 },
+  'punch-load':    { torsoRotate: -8,  headX: -2, headY: 0, leadArm: { rotate: 20, extend: 0.4 }, rearArm: { rotate: 50, extend: 0.5  }, lean: -4 },
+  'punch-contact': { torsoRotate: 16,  headX: 3,  headY: 0, leadArm: { rotate: 70, extend: 0.4 }, rearArm: { rotate: -5, extend: 0.95 }, lean: 12 },
+  'kick-load':     { torsoRotate: -6,  headX: -2, headY: 0, leadArm: { rotate: 40, extend: 0.4 }, rearArm: { rotate: 30, extend: 0.4  }, lean: -3 },
+  'kick-contact':  { torsoRotate: 22,  headX: 4,  headY: 0, leadArm: { rotate: 50, extend: 0.4 }, rearArm: { rotate: 40, extend: 0.4  }, lean: 6  },
+  'hit-leg':       { torsoRotate: 8,   headX: 6,  headY: 3, leadArm: { rotate: 50, extend: 0.4 }, rearArm: { rotate: 40, extend: 0.4  }, lean: 4  },
 };

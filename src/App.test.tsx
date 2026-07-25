@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { afterEach, beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import App from './App';
 import { save } from './persistence/runStorageV2';
 import { startRun, applyDraft, startNextFight, finishStep, STAT_IDS, type RunState, type StatLine, type FightState, type SlotFill, type StatId } from './domain/combat';
@@ -57,8 +57,18 @@ function cornerFight(): FightState {
   };
 }
 
-beforeEach(() => localStorage.clear());
-afterEach(() => cleanup());
+beforeEach(() => {
+  localStorage.clear();
+  // App integration tests test game logic, not animation timing.
+  // Mock prefers-reduced-motion so useBeatPlayback snaps instantly (isPlaying=false)
+  // and panels never lock mid-test.
+  vi.spyOn(window, 'matchMedia').mockImplementation((q: string) => ({
+    matches: q === '(prefers-reduced-motion: reduce)',
+    media: q, onchange: null, addListener: () => {}, removeListener: () => {},
+    addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+  }) as MediaQueryList);
+});
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('App (v2 flow)', () => {
   it('fresh load shows the Hub with Start New Run', () => {

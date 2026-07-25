@@ -21,14 +21,14 @@ export default function SignatureMeter({ charge }: Props) {
           Signature
         </span>
         {isReady && (
-          <span className="font-mono text-xs uppercase tracking-widest text-primary animate-pulse">
+          <span className="font-mono text-xs uppercase tracking-widest text-primary motion-safe:animate-pulse">
             READY
           </span>
         )}
       </div>
       <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden border border-outline">
         <div
-          className={`h-full transition-all duration-300 rounded-full ${isReady ? 'bg-primary glow shadow-[0_0_8px_2px_rgba(var(--color-primary),0.7)]' : 'bg-primary opacity-60'}`}
+          className={`h-full motion-safe:transition-all motion-safe:duration-300 rounded-full ${isReady ? 'bg-primary glow shadow-[0_0_8px_2px_rgba(var(--color-primary),0.7)]' : 'bg-primary opacity-60'}`}
           style={{ width: `${pct}%` }}
         />
       </div>

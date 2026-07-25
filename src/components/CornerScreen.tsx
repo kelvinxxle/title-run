@@ -45,7 +45,7 @@ export default function CornerScreen({ report, log, rounds, nextRound, onChooseP
             type="button"
             data-testid={`plan-${plan}`}
             onClick={() => onChoosePlan(plan)}
-            className="flex flex-col gap-xs border border-outline bg-surface-container p-sm text-left transition-colors hover:bg-surface-container-highest"
+            className="flex flex-col gap-xs border border-outline bg-surface-container p-sm text-left motion-safe:transition-colors hover:bg-surface-container-highest"
           >
             <span className="font-display text-lg uppercase leading-tight text-on-surface">
               {GAME_PLAN_LABELS[plan]}

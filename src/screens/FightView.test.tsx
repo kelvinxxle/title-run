@@ -1,7 +1,10 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import FightView from './FightView';
 import type { FightState } from '../domain/combat';
+import { buildResolvedBeat } from '../domain/combat/beat';
+import { headState, healthPct } from '../fightDisplay';
 
 const base = (over: Partial<FightState> = {}): FightState => {
   const merged: FightState = {
@@ -126,7 +129,43 @@ describe('FightView', () => {
 
     expect(opp1SVG).not.toBe(opp2SVG);
   });
-});
+
+  // T8: control-lock tests
+  const landedBeat = buildResolvedBeat({
+    round: 1, exchange: 2, winner: 'player', dominance: 4,
+    moveClass: 'strike', moveId: 'jab', outcome: 'landed', target: 'head',
+    deltas: { playerHead:0, playerBody:0, playerLeg:0, playerStamina:2, opponentHead:12, opponentBody:0, opponentLeg:0, opponentStamina:1 },
+    status: { playerBecameRocked:false, opponentBecameRocked:false, playerGassed:false, opponentGassed:false },
+    signatureId: null, isFinish:false, finishMethod:null,
+  });
+
+  it('locks all panels while a beat is playing (2nd decision impossible mid-playback)', () => {
+    const onMove = vi.fn();
+    const st = base({ beats: [landedBeat] });
+    render(<FightView fightState={st} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.queryByTestId('strike-panel')).toBeNull();          // locked
+    expect(screen.getByTestId('fight-view')).toHaveAttribute('data-round', '1'); // arena still mounted
+  });
+
+  it('unlocks immediately under prefers-reduced-motion', () => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const spy = vi.spyOn(window, 'matchMedia').mockReturnValue({ ...mql, matches: true } as MediaQueryList);
+    const st = base({ beats: [landedBeat] });
+    render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.getByTestId('strike-panel')).toBeInTheDocument(); // reduced-motion → not playing → shown
+    spy.mockRestore();
+  });
+
+  it('holds displayed HP until the punch lands (no early bar drop)', () => {
+    const onMove = vi.fn();
+    const pre = base();                                    // opponent full HP, settled
+    const { rerender } = render(<FightView fightState={pre} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    const post = base({ beats: [landedBeat], opponent: { ...pre.opponent, headDamage: 40 } });
+    rerender(<FightView fightState={post} playerName="Me" onMove={onMove} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    // isPlaying true, t=0 (no flash yet) → opponent HP bar still shows the PRE value (held)
+    const oppHealthMeter = within(screen.getByTestId('fighter-card-opponent')).getAllByRole('meter')[0];
+    expect(oppHealthMeter.getAttribute('aria-valuenow')).toBe(String(Math.round(healthPct(pre.opponent) * 100)));
+  });
 
   it('shows a real photo for a roster opponent and avatar fallback for the player', () => {
     // Jon Jones IS in the roster; 'Me' is a custom name NOT in the roster
@@ -145,3 +184,49 @@ describe('FightView', () => {
     expect(within(screen.getByTestId('fighter-card-player')).queryByTestId('fighter-photo')).toBeNull();
     expect(within(screen.getByTestId('fighter-card-player')).getByLabelText(/portrait$/)).toBeInTheDocument();
   });
+
+  // T11: HUD info parity — head-state + body/stamina meters survive arena insertion
+  it('preserves HUD info parity (head-state + body/stamina meters retained)', () => {
+    const st = base({ player: { statLine: { striking:60, strikingDef:60, takedowns:60, takedownDef:60, submissions:60, submissionDef:60, cardio:60, chin:60, fightIQ:60 }, headDamage: 40, bodyDamage:0, stamina: 20, legDamage: 0, roundScore:0 } });
+    render(<FightView fightState={st} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />);
+    const card = screen.getByTestId('fighter-card-player');
+    expect(card).toHaveAttribute('data-head-state', headState(st.player));
+    expect(within(card).getAllByRole('meter').length).toBe(3);
+  });
+
+  // FIX-2 RED: StrictMode must not commit the post-beat state before playback begins
+  it('[FIX2-RED] StrictMode: HP bar holds pre-beat value even when isPlaying=false on new beat', () => {
+    const pre = base();
+    const { rerender } = render(
+      <StrictMode>
+        <FightView fightState={pre} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />
+      </StrictMode>,
+    );
+    const post = base({ beats: [landedBeat], opponent: { ...pre.opponent, headDamage: 40 } });
+    rerender(
+      <StrictMode>
+        <FightView fightState={post} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />
+      </StrictMode>,
+    );
+    const oppHealthMeter = within(screen.getByTestId('fighter-card-opponent')).getAllByRole('meter')[0];
+    expect(oppHealthMeter.getAttribute('aria-valuenow')).toBe(String(Math.round(healthPct(pre.opponent) * 100)));
+  });
+
+  // FIX-3 RED: damage badge must not show before the HP bar commits
+  it('[FIX3-RED] damage badge is absent while held (pre-impact, before committed)', () => {
+    const pre = base();
+    const { rerender } = render(
+      <FightView fightState={pre} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />,
+    );
+    const postWithReport = base({
+      beats: [landedBeat],
+      opponent: { ...pre.opponent, headDamage: 40 },
+      lastReport: { round: 1, headline: '', detail: '', winner: 'player', playerHeadDelta: 0, playerBodyDelta: 0, opponentHeadDelta: 40, opponentBodyDelta: 0 },
+    });
+    rerender(
+      <FightView fightState={postWithReport} playerName="Me" onMove={vi.fn()} onFinishStep={vi.fn()} onGroundAction={vi.fn()} onChooseGamePlan={vi.fn()} onContinue={vi.fn()} />,
+    );
+    // While playing (beat just arrived, no flash yet): damage badge should be absent
+    expect(screen.queryByTestId('dmg-opponent-head')).toBeNull();
+  });
+});
