@@ -1,5 +1,10 @@
 # Feel-Gate v2 — M19-B Live Hybrid Arena
 
+> **Superseded for strike readability by [feel-gate-v3.md](feel-gate-v3.md) (M19-C).**
+> v2 only asked "punch or kick?", which is why it passed while a jab and a power punch still shared
+> one animation. v3 requires the reviewer to *name* each of the six strikes blind. Keep running v2's
+> arena checks — they are folded into v3 Part 2 as the regression sweep.
+
 **Protocol version:** v2 (replaces the retired M18 signature gate)  
 **Harness:** `?arena=demo` on the REAL `FightView` at normal speed.  
 **Human-only ship criterion:** the orchestrator surfaces this to the user after CI and code review pass.

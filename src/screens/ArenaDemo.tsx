@@ -1,5 +1,5 @@
 /**
- * ArenaDemo — dev-only feel-gate v2 capture harness.
+ * ArenaDemo — dev-only feel-gate capture harness (v2 arena checks + v3 per-strike clips).
  * Mount via ?arena=demo in App.tsx. NOT part of the normal game flow.
  * Drives the REAL FightView with a fixed-seed scripted fight so captures
  * reflect production UI exactly. No Math.random / Date.now / setInterval.
@@ -78,7 +78,7 @@ export default function ArenaDemo() {
     <div style={{ minHeight: '100dvh', background: '#0e0e0e' }}>
       <div style={{ padding: '4px 8px', fontFamily: 'Space Mono, monospace', fontSize: 10,
                     color: '#99907c', borderBottom: '1px solid #201f1f' }}>
-        ARENA DEMO — feel-gate v2 — ?who=jones|adesanya|custom
+        ARENA DEMO — feel-gate v3 — ?who=jones|adesanya|custom
       </div>
       <FightView
         fightState={fightState}

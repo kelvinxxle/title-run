@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import { HybridRig } from './HybridRig';
+import { RIG_POSES } from '../replay/rigPoses';
 
 function renderRig(overrides: Partial<React.ComponentProps<typeof HybridRig>> = {}) {
   return render(
@@ -81,6 +82,121 @@ describe('HybridRig WAAPI CSS transform validity', () => {
     expect(t).toContain('scale(-1,1)');
     expect(t).toMatch(/\ddeg/);
     expect(t).not.toMatch(/rotate\([^)]*,[^)]*,[^)]*\)/);
+  });
+});
+
+// M19-C: rigX (step in/out) and bodyY (drop/rise) were plain SVG transform attributes, so they
+// SNAPPED in a single frame while every limb eased over 150ms. M19-C widened their range ~4x
+// (rigX span 6px -> 36px), turning a barely-visible seam into a visible teleport: knee-contact
+// -> idle moves the whole rig 22px (~12% of the 180-unit rig width) instantly.
+// They must ride the same WAAPI path as the joints. The knockdown root rotate stays an SVG attr.
+describe('HybridRig root translation animates (M19-C)', () => {
+  function stubAnimate(fn: (this: Element, kf: unknown) => Animation) {
+    // jsdom implements no WAAPI at all, so there is nothing for vi.spyOn to wrap.
+    Object.defineProperty(Element.prototype, 'animate', {
+      value: fn, writable: true, configurable: true,
+    });
+  }
+
+  afterEach(() => {
+    delete (Element.prototype as unknown as Record<string, unknown>).animate;
+  });
+
+  it('drives rigX through a CSS transform joint, not an SVG transform attribute', () => {
+    const { container } = renderRig({ pose: 'knee-contact' });
+    const el = container.querySelector('[data-j="rigX"]') as HTMLElement | null;
+    expect(el).not.toBeNull();
+    expect(el!.style.transform).toBe(`translate(${RIG_POSES['knee-contact'].rigX}px,0px)`);
+  });
+
+  it('drives bodyY through a CSS transform joint, not an SVG transform attribute', () => {
+    const { container } = renderRig({ pose: 'knee-contact' });
+    const el = container.querySelector('[data-j="bodyY"]') as HTMLElement | null;
+    expect(el).not.toBeNull();
+    expect(el!.style.transform).toBe(`translate(0px,${RIG_POSES['knee-contact'].bodyY}px)`);
+    // same element still carries the body part hook the flash overlays rely on
+    expect(el!.getAttribute('data-part')).toBe('body');
+    expect(el!.getAttribute('transform')).toBeNull();
+  });
+
+  it('leaves ONLY the knockdown rotate on the rig root SVG transform attribute', () => {
+    const { container } = renderRig({ pose: 'knee-contact' });
+    const root = container.querySelector('[data-rig="player"]')!;
+    expect(root.getAttribute('transform') ?? '').not.toContain('translate');
+
+    const { container: down } = renderRig({ pose: 'down', downed: true });
+    const downRoot = down.querySelector('[data-rig="player"]')!;
+    expect(downRoot.getAttribute('transform')).toContain('rotate(80');
+    expect(downRoot.getAttribute('transform')).not.toContain('translate');
+  });
+
+  it('animates rigX and bodyY alongside every rotational joint on a pose change', () => {
+    const animated: string[] = [];
+    stubAnimate(function (this: Element) {
+      animated.push(this.getAttribute('data-j') ?? '?');
+      return { cancel: () => {} } as unknown as Animation;
+    });
+
+    const { container, rerender } = render(
+      <svg>
+        <HybridRig
+          side="player" name="T" archetype="striker" cornerColor="#e23b2e"
+          pose="idle" facing="right"
+          flashHead={false} flashBody={false} flashLeg={false} downed={false}
+        />
+      </svg>,
+    );
+    rerender(
+      <svg>
+        <HybridRig
+          side="player" name="T" archetype="striker" cornerColor="#e23b2e"
+          pose="knee-contact" facing="right"
+          flashHead={false} flashBody={false} flashLeg={false} downed={false}
+        />
+      </svg>,
+    );
+
+    expect(animated).toContain('rigX');
+    expect(animated).toContain('bodyY');
+    expect(animated).toContain('torso');
+    expect(animated).toContain('thighRear');
+    expect(container.querySelector('[data-j="rigX"]')).not.toBeNull();
+  });
+
+  it('interpolates rigX/bodyY from the OUTGOING pose value (no snap-then-ease)', () => {
+    const frames: Record<string, unknown> = {};
+    stubAnimate(function (this: Element, kf: unknown) {
+      frames[this.getAttribute('data-j') ?? '?'] = kf;
+      return { cancel: () => {} } as unknown as Animation;
+    });
+
+    const { rerender } = render(
+      <svg>
+        <HybridRig
+          side="player" name="T" archetype="striker" cornerColor="#e23b2e"
+          pose="knee-contact" facing="right"
+          flashHead={false} flashBody={false} flashLeg={false} downed={false}
+        />
+      </svg>,
+    );
+    rerender(
+      <svg>
+        <HybridRig
+          side="player" name="T" archetype="striker" cornerColor="#e23b2e"
+          pose="idle" facing="right"
+          flashHead={false} flashBody={false} flashLeg={false} downed={false}
+        />
+      </svg>,
+    );
+
+    expect(frames['rigX']).toEqual([
+      { transform: `translate(${RIG_POSES['knee-contact'].rigX}px,0px)` },
+      { transform: `translate(${RIG_POSES['idle'].rigX}px,0px)` },
+    ]);
+    expect(frames['bodyY']).toEqual([
+      { transform: `translate(0px,${RIG_POSES['knee-contact'].bodyY}px)` },
+      { transform: `translate(0px,${RIG_POSES['idle'].bodyY}px)` },
+    ]);
   });
 });
 
